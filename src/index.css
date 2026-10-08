@@ -411,4 +411,6 @@ html, body { background: #f5f1e7; }
 body { padding-top: var(--safe-area-inset-top, env(safe-area-inset-top)); padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom)); -webkit-tap-highlight-color: transparent; }
 /* Solid strip behind the transparent status bar so content scrolls under it cleanly. */
 body::after { content: ""; position: fixed; inset: 0 0 auto 0; height: var(--safe-area-inset-top, env(safe-area-inset-top)); background: #f5f1e7; z-index: 40; pointer-events: none; }
+/* Full screen minus the body's safe-area padding, so short pages don't scroll. */
+.min-h-safe { min-height: calc(100dvh - var(--safe-area-inset-top, env(safe-area-inset-top)) - var(--safe-area-inset-bottom, env(safe-area-inset-bottom))); }
 [data-testid="status-toast"] { bottom: calc(1.25rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom))); }
