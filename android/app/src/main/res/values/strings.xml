@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Controle do Cartão</string>
+    <string name="title_activity_main">Controle do Cartão</string>
+    <string name="package_name">br.pessoal.controlecartao</string>
+    <string name="custom_url_scheme">br.pessoal.controlecartao</string>
+</resources>
