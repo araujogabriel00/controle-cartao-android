@@ -2,7 +2,7 @@
 
 Versão Android do [Controle do Cartão](../controle-cartao): mesma interface do app web, empacotada com [Capacitor](https://capacitorjs.com) e com **todos os dados salvos no próprio celular**, sem servidor nem internet.
 
-As funcionalidades estão descritas em BDD em [`../controle-cartao/FUNCIONALIDADES.md`](../controle-cartao/FUNCIONALIDADES.md).
+As funcionalidades estão descritas em BDD em [`FUNCIONALIDADES.md`](FUNCIONALIDADES.md), e o histórico mensal em [`specs/historico-mensal.md`](specs/historico-mensal.md).
 
 ## Como funciona
 

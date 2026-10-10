@@ -1,8 +1,10 @@
 # Funcionalidades — Controle do Cartão (BDD)
 
-Especificação das funcionalidades no formato BDD (Gherkin, em português), levantada a partir do comportamento da interface em `src/pages/dashboard.tsx`.
+Especificação das funcionalidades no formato BDD (Gherkin, em português), levantada a partir do comportamento do app em `src/pages/` e das regras em `src/data/store.ts`.
 
-> **Observação:** os cálculos de saldo (valor usado, disponível, percentual e totais da visão geral) são feitos pela API, que não está neste repositório. Os cenários marcados com `@api` descrevem o comportamento esperado do backend, inferido pela descrição do app e pelos campos que a interface consome.
+> **Observação:** nesta versão Android não há servidor. Os dados ficam no próprio aparelho e todos os cálculos (valor usado, disponível, percentual e totais da visão geral) são feitos em `src/data/store.ts`. Os cenários marcados com `@regra` descrevem essas regras de cálculo e validação.
+>
+> Todos os valores são calculados **dentro de um mês**: cartão, categorias, lançamentos e visão geral mostram só o mês que está aberto no painel. O funcionamento por mês está detalhado na seção [9. Histórico mensal](#9-histórico-mensal) e na spec [`specs/historico-mensal.md`](specs/historico-mensal.md).
 
 ## Sumário
 
@@ -14,6 +16,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 6. [Carregamento e erros](#6-carregamento-e-erros)
 7. [Formulários](#7-formulários)
 8. [Formatação](#8-formatação)
+9. [Histórico mensal](#9-histórico-mensal)
 
 ---
 
@@ -42,6 +45,7 @@ Funcionalidade: Gerenciar o cartão
     Então vejo a mensagem "Alterações salvas com cuidado."
     E vejo o painel "Visão do cartão" com o nome "Cartão principal"
     E o limite exibido é "R$ 5.000,00"
+    E o mês atual passa a fazer parte do histórico com esse limite
 
   Cenário: Exibir a situação do cartão
     Dado que existe um cartão com limite de R$ 5.000,00
@@ -65,6 +69,7 @@ Funcionalidade: Gerenciar o cartão
     E clico em "Salvar alterações"
     Então vejo a mensagem "Alterações salvas com cuidado."
     E o limite exibido é "R$ 6.000,00"
+    E o limite dos meses anteriores não muda
 
   Cenário: Remover o cartão
     Dado que existe um cartão cadastrado
@@ -73,6 +78,7 @@ Funcionalidade: Gerenciar o cartão
     Quando eu confirmo
     Então vejo a mensagem "Cartão removido."
     E volto a ver o convite "Vamos anotar o seu cartão?"
+    E todos os meses, categorias e lançamentos são apagados, inclusive o histórico
 
   Cenário: Desistir de remover o cartão
     Dado que existe um cartão cadastrado
@@ -80,7 +86,7 @@ Funcionalidade: Gerenciar o cartão
     E cancelo a confirmação
     Então o cartão continua cadastrado
 
-  @api
+  @regra
   Cenário: Percentual acima de 100% não estoura a barra
     Dado que o valor comprometido é maior que o limite do cartão
     Quando eu vejo o painel "Visão do cartão"
@@ -106,6 +112,7 @@ Funcionalidade: Planejar o orçamento por categorias
     E vejo o link "Criar minha primeira categoria"
 
   Cenário: Criar uma categoria
+    Dado que estou vendo o painel de um mês
     Quando eu clico em "Nova categoria"
     E preencho o nome da categoria com "Mercado"
     E preencho o orçamento planejado com "800"
@@ -113,6 +120,7 @@ Funcionalidade: Planejar o orçamento por categorias
     Então vejo a mensagem "Alterações salvas com cuidado."
     E a categoria "Mercado" aparece na aba "Em andamento"
     E o contador da aba "Em andamento" aumenta em 1
+    E a categoria pertence ao mês que está aberto no painel
 
   Cenário: Exibir o andamento de uma categoria
     Dado que existe a categoria "Mercado" com orçamento de R$ 800,00
@@ -152,7 +160,7 @@ Funcionalidade: Planejar o orçamento por categorias
     E a categoria "Mercado" sai da aba "Em andamento"
     E a categoria "Mercado" aparece na aba "Fechadas" com o selo "Encerrado"
 
-  @api
+  @regra
   Cenário: Categoria fechada é consolidada no saldo do cartão
     Dado que a categoria "Mercado" tem R$ 650,00 gastos
     Quando eu fecho a categoria "Mercado"
@@ -211,6 +219,7 @@ Funcionalidade: Registrar e acompanhar gastos
   Cenário: Registrar um gasto
     Quando eu clico em "Registrar gasto"
     Então o formulário "Novo lançamento" abre com a data de hoje preenchida
+    Mas se o painel mostra um mês passado, a data preenchida é o último dia daquele mês
     E a primeira categoria aberta vem selecionada
     Quando eu escolho a categoria "Mercado"
     E preencho "O que foi?" com "Mercado da semana"
@@ -219,13 +228,22 @@ Funcionalidade: Registrar e acompanhar gastos
     Então vejo a mensagem "Lançamento confirmado."
     E o lançamento "Mercado da semana" aparece em "O que já aconteceu"
 
-  @api
+  @regra
   Cenário: Gasto atualiza a categoria e o cartão
     Dado que a categoria "Mercado" tem R$ 0,00 usado de R$ 800,00
     Quando eu registro um gasto de R$ 200,00 em "Mercado"
     Então a categoria "Mercado" mostra "R$ 200,00 usado de R$ 800,00"
     E o valor "Já comprometido" do cartão aumenta em R$ 200,00
     E o valor "Disponível para usar" do cartão diminui em R$ 200,00
+
+  @regra
+  Cenário: Data do lançamento dentro do mês da categoria
+    Dado que a categoria "Mercado" pertence a outubro de 2026
+    Quando eu abro o formulário "Novo lançamento"
+    Então o campo "Data da compra" só aceita datas de 01/10/2026 a 31/10/2026
+    Quando eu tento salvar um lançamento em "Mercado" com data 05/11/2026
+    Então vejo a mensagem de erro "A data deve estar dentro de outubro de 2026."
+    E a mesma regra vale ao editar um lançamento
 
   Cenário: Só categorias abertas aceitam novos gastos
     Dado que existe também a categoria fechada "Viagem"
@@ -243,7 +261,7 @@ Funcionalidade: Registrar e acompanhar gastos
     E cada lançamento mostra a descrição, a data e o valor com sinal de menos
 
   Cenário: Trocar a categoria exibida pelo seletor
-    Dado que existem as categorias "Mercado" e "Casa"
+    Dado que existem as categorias "Mercado" e "Casa" no mês aberto
     Quando eu escolho "Casa" no seletor da seção "O que já aconteceu"
     Então vejo os lançamentos de "Casa"
 
@@ -316,40 +334,43 @@ Funcionalidade: Visão geral do mês
     Dado que existe um cartão cadastrado
 
   Cenário: Exibir o resumo
-    Dado que existem as categorias abertas "Mercado" (R$ 800,00) e "Casa" (R$ 1.200,00)
-    E existe a categoria fechada "Viagem" com R$ 650,00 gastos
-    Quando eu vejo o painel "O mês em perspectiva"
-    Então vejo "Orçamentos em aberto" com "R$ 2.000,00"
+    Dado que outubro de 2026 tem as categorias abertas "Mercado" (R$ 800,00) e "Casa" (R$ 1.200,00)
+    E tem a categoria fechada "Viagem" com R$ 650,00 gastos
+    Quando eu vejo o painel "O mês em perspectiva" de outubro de 2026
+    Então vejo o título "Outubro de 2026"
+    E vejo "Orçamentos em aberto" com "R$ 2.000,00"
     E vejo "Categorias fechadas" com "R$ 650,00"
     E vejo "2 categorias ativas para o que importa neste mês."
 
-  Cenário: Resumo sem dados da API
-    Dado que a API não retornou os totais da visão geral
-    Então "Orçamentos em aberto" é calculado somando o orçamento das categorias abertas
-    E "Categorias fechadas" mostra "R$ 0,00"
-    E a quantidade de categorias ativas é contada pela lista de categorias
+  Cenário: Resumo de um mês passado
+    Dado que estou vendo o painel de setembro de 2026
+    Então o resumo considera só as categorias de setembro
+    E vejo "categorias ativas para o que importa em setembro."
+
+  @regra
+  Cenário: Cálculo do comprometido do cartão
+    Dado que o mês aberto tem categorias abertas com orçamentos que somam R$ 2.000,00
+    E categorias fechadas com gastos que somam R$ 650,00
+    Então "Já comprometido" é R$ 2.650,00
+    E "Disponível para usar" é o limite do mês menos R$ 2.650,00
 ```
 
 ## 5. Sincronização e atualização
 
 ```gherkin
 # language: pt
-Funcionalidade: Status de sincronização
+Funcionalidade: Status e atualização dos dados
   Como usuário
-  Quero saber se meus dados estão sincronizados
+  Quero saber que meus dados estão em dia
   Para confiar nos valores exibidos
 
-  Cenário: API disponível
-    Dado que a verificação de saúde da API responde com sucesso
+  Cenário: Dados salvos no aparelho
+    Dado que os dados ficam salvos no próprio aparelho, sem servidor
     Então vejo o indicador verde "Seu caderno está em dia"
-
-  Cenário: API indisponível
-    Dado que a verificação de saúde da API falha
-    Então vejo o indicador "Sincronização pausada"
 
   Cenário: Atualizar os dados manualmente
     Quando eu clico em "Atualizar"
-    Então o cartão, a visão geral, as categorias e os lançamentos da categoria exibida são recarregados
+    Então o cartão, a visão geral, as categorias, o histórico e os lançamentos da categoria exibida são recarregados
     E o ícone de atualizar gira enquanto o cartão é recarregado
 
   Cenário: Atualizar ao voltar para a janela
@@ -384,9 +405,15 @@ Funcionalidade: Carregamento e tratamento de erros
     Quando eu clico em "Tentar novamente"
     Então os lançamentos são buscados de novo
 
-  Cenário: Falha ao salvar
+  Cenário: Falha de validação ao salvar
     Dado que estou salvando um cartão, categoria ou lançamento
-    Quando a API retorna erro
+    Quando os dados não passam numa regra de validação
+    Então vejo a mensagem de erro com o motivo, por exemplo "A data deve estar dentro de outubro de 2026."
+    E o formulário continua aberto com os dados preenchidos
+
+  Cenário: Falha inesperada ao salvar
+    Dado que estou salvando um cartão, categoria ou lançamento
+    Quando ocorre um erro sem mensagem
     Então vejo a mensagem de erro "Não foi possível salvar. Tente novamente."
     E o formulário continua aberto com os dados preenchidos
 
@@ -399,6 +426,10 @@ Funcionalidade: Carregamento e tratamento de erros
   Cenário: Rota inexistente
     Quando eu acesso um endereço que não existe
     Então vejo a página de "não encontrado"
+
+  Cenário: Mês inválido ou futuro
+    Quando eu acesso "#/mes/2026-13" ou um mês depois do atual
+    Então sou levado para o painel do mês atual
 ```
 
 ## 7. Formulários
@@ -426,6 +457,11 @@ Funcionalidade: Regras dos formulários
       | lançamento  | Valor confirmado      |
       | lançamento  | Data da compra        |
 
+  Cenário: Data fora do mês no formulário
+    Dado que o formulário de lançamento está aberto no painel de setembro de 2026
+    Quando eu informo uma data fora de setembro de 2026
+    Então o formulário não é enviado
+
   Esquema do Cenário: Limite de tamanho dos textos
     Dado que o formulário de <tipo> está aberto
     Então o campo <campo> aceita no máximo <máximo> caracteres
@@ -444,7 +480,7 @@ Funcionalidade: Regras dos formulários
 
   Cenário: Salvando
     Dado que eu cliquei para salvar um formulário
-    E a API ainda não respondeu
+    E a gravação ainda não terminou
     Então o botão mostra "Salvando…" e fica desabilitado
 
   Esquema do Cenário: Fechar o formulário sem salvar
@@ -493,4 +529,74 @@ Funcionalidade: Formatação de valores e datas
     Dado que o cartão tem 33,333% do limite usado
     Então o percentual do cartão é exibido como "33,3%"
     E o percentual das categorias é exibido sem casas decimais
+
+  Cenário: Nomes dos meses
+    Dado o mês "2026-10"
+    Então ele é exibido como "Outubro de 2026"
+```
+
+## 9. Histórico mensal
+
+Resumo do funcionamento por mês. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/historico-mensal.md`](specs/historico-mensal.md).
+
+```gherkin
+# language: pt
+Funcionalidade: Histórico mensal do cartão
+  Como usuário
+  Quero ver o cartão mês a mês
+  Para saber quanto gastei em cada mês, em quais categorias e com quais lançamentos
+
+  Contexto:
+    Dado que existe um cartão cadastrado
+
+  Cenário: Ver o histórico
+    Dado que tenho dados em setembro e outubro de 2026
+    Quando eu clico em "Histórico"
+    Então vejo "Outubro de 2026" antes de "Setembro de 2026"
+    E cada mês mostra o valor do mês, o comprometido, o limite e a quantidade de categorias e lançamentos
+
+  Cenário: Abrir um mês do histórico
+    Quando eu toco em "Setembro de 2026" no histórico
+    Então vejo o painel de setembro de 2026 com as categorias e os lançamentos daquele mês
+
+  Cenário: Navegar entre meses
+    Dado que estou no painel de outubro de 2026, o mês atual
+    Então o botão "Próximo mês" está desabilitado
+    Quando eu clico em "Mês anterior"
+    Então vejo o painel de setembro de 2026
+    E vejo o link "Voltar para o mês atual"
+
+  Cenário: Virada de mês copiando as categorias
+    Dado que hoje é 01/11/2026
+    E que outubro de 2026 tem categorias
+    Quando eu abro o aplicativo
+    Então vejo o diálogo "Começou novembro"
+    Quando eu clico em "Copiar categorias"
+    Então novembro começa com as mesmas categorias e orçamentos, todas abertas e sem lançamentos
+    E vejo a mensagem "Categorias de outubro copiadas."
+
+  Cenário: Virada de mês começando do zero
+    Dado que hoje é 01/11/2026
+    E que outubro de 2026 tem categorias
+    Quando eu abro o aplicativo e clico em "Começar do zero"
+    Então novembro começa sem categorias
+
+  Cenário: Virada de mês sem categorias para copiar
+    Dado que hoje é 01/11/2026
+    E que outubro de 2026 não tem categorias
+    Quando eu abro o aplicativo
+    Então o diálogo de virada não aparece
+    E novembro começa sem categorias
+
+  Cenário: Registrar uma compra do mês anterior
+    Dado que hoje é 01/11/2026
+    Quando eu abro o painel de outubro de 2026
+    E registro um gasto com data 31/10/2026 numa categoria aberta de outubro
+    Então o gasto entra no valor de outubro de 2026
+
+  @regra
+  Cenário: Dados de uma versão anterior do app
+    Dado que o app tinha dados salvos antes do histórico mensal existir
+    Quando eu abro a nova versão
+    Então todas as categorias e lançamentos aparecem no mês atual, sem perda
 ```
