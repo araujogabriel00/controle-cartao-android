@@ -2,12 +2,13 @@ import { type FormEvent, type MouseEvent, useEffect, useMemo, useState } from 'r
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import {
-  getGetCardQueryKey, getGetCategoriesQueryKey, getGetOverviewQueryKey,
+  getGetCardQueryKey, getGetCardsQueryKey, getGetCategoriesQueryKey, getGetConsolidatedQueryKey, getGetOverviewQueryKey,
   getGetMovementsQueryKey, getGetMonthHistoryQueryKey, getHealthCheckQueryKey, useHealthCheck,
-  useGetCard, useGetOverview, useGetCategories, useGetMovements, useGetMonthStatus,
-  useCreateCard, useUpdateCard, useDeleteCard, useCreateCategory,
+  useGetCards, useGetConsolidated, useGetOverview, useGetCategories, useGetMovements, useGetMonthStatus,
+  useCreateCard, useUpdateCard, useDeleteCard, useSelectCard, useCreateCategory,
   useUpdateCategory, useDeleteCategory, useSetCategoryClosed,
   useCreateMovement, useUpdateMovement, useDeleteMovement, useStartMonth,
+  type Cards,
 } from '@workspace/api-client-react';
 import {
   ArrowDownLeft, ArrowUpRight, BadgeCheck, Banknote, CalendarDays, Check,
@@ -15,17 +16,18 @@ import {
   MoreHorizontal, Plus, RefreshCw, ShieldCheck, Sparkles, Tag,
   Trash2, WalletCards, X,
 } from 'lucide-react';
+import { CardCarousel, type CarouselCard } from '@/components/card-carousel';
 import { Progress } from '@/components/progress';
+import { CARD_COLOR_KEYS, CARD_COLORS, type CardColor } from '@/lib/card-colors';
 import {
   capitalize, currentMonth, dateLabel, defaultDateFor, firstDayOf, lastDayOf,
   money, monthLabel, monthName, monthPath, shiftMonth, type MonthKey,
 } from '@/lib/format';
 
-type CardRecord = { id: number; name: string; limitAmount: number; usedAmount: number; availableAmount: number; percentUsed: number };
 type CategoryRecord = { id: number; name: string; amount: number; usedAmount: number; availableAmount: number; percentUsed: number; isClosed: boolean };
 type MovementRecord = { id: number; categoryId: number; description: string; amount: number; date: string };
 type DialogKind = 'card' | 'category' | 'movement';
-type DialogRecord = { id?: number; categoryId?: number; name?: string; amount?: number; limitAmount?: number; description?: string; date?: string };
+type DialogRecord = { id?: number; categoryId?: number; name?: string; amount?: number; limitAmount?: number; color?: CardColor; description?: string; date?: string };
 
 
 function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
@@ -37,11 +39,12 @@ function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
   const [description, setDescription] = useState(initial.description ?? '');
   const [date, setDate] = useState(initial.date?.slice(0, 10) ?? defaultDateFor(month));
   const [categoryId, setCategoryId] = useState(String(initial.categoryId ?? categories.find((item) => !item.isClosed)?.id ?? ''));
+  const [color, setColor] = useState<CardColor>(initial.color ?? 'verde');
   const isEdit = Boolean(initial.id);
   const title = kind === 'card' ? (isEdit ? 'Ajustar cartão' : 'Seu cartão') : kind === 'category' ? (isEdit ? 'Editar categoria' : 'Nova categoria') : (isEdit ? 'Editar lançamento' : 'Novo lançamento');
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    onSave(kind === 'card' ? { name, limitAmount: Number(amount) } : kind === 'category' ? { name, amount: Number(amount) } : { description, amount: Number(amount), date, categoryId: Number(categoryId) });
+    onSave(kind === 'card' ? { name, limitAmount: Number(amount), color } : kind === 'category' ? { name, amount: Number(amount) } : { description, amount: Number(amount), date, categoryId: Number(categoryId) });
   };
   // Scrolls (instead of clipping) when the keyboard shrinks the viewport, and stays clear of the system bars.
   const closeOnBackdrop = (event: MouseEvent<HTMLDivElement>) => { if (event.target === event.currentTarget) onClose(); };
@@ -60,7 +63,8 @@ function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
       <label className="field-label">{kind === 'card' ? 'Limite total' : kind === 'category' ? 'Orçamento planejado' : 'Valor confirmado'}</label>
       <div className="relative mb-4"><span className="absolute left-4 top-3 text-[#7d887d]">R$</span><input data-testid={kind === 'card' ? 'input-card-limit' : kind === 'category' ? 'input-category-budget' : 'input-movement-amount'} required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="field-input pl-12"/></div>
       {kind === 'movement' && <><label className="field-label">Data da compra</label><input data-testid="input-movement-date" required type="date" min={firstDayOf(month)} max={lastDayOf(month)} value={date} onChange={(e) => setDate(e.target.value)} className="field-input mb-6"/></>}
-      {kind !== 'movement' && <div className="mb-6"/>}
+      {kind === 'card' && <><span id="card-color-label" className="field-label">Cor do cartão</span><div role="group" aria-labelledby="card-color-label" className="mb-6 flex flex-wrap gap-2.5">{CARD_COLOR_KEYS.map((key) => <button key={key} type="button" data-testid={`button-card-color-${key}`} aria-label={CARD_COLORS[key].label} aria-pressed={color === key} onClick={() => setColor(key)} className={`grid h-9 w-9 place-items-center rounded-full ring-offset-2 ring-offset-[#fbf8f0] transition ${color === key ? 'ring-2 ring-[#294438]' : 'hover:scale-105'}`} style={{ background: CARD_COLORS[key].background }}>{color === key && <Check size={15} className="text-white"/>}</button>)}</div></>}
+      {kind === 'category' && <div className="mb-6"/>}
       <div className="flex gap-3"><button type="button" onClick={onClose} className="flex-1 rounded-full border border-[#dcd5c8] px-4 py-3 text-sm font-semibold text-[#546b5d] transition hover:bg-[#f1ede3]">Cancelar</button><button disabled={busy} type="submit" className="flex-1 rounded-full bg-[#28513f] px-4 py-3 text-sm font-semibold text-[#fffaf0] transition hover:bg-[#1f4333] disabled:opacity-60">{busy ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Adicionar'}</button></div>
     </form>
     </div>
@@ -92,11 +96,16 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   const [, navigate] = useLocation();
   const isCurrentMonth = month === currentMonth();
   const health = useHealthCheck({ query: { queryKey: getHealthCheckQueryKey(), retry: 1 } });
-  const cardQuery = useGetCard(month, { query: { queryKey: getGetCardQueryKey(month), refetchOnWindowFocus: true } });
-  const overviewQuery = useGetOverview(month, { query: { queryKey: getGetOverviewQueryKey(month), refetchOnWindowFocus: true } });
-  const categoriesQuery = useGetCategories(month, { query: { queryKey: getGetCategoriesQueryKey(month), refetchOnWindowFocus: true } });
-  const monthStatus = useGetMonthStatus().data;
-  const card = cardQuery.data as CardRecord | null | undefined;
+  const cardsQuery = useGetCards(month, { query: { queryKey: getGetCardsQueryKey(month), refetchOnWindowFocus: true } });
+  const cards = (cardsQuery.data?.cards ?? []) as CarouselCard[];
+  const selectedCardId = cardsQuery.data?.selectedCardId ?? null;
+  const card = cards.find((item) => item.id === selectedCardId);
+  // 0 matches no card, so the per-card queries come back empty when there is none.
+  const cardId = card?.id ?? 0;
+  const overviewQuery = useGetOverview(cardId, month, { query: { queryKey: getGetOverviewQueryKey(cardId, month), refetchOnWindowFocus: true } });
+  const categoriesQuery = useGetCategories(cardId, month, { query: { queryKey: getGetCategoriesQueryKey(cardId, month), refetchOnWindowFocus: true } });
+  const monthStatus = useGetMonthStatus(cardId).data;
+  const consolidated = useGetConsolidated(month, { query: { queryKey: getGetConsolidatedQueryKey(month), enabled: cards.length > 1, refetchOnWindowFocus: true } }).data;
   const categories = (categoriesQuery.data ?? []) as CategoryRecord[];
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const selected = categories.find((item) => item.id === selectedId) ?? categories.find((item) => !item.isClosed) ?? categories[0];
@@ -117,9 +126,11 @@ export default function Dashboard({ month }: { month: MonthKey }) {
     return () => document.removeEventListener('pointerdown', closeOnOutsideTap);
   }, [openMenuId]);
 
-  // Prefix keys: refreshes every month, plus the history.
+  // Prefix keys: refreshes every card and month, plus the history and the totals.
   const refresh = (withMovements = false, categoryId?: number) => {
+    void client.invalidateQueries({ queryKey: getGetCardsQueryKey() });
     void client.invalidateQueries({ queryKey: getGetCardQueryKey() });
+    void client.invalidateQueries({ queryKey: getGetConsolidatedQueryKey() });
     void client.invalidateQueries({ queryKey: getGetOverviewQueryKey() });
     void client.invalidateQueries({ queryKey: getGetCategoriesQueryKey() });
     void client.invalidateQueries({ queryKey: getGetMonthHistoryQueryKey() });
@@ -131,7 +142,14 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   const mutationOptions = { onSuccess: () => { refresh(); setDialog(null); notify('Alterações salvas com cuidado.'); }, onError: failed };
   const createCard = useCreateCard({ mutation: mutationOptions });
   const updateCard = useUpdateCard({ mutation: mutationOptions });
-  const deleteCard = useDeleteCard({ mutation: { onSuccess: () => { refresh(); notify('Cartão removido.'); }, onError: failed } });
+  const deleteCard = useDeleteCard({ mutation: { onSuccess: (_result, vars) => { refresh(); notify(`Cartão “${cards.find((item) => item.id === vars.cardId)?.name ?? ''}” removido.`); }, onError: failed } });
+  // The carousel switches at once; the choice is saved in the background.
+  const selectCard = useSelectCard({ mutation: { onSuccess: () => refresh(), onError: (error) => { refresh(); failed(error); } } });
+  const chooseCard = (id: number) => {
+    client.setQueryData<Cards>(getGetCardsQueryKey(month), (data) => data && { ...data, selectedCardId: id });
+    setSelectedId(null);
+    selectCard.mutate({ cardId: id });
+  };
   const createCategory = useCreateCategory({ mutation: mutationOptions });
   const updateCategory = useUpdateCategory({ mutation: mutationOptions });
   const deleteCategory = useDeleteCategory({ mutation: { onSuccess: () => { refresh(); notify('Envelope removido.'); }, onError: failed } });
@@ -141,11 +159,11 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   const deleteMovement = useDeleteMovement({ mutation: { onSuccess: (_result, vars) => { refresh(true, selected?.id); notify('Lançamento excluído.'); }, onError: failed } });
   const startMonth = useStartMonth({ mutation: { onSuccess: (_result, vars) => { refresh(); if (vars.copyFrom) notify(`Categorias de ${monthName(vars.copyFrom)} copiadas.`); }, onError: failed } });
   const askMonthStart = isCurrentMonth && Boolean(card) && Boolean(monthStatus?.needsStart && monthStatus.previousHasCategories && monthStatus.previousMonth);
-  // Nothing to copy from last month: start the new month empty without asking.
+  // Nothing to copy from this card's last month: start the new month empty without asking.
   useEffect(() => {
-    if (isCurrentMonth && monthStatus?.needsStart && !monthStatus.previousHasCategories && !startMonth.isPending) startMonth.mutate({ month, copyFrom: null });
+    if (card && isCurrentMonth && monthStatus?.needsStart && !monthStatus.previousHasCategories && !startMonth.isPending) startMonth.mutate({ cardId: card.id, month, copyFrom: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCurrentMonth, month, monthStatus?.needsStart, monthStatus?.previousHasCategories]);
+  }, [card?.id, isCurrentMonth, month, monthStatus?.needsStart, monthStatus?.previousHasCategories]);
   const isMutating = createCard.isPending || updateCard.isPending || createCategory.isPending || updateCategory.isPending || createMovement.isPending || updateMovement.isPending;
 
   const totals = useMemo(() => {
@@ -154,17 +172,17 @@ export default function Dashboard({ month }: { month: MonthKey }) {
     return { spent, planned };
   }, [categories]);
   const visibleCategories = categories.filter((item) => filter === 'abertos' ? !item.isClosed : item.isClosed);
-  const loading = cardQuery.isLoading || categoriesQuery.isLoading || overviewQuery.isLoading;
+  const loading = cardsQuery.isLoading || categoriesQuery.isLoading || overviewQuery.isLoading;
   const overview = overviewQuery.data;
 
   const submitDialog = (values: DialogRecord) => {
     if (!dialog) return;
     if (dialog.kind === 'card') {
-      const data = { name: values.name ?? '', limitAmount: Number(values.limitAmount) };
-      if (card) updateCard.mutate({ data }); else createCard.mutate({ data });
+      const data = { name: values.name ?? '', limitAmount: Number(values.limitAmount), color: values.color };
+      if (dialog.initial.id) updateCard.mutate({ cardId: dialog.initial.id, data }); else createCard.mutate({ data });
     } else if (dialog.kind === 'category') {
       const data = { name: values.name ?? '', amount: Number(values.amount) };
-      if (dialog.initial.id) updateCategory.mutate({ categoryId: dialog.initial.id, data }); else createCategory.mutate({ month, data });
+      if (dialog.initial.id) updateCategory.mutate({ categoryId: dialog.initial.id, data }); else if (card) createCategory.mutate({ cardId: card.id, month, data });
     } else {
       const data = { description: values.description ?? '', amount: Number(values.amount), date: values.date ?? defaultDateFor(month) };
       if (dialog.initial.id) updateMovement.mutate({ movementId: dialog.initial.id, data }); else createMovement.mutate({ categoryId: Number(values.categoryId), data });
@@ -173,14 +191,14 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   const askDelete = (label: string) => window.confirm(`Remover ${label}? Esta ação não pode ser desfeita.`);
 
   if (loading) return <main className="min-h-safe bg-[#f5f1e7] p-5 sm:p-10"><div className="mx-auto max-w-6xl animate-pulse"><div className="h-5 w-36 rounded bg-[#e5dfd2]"/><div className="mt-8 h-12 w-64 rounded bg-[#e5dfd2]"/><div className="mt-10 grid gap-5 md:grid-cols-2"><div className="h-64 rounded-3xl bg-[#e9e3d7]"/><div className="h-64 rounded-3xl bg-[#e9e3d7]"/></div><div className="mt-6 h-72 rounded-3xl bg-[#e9e3d7]"/></div></main>;
-  if (cardQuery.isError || categoriesQuery.isError || overviewQuery.isError) return <main className="flex min-h-safe items-center justify-center bg-[#f5f1e7] p-6"><div className="max-w-md text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#e9e3d7] text-[#315944]"><CircleHelp/></div><h1 className="mt-5 font-display text-3xl text-[#234638]">Vamos tentar de novo?</h1><p className="mt-3 text-sm leading-6 text-[#758075]">Não conseguimos abrir seu caderno agora. Sua informação continua segura.</p><button onClick={() => { void cardQuery.refetch(); void categoriesQuery.refetch(); void overviewQuery.refetch(); }} className="mt-6 rounded-full bg-[#28513f] px-6 py-3 text-sm font-semibold text-[#fffaf0]">Tentar novamente</button></div></main>;
+  if (cardsQuery.isError || categoriesQuery.isError || overviewQuery.isError) return <main className="flex min-h-safe items-center justify-center bg-[#f5f1e7] p-6"><div className="max-w-md text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#e9e3d7] text-[#315944]"><CircleHelp/></div><h1 className="mt-5 font-display text-3xl text-[#234638]">Vamos tentar de novo?</h1><p className="mt-3 text-sm leading-6 text-[#758075]">Não conseguimos abrir seu caderno agora. Sua informação continua segura.</p><button onClick={() => { void cardsQuery.refetch(); void categoriesQuery.refetch(); void overviewQuery.refetch(); }} className="mt-6 rounded-full bg-[#28513f] px-6 py-3 text-sm font-semibold text-[#fffaf0]">Tentar novamente</button></div></main>;
 
   return <main className="notebook-grain min-h-safe bg-[#f5f1e7] text-[#294438]">
     <div className="relative z-10 mx-auto max-w-[1320px] px-4 pb-12 pt-5 sm:px-8 lg:px-12">
       <header className="enter flex items-center justify-between border-b border-[#ded8ca] pb-5">
         <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-[13px] bg-[#28513f] text-[#f4d48b]"><WalletCards size={20}/></div><div><p className="font-display text-[20px] font-semibold leading-none text-[#234638]">controle<span className="text-[#d78470]">.</span></p><p className="mt-1 font-mono-data text-[9px] uppercase tracking-[.19em] text-[#758075]">do cartão</p></div></div>
         <div className="hidden items-center gap-2 rounded-full border border-[#ddd7c9] bg-[#f9f6ee] px-3.5 py-2 text-[11px] text-[#64766a] sm:flex"><span className={`h-1.5 w-1.5 rounded-full ${health.isError ? 'bg-[#d78470]' : 'bg-[#6d9d79]'}`}/>{health.isError ? 'Sincronização pausada' : 'Seu caderno está em dia'}</div>
-        <div className="flex items-center gap-2"><button data-testid="button-history" onClick={() => navigate('/historico')} className="flex items-center gap-2 rounded-full border border-[#ded8ca] px-3.5 py-2 text-xs font-semibold text-[#546b5d] transition hover:bg-[#ece7dc]"><History size={14}/><span>Histórico</span></button><button data-testid="button-refresh" aria-label="Atualizar" onClick={() => refresh(true, selected?.id)} className="flex items-center gap-2 rounded-full border border-[#ded8ca] px-3.5 py-2 text-xs font-semibold text-[#546b5d] transition hover:bg-[#ece7dc]"><RefreshCw size={14} className={cardQuery.isFetching ? 'animate-spin' : ''}/><span className="hidden sm:inline">Atualizar</span></button></div>
+        <div className="flex items-center gap-2"><button data-testid="button-history" onClick={() => navigate('/historico')} className="flex items-center gap-2 rounded-full border border-[#ded8ca] px-3.5 py-2 text-xs font-semibold text-[#546b5d] transition hover:bg-[#ece7dc]"><History size={14}/><span>Histórico</span></button><button data-testid="button-refresh" aria-label="Atualizar" onClick={() => refresh(true, selected?.id)} className="flex items-center gap-2 rounded-full border border-[#ded8ca] px-3.5 py-2 text-xs font-semibold text-[#546b5d] transition hover:bg-[#ece7dc]"><RefreshCw size={14} className={cardsQuery.isFetching ? 'animate-spin' : ''}/><span className="hidden sm:inline">Atualizar</span></button></div>
       </header>
 
       <nav aria-label="Mês" className="enter mt-5 flex items-center justify-between gap-2 rounded-full border border-[#e1dbce] bg-[#fbf8f0] p-1.5">
@@ -194,22 +212,32 @@ export default function Dashboard({ month }: { month: MonthKey }) {
         <button data-testid="button-new-movement" onClick={() => setDialog({ kind: 'movement', initial: {} })} disabled={!categories.some((item) => !item.isClosed)} className="flex w-fit items-center gap-2 rounded-full bg-[#28513f] px-5 py-3.5 text-[13px] font-semibold text-[#fffaf0] shadow-[0_8px_18px_-10px_rgba(38,80,61,.7)] transition hover:-translate-y-0.5 hover:bg-[#1f4333] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16}/> Registrar gasto</button>
       </section>
 
-      {!card ? <section className="enter mt-9 overflow-hidden rounded-[28px] bg-[#28513f] p-7 text-[#fffaf0] sm:p-10">
-        <div className="flex flex-col justify-between gap-8 md:flex-row md:items-center"><div className="max-w-xl"><div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-[#f1d68e]"><CreditCard size={22}/></div><p className="font-mono-data text-[10px] uppercase tracking-[.2em] text-[#d8c991]">Um bom começo</p><h2 className="mt-2 font-display text-3xl sm:text-4xl">Vamos anotar o seu cartão?</h2><p className="mt-3 text-sm leading-6 text-[#d0ded3]">Defina o limite e tenha uma visão mais tranquila do que já está comprometido.</p></div><button data-testid="button-create-card" onClick={() => setDialog({ kind: 'card', initial: {} })} className="flex items-center gap-2 self-start rounded-full bg-[#f0d28b] px-5 py-3 text-sm font-semibold text-[#294438] transition hover:bg-[#f5dfa8]"><Plus size={16}/> Cadastrar cartão</button></div>
-      </section> : <section className="mt-8 grid gap-5 lg:grid-cols-[1.05fr_.95fr]">
-        <article className="enter lift relative overflow-hidden rounded-[26px] bg-[#28513f] p-6 text-[#fffaf0] shadow-[0_14px_32px_-24px_rgba(32,70,52,.6)] sm:p-8">
-          <div className="absolute -right-20 -top-28 h-72 w-72 rounded-full border border-white/10"/><div className="absolute -right-8 -top-16 h-52 w-52 rounded-full border border-white/10"/>
-          <div className="relative flex items-start justify-between"><div><p className="font-mono-data text-[10px] uppercase tracking-[.18em] text-[#d8c991]">Visão do cartão</p><h2 className="mt-2 font-display text-2xl">{card.name}</h2></div><div className="flex gap-2"><button aria-label="Editar cartão" data-testid="button-edit-card" onClick={() => setDialog({ kind: 'card', initial: { id: card.id, name: card.name, limitAmount: card.limitAmount } })} className="rounded-full border border-white/20 p-2 text-white/80 transition hover:bg-white/10"><FilePenLine size={15}/></button><button aria-label="Remover cartão" data-testid="button-delete-card" onClick={() => { if (askDelete('o cartão e todos os seus registros')) deleteCard.mutate(); }} className="rounded-full border border-white/20 p-2 text-white/80 transition hover:bg-white/10 hover:text-[#f1b5a5]"><Trash2 size={15}/></button></div></div>
-          <div className="relative mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2"><div className="min-w-0"><p className="text-[11px] text-[#c9d8cb]">Disponível para usar</p><p className="mt-1 font-display text-[clamp(28px,9vw,38px)] leading-tight tracking-[-.03em] [overflow-wrap:anywhere]">{money(card.availableAmount)}</p></div><div className="min-w-0 border-t border-white/15 pt-4 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0"><p className="text-[11px] text-[#c9d8cb]">Já comprometido</p><p className="mt-2 font-mono-data text-[20px] text-[#f0d28b] [overflow-wrap:anywhere]">{money(card.usedAmount)}</p></div></div>
-          <div className="relative mt-7"><div className="mb-2 flex justify-between text-[10px] text-[#c9d8cb]"><span>Limite utilizado</span><span className="font-mono-data text-[#f0d28b]">{Number(card.percentUsed).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span></div><div className="h-2 overflow-hidden rounded-full bg-white/15"><div className="progress-fill h-full rounded-full bg-[#f0d28b]" style={{ transform: `scaleX(${Math.min(100, Math.max(0, card.percentUsed)) / 100})` }}/></div><p className="mt-2 text-right text-[10px] text-[#c9d8cb]">de {money(card.limitAmount)}</p></div>
-          {card.usedAmount === 0 && <p className="relative mt-4 text-[11px] text-[#c9d8cb]">Seu primeiro gasto ainda está por vir. Tudo começa com um registro.</p>}
-        </article>
+      {!cards.length ? <section className="enter mt-9 overflow-hidden rounded-[28px] bg-[#28513f] p-7 text-[#fffaf0] sm:p-10">
+        <div className="flex flex-col justify-between gap-8 md:flex-row md:items-center"><div className="max-w-xl"><div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-[#f1d68e]"><CreditCard size={22}/></div><p className="font-mono-data text-[10px] uppercase tracking-[.2em] text-[#d8c991]">Um bom começo</p><h2 className="mt-2 font-display text-3xl sm:text-4xl">Vamos anotar o seu cartão?</h2><p className="mt-3 text-sm leading-6 text-[#d0ded3]">Defina o limite e tenha uma visão mais tranquila do que já está comprometido.</p></div><button data-testid="button-create-card" onClick={() => setDialog({ kind: 'card', initial: { color: cardsQuery.data?.nextColor } })} className="flex items-center gap-2 self-start rounded-full bg-[#f0d28b] px-5 py-3 text-sm font-semibold text-[#294438] transition hover:bg-[#f5dfa8]"><Plus size={16}/> Cadastrar cartão</button></div>
+      </section> : <>
+      {consolidated && cards.length > 1 && <section data-testid="section-all-cards" aria-label="Todos os cartões" className="enter mt-8 rounded-[22px] border border-[#e1dbce] bg-[#fbf8f0] p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-3"><p className="font-mono-data text-[10px] uppercase tracking-[.17em] text-[#9a8d71]">Todos os cartões · {capitalize(monthLabel(month))}</p><span className="shrink-0 text-[10px] text-[#8c9388]">{consolidated.cardCount} cartões</span></div>
+        {/* Rows on phones (label left, amount right); three tiles from sm up. */}
+        <div className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-3 sm:gap-3">
+          {([['Comprometido', consolidated.committedAmount, 'bg-[#f5e9e1] text-[#927b70]', 'text-[#a55f50]'], ['Disponível', consolidated.availableAmount, 'bg-[#f2eee4] text-[#7c877a]', 'text-[#315944]'], ['Limite', consolidated.limitAmount, 'bg-[#f2eee4] text-[#7c877a]', 'text-[#315944]']] as const).map(([label, value, box, tone]) =>
+            <div key={label} className={`flex min-w-0 items-baseline justify-between gap-3 rounded-xl px-3 py-2 sm:block sm:rounded-2xl sm:p-3 ${box}`}><span className="text-[10px]">{label}</span><p className={`whitespace-nowrap font-mono-data text-[13px] sm:mt-1 sm:text-[16px] ${tone}`}>{money(value)}</p></div>)}
+        </div>
+        <div className="mt-3 flex items-center gap-3"><div className="flex-1"><Progress value={consolidated.percentUsed} tone={consolidated.percentUsed > 85 ? 'peach' : 'green'}/></div><span className="w-11 text-right font-mono-data text-[9px] text-[#8c9388]">{Number(consolidated.percentUsed).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span></div>
+      </section>}
+      <section className="mt-8 grid gap-5 lg:grid-cols-[1.05fr_.95fr]">
+        <div className="enter min-w-0">
+          <CardCarousel cards={cards} selectedId={selectedCardId} onSelect={chooseCard}
+            onAdd={() => setDialog({ kind: 'card', initial: { color: cardsQuery.data?.nextColor } })}
+            onEdit={(item) => setDialog({ kind: 'card', initial: { id: item.id, name: item.name, limitAmount: cardsQuery.data?.cards.find((c) => c.id === item.id)?.currentLimitAmount, color: item.color } })}
+            onDelete={(item) => { if (askDelete(`o cartão “${item.name}” e todos os seus registros`)) deleteCard.mutate({ cardId: item.id }); }}/>
+        </div>
         <article className="enter rounded-[26px] border border-[#e1dbce] bg-[#fbf8f0] p-6 sm:p-8" style={{ animationDelay: '.08s' }}>
           <div className="flex items-center justify-between"><div><p className="font-mono-data text-[10px] uppercase tracking-[.17em] text-[#9a8d71]">O mês em perspectiva</p><h2 className="mt-2 font-display text-[24px] text-[#234638]">{capitalize(monthLabel(month))}</h2></div><div className="grid h-10 w-10 place-items-center rounded-full bg-[#f0e9d9] text-[#587764]"><LayoutDashboard size={17}/></div></div>
           <div className="mt-7 grid grid-cols-2 gap-3"><div className="min-w-0 rounded-2xl bg-[#f2eee4] p-4"><span className="text-[10px] text-[#7c877a]">Orçamentos em aberto</span><p className="mt-2 font-mono-data text-[16px] text-[#315944] [overflow-wrap:anywhere] sm:text-[18px]">{money(overview?.openBudgetAmount ?? totals.planned)}</p></div><div className="min-w-0 rounded-2xl bg-[#f5e9e1] p-4"><span className="text-[10px] text-[#927b70]">Categorias fechadas</span><p className="mt-2 font-mono-data text-[16px] text-[#a55f50] [overflow-wrap:anywhere] sm:text-[18px]">{money(overview?.closedSpentAmount ?? 0)}</p></div></div>
           <div className="mt-5 flex items-center gap-2 border-t border-[#e9e3d8] pt-4 text-[11px] text-[#748075]"><BadgeCheck size={15} className="text-[#668a6d]"/><span><b className="font-semibold text-[#42624d]">{overview?.openCategoryCount ?? categories.filter((c) => !c.isClosed).length} categorias ativas</b> para o que importa {isCurrentMonth ? 'neste mês' : `em ${monthName(month)}`}.</span></div>
         </article>
-      </section>}
+      </section>
+      </>}
 
       <section className="mt-10 grid gap-8 lg:grid-cols-[1.08fr_.92fr]">
         {/* .enter leaves a transform behind, so each column is its own stacking context;
@@ -244,7 +272,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
       <footer className="mt-12 flex flex-col justify-between gap-2 border-t border-[#ded8ca] pt-4 text-[10px] text-[#919489] sm:flex-row"><span>Um jeito mais gentil de acompanhar o que importa.</span><span className="font-mono-data tracking-wide">CONTROLE DO CARTÃO · 01</span></footer>
     </div>
     {dialog && <Dialog kind={dialog.kind} initial={dialog.initial} month={month} categories={categories} busy={isMutating} onClose={() => setDialog(null)} onSave={submitDialog}/>}
-    {askMonthStart && monthStatus?.previousMonth && <MonthStartDialog month={month} previousMonth={monthStatus.previousMonth} busy={startMonth.isPending} onChoose={(copyFrom) => startMonth.mutate({ month, copyFrom })}/>}
+    {askMonthStart && monthStatus?.previousMonth && <MonthStartDialog month={month} previousMonth={monthStatus.previousMonth} busy={startMonth.isPending} onChoose={(copyFrom) => { if (card) startMonth.mutate({ cardId: card.id, month, copyFrom }); }}/>}
     {toast && <div role="status" data-testid="status-toast" className={`fixed bottom-5 left-4 right-4 z-[60] mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-full px-4 py-3 text-xs font-semibold text-white shadow-lg sm:left-auto sm:right-5 sm:mx-0 ${toast.error ? 'bg-[#a85e50]' : 'bg-[#28513f]'}`}><Check size={14} className="shrink-0"/><span className="min-w-0">{toast.text}</span></div>}
   </main>;
 }

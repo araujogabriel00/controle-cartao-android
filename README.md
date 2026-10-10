@@ -13,18 +13,21 @@ As funcionalidades estão descritas em BDD em [`FUNCIONALIDADES.md`](FUNCIONALID
 
 ### Histórico mensal
 
-Os dados são organizados por **mês do calendário**. A especificação completa está em [`specs/historico-mensal.md`](specs/historico-mensal.md).
+Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês do calendário**. As especificações completas estão em [`specs/historico-mensal.md`](specs/historico-mensal.md) e [`specs/multiplos-cartoes.md`](specs/multiplos-cartoes.md).
+
+- O app aceita vários cartões, cada um com cor, limite, meses, categorias e lançamentos próprios. A troca é feita num carrossel horizontal no estilo das carteiras digitais, e o app lembra o último cartão usado.
+- Com 2 cartões ou mais, o painel mostra a faixa "Todos os cartões" (comprometido, disponível e limite somados no mês), e o histórico ganha uma linha com o total de cada mês.
 
 - Cada categoria pertence a um mês, e um lançamento só aceita data dentro do mês da sua categoria.
 - `#/` mostra o mês corrente, `#/mes/AAAA-MM` mostra um mês passado e `#/historico` lista todos os meses com seus totais. As rotas usam hash porque o bundle tem base relativa.
-- Na virada do mês, o app pergunta se quer copiar as categorias do mês anterior (abertas e sem lançamentos) ou começar do zero. Se o mês anterior não tinha categorias, o novo mês começa vazio sem perguntar.
-- Cada mês guarda o limite do cartão da época. Editar o limite muda só o mês corrente.
+- Na virada do mês, o app pergunta, para cada cartão, se quer copiar as categorias do mês anterior (abertas e sem lançamentos) ou começar do zero. Se o mês anterior não tinha categorias, o novo mês começa vazio sem perguntar.
+- Cada mês guarda o limite do cartão da época. Editar o limite muda só o mês corrente daquele cartão.
 - Meses passados continuam editáveis; o que bloqueia alterações é a categoria estar fechada. Meses futuros não podem ser abertos.
-- Dados do formato antigo (`version: 1`) são migrados automaticamente para o mês corrente na primeira abertura.
+- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, e o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`.
 
 ### Regras de cálculo
 
-Todos os valores abaixo são calculados **dentro de um mês**, só com as categorias daquele mês.
+Todos os valores abaixo são calculados **por cartão e dentro de um mês**, só com as categorias daquele cartão naquele mês. O total "Todos os cartões" soma, para cada cartão, o limite do mês e o comprometido.
 
 | Valor | Cálculo |
 | ----- | ------- |
@@ -36,7 +39,7 @@ Todos os valores abaixo são calculados **dentro de um mês**, só com as catego
 | Orçamentos em aberto | soma dos orçamentos das categorias abertas |
 | Categorias fechadas | soma do gasto nas categorias fechadas |
 
-Uma categoria aberta reserva o orçamento inteiro no cartão. Ao ser fechada, ela libera a sobra e deixa comprometido só o valor gasto. Categorias fechadas não aceitam novos lançamentos nem alterações nos existentes. Remover o cartão apaga todos os meses, categorias e lançamentos.
+Uma categoria aberta reserva o orçamento inteiro no cartão. Ao ser fechada, ela libera a sobra e deixa comprometido só o valor gasto. Categorias fechadas não aceitam novos lançamentos nem alterações nos existentes. Remover um cartão apaga os meses, categorias e lançamentos dele, sem alterar os outros cartões.
 
 ## Como adicionar uma funcionalidade
 
@@ -95,6 +98,8 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   │   ├── store.ts        # armazenamento local, validações, cálculos e migração
 │   │   └── api.ts          # hooks compatíveis com @workspace/api-client-react
 │   ├── lib/format.ts       # formatação de valores, datas e meses
+│   ├── lib/card-colors.ts  # paleta de cores dos cartões
+│   ├── components/card-carousel.tsx # carrossel de cartões
 │   ├── pages/dashboard.tsx # painel de um mês
 │   ├── pages/historico.tsx # lista de meses
 │   └── ...

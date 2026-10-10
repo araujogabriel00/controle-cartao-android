@@ -5,6 +5,8 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 > **Observação:** nesta versão Android não há servidor. Os dados ficam no próprio aparelho e todos os cálculos (valor usado, disponível, percentual e totais da visão geral) são feitos em `src/data/store.ts`. Os cenários marcados com `@regra` descrevem essas regras de cálculo e validação.
 >
 > Todos os valores são calculados **dentro de um mês**: cartão, categorias, lançamentos e visão geral mostram só o mês que está aberto no painel. O funcionamento por mês está detalhado na seção [9. Histórico mensal](#9-histórico-mensal) e na spec [`specs/historico-mensal.md`](specs/historico-mensal.md).
+>
+> O app aceita **vários cartões**, e cada um tem o próprio limite, meses, categorias e lançamentos. As categorias, os lançamentos, a visão geral e o histórico mostram sempre o **cartão selecionado** no carrossel. Os detalhes estão na seção [10. Múltiplos cartões](#10-múltiplos-cartões) e na spec [`specs/multiplos-cartoes.md`](specs/multiplos-cartoes.md).
 
 ## Sumário
 
@@ -17,10 +19,13 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 7. [Formulários](#7-formulários)
 8. [Formatação](#8-formatação)
 9. [Histórico mensal](#9-histórico-mensal)
+10. [Múltiplos cartões](#10-múltiplos-cartões)
 
 ---
 
 ## 1. Cartão
+
+O cadastro do primeiro cartão está abaixo. Adicionar outros cartões, trocar entre eles e as cores estão na seção [10. Múltiplos cartões](#10-múltiplos-cartões).
 
 ```gherkin
 # language: pt
@@ -30,58 +35,59 @@ Funcionalidade: Gerenciar o cartão
   Para acompanhar quanto do limite já está comprometido
 
   Cenário: Primeiro acesso sem cartão cadastrado
-    Dado que não existe cartão cadastrado
+    Dado que não existe nenhum cartão cadastrado
     Quando eu abro o aplicativo
     Então vejo o convite "Vamos anotar o seu cartão?"
     E vejo o botão "Cadastrar cartão"
     E o botão "Nova categoria" está desabilitado
 
-  Cenário: Cadastrar o cartão
-    Dado que não existe cartão cadastrado
+  Cenário: Cadastrar o primeiro cartão
+    Dado que não existe nenhum cartão cadastrado
     Quando eu clico em "Cadastrar cartão"
-    E preencho o nome do cartão com "Cartão principal"
+    Então o formulário "Seu cartão" abre com a cor verde marcada
+    Quando eu preencho o nome do cartão com "Cartão principal"
     E preencho o limite total com "5000"
     E clico em "Adicionar"
     Então vejo a mensagem "Alterações salvas com cuidado."
-    E vejo o painel "Visão do cartão" com o nome "Cartão principal"
+    E vejo a face verde do cartão "Cartão principal" no carrossel, selecionada
     E o limite exibido é "R$ 5.000,00"
-    E o mês atual passa a fazer parte do histórico com esse limite
+    E o mês atual passa a fazer parte do histórico desse cartão com esse limite
 
   Cenário: Exibir a situação do cartão
-    Dado que existe um cartão com limite de R$ 5.000,00
+    Dado que o cartão selecionado tem limite de R$ 5.000,00
     E R$ 1.250,00 já estão comprometidos
-    Quando eu vejo o painel "Visão do cartão"
+    Quando eu vejo a face do cartão no carrossel
     Então vejo "Disponível para usar" com o valor "R$ 3.750,00"
     E vejo "Já comprometido" com o valor "R$ 1.250,00"
     E vejo "Limite utilizado" com "25%"
     E a barra de progresso do limite está preenchida em 25%
 
   Cenário: Cartão ainda sem gastos
-    Dado que existe um cartão sem nenhum valor comprometido
-    Quando eu vejo o painel "Visão do cartão"
+    Dado que o cartão selecionado não tem nenhum valor comprometido
+    Quando eu vejo a face do cartão no carrossel
     Então vejo a mensagem "Seu primeiro gasto ainda está por vir. Tudo começa com um registro."
 
   Cenário: Editar o cartão
-    Dado que existe um cartão cadastrado
-    Quando eu clico em "Editar cartão"
-    Então o formulário "Ajustar cartão" abre preenchido com o nome e o limite atuais
+    Dado que existe um cartão selecionado
+    Quando eu clico em "Editar cartão" na face do cartão
+    Então o formulário "Ajustar cartão" abre preenchido com o nome, o limite atual e a cor
     Quando eu altero o limite para "6000"
     E clico em "Salvar alterações"
     Então vejo a mensagem "Alterações salvas com cuidado."
     E o limite exibido é "R$ 6.000,00"
-    E o limite dos meses anteriores não muda
+    E o limite dos meses anteriores e dos outros cartões não muda
 
-  Cenário: Remover o cartão
-    Dado que existe um cartão cadastrado
+  Cenário: Remover o único cartão
+    Dado que existe só o cartão "Cartão principal"
     Quando eu clico em "Remover cartão"
-    Então o sistema pede confirmação para "Remover o cartão e todos os seus registros? Esta ação não pode ser desfeita."
+    Então o sistema pede confirmação para "Remover o cartão “Cartão principal” e todos os seus registros? Esta ação não pode ser desfeita."
     Quando eu confirmo
-    Então vejo a mensagem "Cartão removido."
+    Então vejo a mensagem "Cartão “Cartão principal” removido."
     E volto a ver o convite "Vamos anotar o seu cartão?"
-    E todos os meses, categorias e lançamentos são apagados, inclusive o histórico
+    E os meses, categorias e lançamentos do cartão são apagados, inclusive o histórico dele
 
   Cenário: Desistir de remover o cartão
-    Dado que existe um cartão cadastrado
+    Dado que existe um cartão selecionado
     Quando eu clico em "Remover cartão"
     E cancelo a confirmação
     Então o cartão continua cadastrado
@@ -89,7 +95,7 @@ Funcionalidade: Gerenciar o cartão
   @regra
   Cenário: Percentual acima de 100% não estoura a barra
     Dado que o valor comprometido é maior que o limite do cartão
-    Quando eu vejo o painel "Visão do cartão"
+    Quando eu vejo a face do cartão no carrossel
     Então a barra de progresso fica limitada a 100%
 ```
 
@@ -581,6 +587,14 @@ Funcionalidade: Histórico mensal do cartão
     Quando eu abro o aplicativo e clico em "Começar do zero"
     Então novembro começa sem categorias
 
+  Cenário: Virada de mês com vários cartões
+    Dado que hoje é 01/11/2026
+    E que os cartões "Nubank" e "Inter" têm categorias em outubro de 2026
+    Quando eu abro o aplicativo com "Nubank" selecionado
+    Então o diálogo "Começou novembro" vale só para "Nubank" e copia só as categorias dele
+    Quando eu deslizo até "Inter"
+    Então o diálogo "Começou novembro" aparece para "Inter"
+
   Cenário: Virada de mês sem categorias para copiar
     Dado que hoje é 01/11/2026
     E que outubro de 2026 não tem categorias
@@ -599,4 +613,78 @@ Funcionalidade: Histórico mensal do cartão
     Dado que o app tinha dados salvos antes do histórico mensal existir
     Quando eu abro a nova versão
     Então todas as categorias e lançamentos aparecem no mês atual, sem perda
+```
+
+## 10. Múltiplos cartões
+
+Resumo do funcionamento com vários cartões. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/multiplos-cartoes.md`](specs/multiplos-cartoes.md).
+
+```gherkin
+# language: pt
+Funcionalidade: Múltiplos cartões
+  Como pessoa que usa mais de um cartão de crédito
+  Quero controlar cada cartão separadamente e trocar entre eles como numa carteira digital
+  Para saber quanto posso gastar em cada um e no total
+
+  Contexto:
+    Dado que tenho o cartão "Nubank", verde, com limite de R$ 5.000,00
+
+  Cenário: Adicionar um segundo cartão
+    Quando eu deslizo o carrossel até o slot "Adicionar cartão" e toco nele
+    Então o formulário "Seu cartão" abre com a primeira cor ainda não usada (azul) marcada
+    Quando eu cadastro o cartão "Inter" com limite de R$ 3.000,00
+    Então o carrossel desliza até "Inter", na cor azul, e ele fica selecionado
+    E vejo um pontinho para cada cartão e um "+"
+
+  Cenário: Trocar de cartão
+    Dado que tenho também o cartão "Inter", com categorias próprias
+    Quando eu deslizo o carrossel até "Inter"
+    Ou toco no pontinho "Cartão Inter"
+    Ou uso a seta para a direita com o foco no carrossel
+    Então "Inter" fica centralizado e selecionado
+    E as categorias, os lançamentos, a visão geral e o histórico passam a ser os de "Inter"
+
+  Cenário: Lembrar o último cartão usado
+    Dado que deixei "Inter" selecionado
+    Quando eu fecho e abro o aplicativo
+    Então o carrossel abre em "Inter", sem animação
+
+  Cenário: Escolher a cor do cartão
+    Quando eu clico em "Editar cartão" na face de "Nubank"
+    Então vejo as amostras verde, azul, roxo, vinho, grafite e terracota, com a cor atual marcada
+    Quando eu escolho vinho e salvo
+    Então a face de "Nubank" fica vinho
+
+  @regra
+  Cenário: Nome de cartão repetido
+    Quando eu tento cadastrar um cartão chamado " nubank "
+    Então vejo a mensagem de erro "Já existe um cartão com esse nome."
+    E o formulário continua aberto
+
+  @regra
+  Cenário: Total de todos os cartões
+    Dado que tenho também o cartão "Inter", com limite de R$ 3.000,00
+    E que outubro de 2026 tem R$ 2.100,00 comprometidos no "Nubank" e R$ 900,00 no "Inter"
+    Quando eu vejo o painel de outubro de 2026
+    Então vejo a faixa "Todos os cartões · Outubro de 2026"
+    E ela mostra comprometido R$ 3.000,00, disponível R$ 5.000,00 e limite R$ 8.000,00
+    Mas com um só cartão a faixa não aparece
+
+  Cenário: Total de todos os cartões no histórico
+    Dado que tenho também o cartão "Inter"
+    Quando eu abro o Histórico com "Nubank" selecionado
+    Então vejo os meses de "Nubank"
+    E cada mês mostra a linha "Todos os cartões" com o valor e o comprometido somados
+
+  Cenário: Remover um de vários cartões
+    Dado que tenho também o cartão "Inter", selecionado
+    Quando eu removo "Inter" e confirmo
+    Então "Inter" sai do carrossel com todos os seus registros
+    E "Nubank" fica selecionado, sem nenhuma alteração
+
+  @regra
+  Cenário: Dados de uma versão anterior do app
+    Dado que o app tinha um único cartão salvo antes dos múltiplos cartões existirem
+    Quando eu abro a nova versão
+    Então ele aparece como o primeiro cartão do carrossel, verde e selecionado, sem perda de dados
 ```

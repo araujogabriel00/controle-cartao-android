@@ -283,6 +283,9 @@ button { cursor: pointer; }
 .progress-fill { transition: transform .7s cubic-bezier(.2,.8,.2,1); transform-origin: left; }
 .lift { transition: transform .2s ease, box-shadow .2s ease; }
 .lift:hover { transform: translateY(-2px); box-shadow: 0 16px 35px -22px rgba(34,67,53,.36); }
+/* Swipeable rows (the card carousel) scroll by touch, without a visible bar. */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 /* In a layer so Tailwind utilities on the same element (e.g. pl-12, text-[#a45e50]) still win. */
 @layer components {
 .field-label { display: block; margin: 0 0 7px; color: #637569; font-size: 11px; font-weight: 600; }
