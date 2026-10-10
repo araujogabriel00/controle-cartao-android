@@ -6,16 +6,19 @@ import {
 } from '@tanstack/react-query';
 import * as store from './store';
 
-export type { Card, Category, Movement, Overview, CardInput, CategoryInput, MovementInput } from './store';
+export type { Card, Category, Movement, Overview, MonthKey, MonthSummary, MonthStatus, CardInput, CategoryInput, MovementInput } from './store';
 
 type QueryOpts<T> = { query?: Partial<UseQueryOptions<T, Error, T, QueryKey>> };
 type MutationOpts<TData, TVars> = { mutation?: UseMutationOptions<TData, Error, TVars> };
 
 export const getHealthCheckQueryKey = () => ['health'] as const;
-export const getGetCardQueryKey = () => ['card'] as const;
-export const getGetOverviewQueryKey = () => ['overview'] as const;
-export const getGetCategoriesQueryKey = () => ['categories'] as const;
-export const getGetMovementsQueryKey = (categoryId: number) => ['categories', categoryId, 'movements'] as const;
+// Called without a month, the keys work as prefixes that match every month.
+export const getGetCardQueryKey = (month?: store.MonthKey) => (month ? ['card', month] : ['card']) as QueryKey;
+export const getGetOverviewQueryKey = (month?: store.MonthKey) => (month ? ['overview', month] : ['overview']) as QueryKey;
+export const getGetCategoriesQueryKey = (month?: store.MonthKey) => (month ? ['categories', month] : ['categories']) as QueryKey;
+export const getGetMovementsQueryKey = (categoryId: number) => ['movements', categoryId] as const;
+export const getGetMonthHistoryQueryKey = () => ['months'] as const;
+export const getGetMonthStatusQueryKey = () => ['months', 'status'] as const;
 
 function useLocalQuery<T>(queryKey: QueryKey, queryFn: () => Promise<T>, options?: QueryOpts<T>) {
   return useQuery<T, Error, T, QueryKey>({ queryKey, queryFn, ...options?.query });
@@ -25,17 +28,26 @@ function useLocalQuery<T>(queryKey: QueryKey, queryFn: () => Promise<T>, options
 export const useHealthCheck = (options?: QueryOpts<{ status: string }>) =>
   useLocalQuery(getHealthCheckQueryKey(), async () => ({ status: 'ok' }), options);
 
-export const useGetCard = (options?: QueryOpts<store.Card | null>) =>
-  useLocalQuery(getGetCardQueryKey(), store.getCard, options);
+export const useGetCard = (month: store.MonthKey, options?: QueryOpts<store.Card | null>) =>
+  useLocalQuery(getGetCardQueryKey(month), () => store.getCard(month), options);
 
-export const useGetOverview = (options?: QueryOpts<store.Overview>) =>
-  useLocalQuery(getGetOverviewQueryKey(), store.getOverview, options);
+export const useGetOverview = (month: store.MonthKey, options?: QueryOpts<store.Overview>) =>
+  useLocalQuery(getGetOverviewQueryKey(month), () => store.getOverview(month), options);
 
-export const useGetCategories = (options?: QueryOpts<store.Category[]>) =>
-  useLocalQuery(getGetCategoriesQueryKey(), store.getCategories, options);
+export const useGetCategories = (month: store.MonthKey, options?: QueryOpts<store.Category[]>) =>
+  useLocalQuery(getGetCategoriesQueryKey(month), () => store.getCategories(month), options);
 
 export const useGetMovements = (categoryId: number, options?: QueryOpts<store.Movement[]>) =>
   useLocalQuery(getGetMovementsQueryKey(categoryId), () => store.getMovements(categoryId), options);
+
+export const useGetMonthHistory = (options?: QueryOpts<store.MonthSummary[]>) =>
+  useLocalQuery(getGetMonthHistoryQueryKey(), store.getMonthHistory, options);
+
+export const useGetMonthStatus = (options?: QueryOpts<store.MonthStatus>) =>
+  useLocalQuery(getGetMonthStatusQueryKey(), store.getMonthStatus, options);
+
+export const useStartMonth = (options?: MutationOpts<void, { month: store.MonthKey; copyFrom: store.MonthKey | null }>) =>
+  useMutation({ mutationFn: ({ month, copyFrom }) => store.startMonth(month, copyFrom), ...options?.mutation });
 
 export const useCreateCard = (options?: MutationOpts<store.StoredCard, { data: store.CardInput }>) =>
   useMutation({ mutationFn: ({ data }) => store.saveCard(data, 'create'), ...options?.mutation });
@@ -46,8 +58,8 @@ export const useUpdateCard = (options?: MutationOpts<store.StoredCard, { data: s
 export const useDeleteCard = (options?: MutationOpts<void, void>) =>
   useMutation({ mutationFn: () => store.deleteCard(), ...options?.mutation });
 
-export const useCreateCategory = (options?: MutationOpts<store.StoredCategory, { data: store.CategoryInput }>) =>
-  useMutation({ mutationFn: ({ data }) => store.createCategory(data), ...options?.mutation });
+export const useCreateCategory = (options?: MutationOpts<store.StoredCategory, { month: store.MonthKey; data: store.CategoryInput }>) =>
+  useMutation({ mutationFn: ({ month, data }) => store.createCategory(month, data), ...options?.mutation });
 
 export const useUpdateCategory = (options?: MutationOpts<store.StoredCategory, { categoryId: number; data: store.CategoryInput }>) =>
   useMutation({ mutationFn: ({ categoryId, data }) => store.updateCategory(categoryId, data), ...options?.mutation });

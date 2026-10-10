@@ -1,19 +1,25 @@
 import { type FormEvent, type MouseEvent, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import {
   getGetCardQueryKey, getGetCategoriesQueryKey, getGetOverviewQueryKey,
-  getGetMovementsQueryKey, getHealthCheckQueryKey, useHealthCheck,
-  useGetCard, useGetOverview, useGetCategories, useGetMovements,
+  getGetMovementsQueryKey, getGetMonthHistoryQueryKey, getHealthCheckQueryKey, useHealthCheck,
+  useGetCard, useGetOverview, useGetCategories, useGetMovements, useGetMonthStatus,
   useCreateCard, useUpdateCard, useDeleteCard, useCreateCategory,
   useUpdateCategory, useDeleteCategory, useSetCategoryClosed,
-  useCreateMovement, useUpdateMovement, useDeleteMovement,
+  useCreateMovement, useUpdateMovement, useDeleteMovement, useStartMonth,
 } from '@workspace/api-client-react';
 import {
   ArrowDownLeft, ArrowUpRight, BadgeCheck, Banknote, CalendarDays, Check,
-  ChevronDown, CircleHelp, CreditCard, FilePenLine, FolderClosed, LayoutDashboard,
+  ChevronDown, ChevronLeft, ChevronRight, CircleHelp, CreditCard, FilePenLine, FolderClosed, History, LayoutDashboard,
   MoreHorizontal, Plus, RefreshCw, ShieldCheck, Sparkles, Tag,
   Trash2, WalletCards, X,
 } from 'lucide-react';
+import { Progress } from '@/components/progress';
+import {
+  capitalize, currentMonth, dateLabel, defaultDateFor, firstDayOf, lastDayOf,
+  money, monthLabel, monthName, monthPath, shiftMonth, type MonthKey,
+} from '@/lib/format';
 
 type CardRecord = { id: number; name: string; limitAmount: number; usedAmount: number; availableAmount: number; percentUsed: number };
 type CategoryRecord = { id: number; name: string; amount: number; usedAmount: number; availableAmount: number; percentUsed: number; isClosed: boolean };
@@ -21,22 +27,15 @@ type MovementRecord = { id: number; categoryId: number; description: string; amo
 type DialogKind = 'card' | 'category' | 'movement';
 type DialogRecord = { id?: number; categoryId?: number; name?: string; amount?: number; limitAmount?: number; description?: string; date?: string };
 
-const money = (value = 0) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
-const dateLabel = (date?: string) => date ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(new Date(`${date.slice(0, 10)}T12:00:00`)).replace('.', '') : '';
-const today = () => new Date().toLocaleDateString('en-CA');
 
-function Progress({ value, tone = 'green' }: { value: number; tone?: 'green' | 'peach' | 'gold' }) {
-  return <div className="h-[7px] overflow-hidden rounded-full bg-[#e9e4d9]"><div className={`progress-fill h-full rounded-full ${tone === 'peach' ? 'bg-[#d98771]' : tone === 'gold' ? 'bg-[#d5ad58]' : 'bg-[#557e68]'}`} style={{ transform: `scaleX(${Math.max(0, Math.min(value, 100)) / 100})` }} /></div>;
-}
-
-function Dialog({ kind, initial, categories, busy, onClose, onSave }: {
-  kind: DialogKind; initial: DialogRecord; categories: CategoryRecord[]; busy: boolean;
+function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
+  kind: DialogKind; initial: DialogRecord; month: MonthKey; categories: CategoryRecord[]; busy: boolean;
   onClose: () => void; onSave: (values: DialogRecord) => void;
 }) {
   const [name, setName] = useState(initial.name ?? '');
   const [amount, setAmount] = useState(String(initial.amount ?? initial.limitAmount ?? ''));
   const [description, setDescription] = useState(initial.description ?? '');
-  const [date, setDate] = useState(initial.date?.slice(0, 10) ?? today());
+  const [date, setDate] = useState(initial.date?.slice(0, 10) ?? defaultDateFor(month));
   const [categoryId, setCategoryId] = useState(String(initial.categoryId ?? categories.find((item) => !item.isClosed)?.id ?? ''));
   const isEdit = Boolean(initial.id);
   const title = kind === 'card' ? (isEdit ? 'Ajustar cartão' : 'Seu cartão') : kind === 'category' ? (isEdit ? 'Editar categoria' : 'Nova categoria') : (isEdit ? 'Editar lançamento' : 'Novo lançamento');
@@ -60,7 +59,7 @@ function Dialog({ kind, initial, categories, busy, onClose, onSave }: {
       </>}
       <label className="field-label">{kind === 'card' ? 'Limite total' : kind === 'category' ? 'Orçamento planejado' : 'Valor confirmado'}</label>
       <div className="relative mb-4"><span className="absolute left-4 top-3 text-[#7d887d]">R$</span><input data-testid={kind === 'card' ? 'input-card-limit' : kind === 'category' ? 'input-category-budget' : 'input-movement-amount'} required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="field-input pl-12"/></div>
-      {kind === 'movement' && <><label className="field-label">Data da compra</label><input data-testid="input-movement-date" required type="date" value={date} onChange={(e) => setDate(e.target.value)} className="field-input mb-6"/></>}
+      {kind === 'movement' && <><label className="field-label">Data da compra</label><input data-testid="input-movement-date" required type="date" min={firstDayOf(month)} max={lastDayOf(month)} value={date} onChange={(e) => setDate(e.target.value)} className="field-input mb-6"/></>}
       {kind !== 'movement' && <div className="mb-6"/>}
       <div className="flex gap-3"><button type="button" onClick={onClose} className="flex-1 rounded-full border border-[#dcd5c8] px-4 py-3 text-sm font-semibold text-[#546b5d] transition hover:bg-[#f1ede3]">Cancelar</button><button disabled={busy} type="submit" className="flex-1 rounded-full bg-[#28513f] px-4 py-3 text-sm font-semibold text-[#fffaf0] transition hover:bg-[#1f4333] disabled:opacity-60">{busy ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Adicionar'}</button></div>
     </form>
@@ -69,12 +68,34 @@ function Dialog({ kind, initial, categories, busy, onClose, onSave }: {
   </div>;
 }
 
-export default function Dashboard() {
+// Asked once per month when there are categories from the last month to reuse.
+function MonthStartDialog({ month, previousMonth, busy, onChoose }: {
+  month: MonthKey; previousMonth: MonthKey; busy: boolean; onChoose: (copyFrom: MonthKey | null) => void;
+}) {
+  return <div className="fixed inset-0 z-50 bg-[#18352c]/45 pb-[var(--safe-area-inset-bottom,env(safe-area-inset-bottom))] pt-[var(--safe-area-inset-top,env(safe-area-inset-top))] backdrop-blur-[3px]">
+    <div className="h-full overflow-y-auto overscroll-contain">
+    <div className="flex min-h-full p-4">
+    <div role="dialog" aria-modal="true" aria-labelledby="month-start-title" className="enter m-auto w-full max-w-[440px] rounded-[24px] border border-[#e6dfd1] bg-[#fbf8f0] p-6 shadow-[0_30px_80px_-30px_rgba(22,50,40,.4)] sm:p-8">
+      <div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-[#e4ece2] text-[#52735c]"><CalendarDays size={22}/></div>
+      <span className="font-mono-data text-[10px] uppercase tracking-[.18em] text-[#8a8e78]">Novo mês</span>
+      <h2 id="month-start-title" className="mt-2 font-display text-[30px] leading-tight text-[#234638]">Começou {monthName(month)}</h2>
+      <p className="mt-3 text-sm leading-6 text-[#6e7a6f]">Quer reaproveitar as categorias de {monthName(previousMonth)}? Os orçamentos vêm iguais, abertos e sem lançamentos.</p>
+      <div className="mt-6 flex gap-3"><button data-testid="button-month-start-empty" disabled={busy} onClick={() => onChoose(null)} className="flex-1 rounded-full border border-[#dcd5c8] px-4 py-3 text-sm font-semibold text-[#546b5d] transition hover:bg-[#f1ede3] disabled:opacity-60">Começar do zero</button><button data-testid="button-month-start-copy" disabled={busy} onClick={() => onChoose(previousMonth)} className="flex-1 rounded-full bg-[#28513f] px-4 py-3 text-sm font-semibold text-[#fffaf0] transition hover:bg-[#1f4333] disabled:opacity-60">Copiar categorias</button></div>
+    </div>
+    </div>
+    </div>
+  </div>;
+}
+
+export default function Dashboard({ month }: { month: MonthKey }) {
   const client = useQueryClient();
+  const [, navigate] = useLocation();
+  const isCurrentMonth = month === currentMonth();
   const health = useHealthCheck({ query: { queryKey: getHealthCheckQueryKey(), retry: 1 } });
-  const cardQuery = useGetCard({ query: { queryKey: getGetCardQueryKey(), refetchOnWindowFocus: true } });
-  const overviewQuery = useGetOverview({ query: { queryKey: getGetOverviewQueryKey(), refetchOnWindowFocus: true } });
-  const categoriesQuery = useGetCategories({ query: { queryKey: getGetCategoriesQueryKey(), refetchOnWindowFocus: true } });
+  const cardQuery = useGetCard(month, { query: { queryKey: getGetCardQueryKey(month), refetchOnWindowFocus: true } });
+  const overviewQuery = useGetOverview(month, { query: { queryKey: getGetOverviewQueryKey(month), refetchOnWindowFocus: true } });
+  const categoriesQuery = useGetCategories(month, { query: { queryKey: getGetCategoriesQueryKey(month), refetchOnWindowFocus: true } });
+  const monthStatus = useGetMonthStatus().data;
   const card = cardQuery.data as CardRecord | null | undefined;
   const categories = (categoriesQuery.data ?? []) as CategoryRecord[];
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -96,14 +117,17 @@ export default function Dashboard() {
     return () => document.removeEventListener('pointerdown', closeOnOutsideTap);
   }, [openMenuId]);
 
+  // Prefix keys: refreshes every month, plus the history.
   const refresh = (withMovements = false, categoryId?: number) => {
     void client.invalidateQueries({ queryKey: getGetCardQueryKey() });
     void client.invalidateQueries({ queryKey: getGetOverviewQueryKey() });
     void client.invalidateQueries({ queryKey: getGetCategoriesQueryKey() });
+    void client.invalidateQueries({ queryKey: getGetMonthHistoryQueryKey() });
     if (withMovements && categoryId) void client.invalidateQueries({ queryKey: getGetMovementsQueryKey(categoryId) });
   };
   const notify = (text: string) => { setToast({ text }); window.setTimeout(() => setToast(null), 3200); };
-  const failed = () => { setToast({ text: 'Não foi possível salvar. Tente novamente.', error: true }); window.setTimeout(() => setToast(null), 4200); };
+  // Validation errors from the store are already written for the user.
+  const failed = (error?: Error) => { setToast({ text: error?.message || 'Não foi possível salvar. Tente novamente.', error: true }); window.setTimeout(() => setToast(null), 4200); };
   const mutationOptions = { onSuccess: () => { refresh(); setDialog(null); notify('Alterações salvas com cuidado.'); }, onError: failed };
   const createCard = useCreateCard({ mutation: mutationOptions });
   const updateCard = useUpdateCard({ mutation: mutationOptions });
@@ -115,6 +139,13 @@ export default function Dashboard() {
   const createMovement = useCreateMovement({ mutation: { onSuccess: (_result, vars) => { refresh(true, vars.categoryId); setDialog(null); notify('Lançamento confirmado.'); }, onError: failed } });
   const updateMovement = useUpdateMovement({ mutation: { onSuccess: () => { refresh(true, selected?.id); setDialog(null); notify('Lançamento atualizado.'); }, onError: failed } });
   const deleteMovement = useDeleteMovement({ mutation: { onSuccess: (_result, vars) => { refresh(true, selected?.id); notify('Lançamento excluído.'); }, onError: failed } });
+  const startMonth = useStartMonth({ mutation: { onSuccess: (_result, vars) => { refresh(); if (vars.copyFrom) notify(`Categorias de ${monthName(vars.copyFrom)} copiadas.`); }, onError: failed } });
+  const askMonthStart = isCurrentMonth && Boolean(card) && Boolean(monthStatus?.needsStart && monthStatus.previousHasCategories && monthStatus.previousMonth);
+  // Nothing to copy from last month: start the new month empty without asking.
+  useEffect(() => {
+    if (isCurrentMonth && monthStatus?.needsStart && !monthStatus.previousHasCategories && !startMonth.isPending) startMonth.mutate({ month, copyFrom: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCurrentMonth, month, monthStatus?.needsStart, monthStatus?.previousHasCategories]);
   const isMutating = createCard.isPending || updateCard.isPending || createCategory.isPending || updateCategory.isPending || createMovement.isPending || updateMovement.isPending;
 
   const totals = useMemo(() => {
@@ -133,9 +164,9 @@ export default function Dashboard() {
       if (card) updateCard.mutate({ data }); else createCard.mutate({ data });
     } else if (dialog.kind === 'category') {
       const data = { name: values.name ?? '', amount: Number(values.amount) };
-      if (dialog.initial.id) updateCategory.mutate({ categoryId: dialog.initial.id, data }); else createCategory.mutate({ data });
+      if (dialog.initial.id) updateCategory.mutate({ categoryId: dialog.initial.id, data }); else createCategory.mutate({ month, data });
     } else {
-      const data = { description: values.description ?? '', amount: Number(values.amount), date: values.date ?? today() };
+      const data = { description: values.description ?? '', amount: Number(values.amount), date: values.date ?? defaultDateFor(month) };
       if (dialog.initial.id) updateMovement.mutate({ movementId: dialog.initial.id, data }); else createMovement.mutate({ categoryId: Number(values.categoryId), data });
     }
   };
@@ -149,8 +180,14 @@ export default function Dashboard() {
       <header className="enter flex items-center justify-between border-b border-[#ded8ca] pb-5">
         <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-[13px] bg-[#28513f] text-[#f4d48b]"><WalletCards size={20}/></div><div><p className="font-display text-[20px] font-semibold leading-none text-[#234638]">controle<span className="text-[#d78470]">.</span></p><p className="mt-1 font-mono-data text-[9px] uppercase tracking-[.19em] text-[#758075]">do cartão</p></div></div>
         <div className="hidden items-center gap-2 rounded-full border border-[#ddd7c9] bg-[#f9f6ee] px-3.5 py-2 text-[11px] text-[#64766a] sm:flex"><span className={`h-1.5 w-1.5 rounded-full ${health.isError ? 'bg-[#d78470]' : 'bg-[#6d9d79]'}`}/>{health.isError ? 'Sincronização pausada' : 'Seu caderno está em dia'}</div>
-        <button data-testid="button-refresh" onClick={() => refresh(true, selected?.id)} className="flex items-center gap-2 rounded-full border border-[#ded8ca] px-3.5 py-2 text-xs font-semibold text-[#546b5d] transition hover:bg-[#ece7dc]"><RefreshCw size={14} className={cardQuery.isFetching ? 'animate-spin' : ''}/><span className="hidden sm:inline">Atualizar</span></button>
+        <div className="flex items-center gap-2"><button data-testid="button-history" onClick={() => navigate('/historico')} className="flex items-center gap-2 rounded-full border border-[#ded8ca] px-3.5 py-2 text-xs font-semibold text-[#546b5d] transition hover:bg-[#ece7dc]"><History size={14}/><span>Histórico</span></button><button data-testid="button-refresh" aria-label="Atualizar" onClick={() => refresh(true, selected?.id)} className="flex items-center gap-2 rounded-full border border-[#ded8ca] px-3.5 py-2 text-xs font-semibold text-[#546b5d] transition hover:bg-[#ece7dc]"><RefreshCw size={14} className={cardQuery.isFetching ? 'animate-spin' : ''}/><span className="hidden sm:inline">Atualizar</span></button></div>
       </header>
+
+      <nav aria-label="Mês" className="enter mt-5 flex items-center justify-between gap-2 rounded-full border border-[#e1dbce] bg-[#fbf8f0] p-1.5">
+        <button data-testid="button-previous-month" aria-label="Mês anterior" onClick={() => navigate(monthPath(shiftMonth(month, -1)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#546b5d] transition hover:bg-[#ece7dc]"><ChevronLeft size={17}/></button>
+        <div className="min-w-0 text-center"><p data-testid="text-month" className="truncate font-display text-[17px] text-[#234638]">{capitalize(monthLabel(month))}</p>{!isCurrentMonth && <button data-testid="button-current-month" onClick={() => navigate('/')} className="text-[10px] font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4">Voltar para o mês atual</button>}</div>
+        <button data-testid="button-next-month" aria-label="Próximo mês" disabled={isCurrentMonth} onClick={() => navigate(monthPath(shiftMonth(month, 1)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#546b5d] transition hover:bg-[#ece7dc] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"><ChevronRight size={17}/></button>
+      </nav>
 
       <section className="enter mt-9 flex flex-col justify-between gap-5 sm:mt-12 sm:flex-row sm:items-end" style={{ animationDelay: '.06s' }}>
         <div><p className="font-mono-data text-[10px] uppercase tracking-[.2em] text-[#9a8d71]">Seu dinheiro, com intenção</p><h1 className="mt-2 font-display text-[42px] leading-[1.05] tracking-[-.03em] text-[#234638] sm:text-[54px]">Tudo no seu <em className="font-medium text-[#d78470]">lugar.</em></h1><p className="mt-3 max-w-lg text-sm leading-6 text-[#6e7a6f]">Planeje com leveza. Confirme cada gasto. E acompanhe seu cartão sem surpresas.</p></div>
@@ -168,9 +205,9 @@ export default function Dashboard() {
           {card.usedAmount === 0 && <p className="relative mt-4 text-[11px] text-[#c9d8cb]">Seu primeiro gasto ainda está por vir. Tudo começa com um registro.</p>}
         </article>
         <article className="enter rounded-[26px] border border-[#e1dbce] bg-[#fbf8f0] p-6 sm:p-8" style={{ animationDelay: '.08s' }}>
-          <div className="flex items-center justify-between"><div><p className="font-mono-data text-[10px] uppercase tracking-[.17em] text-[#9a8d71]">O mês em perspectiva</p><h2 className="mt-2 font-display text-[24px] text-[#234638]">Um passo de cada vez.</h2></div><div className="grid h-10 w-10 place-items-center rounded-full bg-[#f0e9d9] text-[#587764]"><LayoutDashboard size={17}/></div></div>
+          <div className="flex items-center justify-between"><div><p className="font-mono-data text-[10px] uppercase tracking-[.17em] text-[#9a8d71]">O mês em perspectiva</p><h2 className="mt-2 font-display text-[24px] text-[#234638]">{capitalize(monthLabel(month))}</h2></div><div className="grid h-10 w-10 place-items-center rounded-full bg-[#f0e9d9] text-[#587764]"><LayoutDashboard size={17}/></div></div>
           <div className="mt-7 grid grid-cols-2 gap-3"><div className="min-w-0 rounded-2xl bg-[#f2eee4] p-4"><span className="text-[10px] text-[#7c877a]">Orçamentos em aberto</span><p className="mt-2 font-mono-data text-[16px] text-[#315944] [overflow-wrap:anywhere] sm:text-[18px]">{money(overview?.openBudgetAmount ?? totals.planned)}</p></div><div className="min-w-0 rounded-2xl bg-[#f5e9e1] p-4"><span className="text-[10px] text-[#927b70]">Categorias fechadas</span><p className="mt-2 font-mono-data text-[16px] text-[#a55f50] [overflow-wrap:anywhere] sm:text-[18px]">{money(overview?.closedSpentAmount ?? 0)}</p></div></div>
-          <div className="mt-5 flex items-center gap-2 border-t border-[#e9e3d8] pt-4 text-[11px] text-[#748075]"><BadgeCheck size={15} className="text-[#668a6d]"/><span><b className="font-semibold text-[#42624d]">{overview?.openCategoryCount ?? categories.filter((c) => !c.isClosed).length} categorias ativas</b> para o que importa neste mês.</span></div>
+          <div className="mt-5 flex items-center gap-2 border-t border-[#e9e3d8] pt-4 text-[11px] text-[#748075]"><BadgeCheck size={15} className="text-[#668a6d]"/><span><b className="font-semibold text-[#42624d]">{overview?.openCategoryCount ?? categories.filter((c) => !c.isClosed).length} categorias ativas</b> para o que importa {isCurrentMonth ? 'neste mês' : `em ${monthName(month)}`}.</span></div>
         </article>
       </section>}
 
@@ -206,7 +243,8 @@ export default function Dashboard() {
 
       <footer className="mt-12 flex flex-col justify-between gap-2 border-t border-[#ded8ca] pt-4 text-[10px] text-[#919489] sm:flex-row"><span>Um jeito mais gentil de acompanhar o que importa.</span><span className="font-mono-data tracking-wide">CONTROLE DO CARTÃO · 01</span></footer>
     </div>
-    {dialog && <Dialog kind={dialog.kind} initial={dialog.initial} categories={categories} busy={isMutating} onClose={() => setDialog(null)} onSave={submitDialog}/>}
+    {dialog && <Dialog kind={dialog.kind} initial={dialog.initial} month={month} categories={categories} busy={isMutating} onClose={() => setDialog(null)} onSave={submitDialog}/>}
+    {askMonthStart && monthStatus?.previousMonth && <MonthStartDialog month={month} previousMonth={monthStatus.previousMonth} busy={startMonth.isPending} onChoose={(copyFrom) => startMonth.mutate({ month, copyFrom })}/>}
     {toast && <div role="status" data-testid="status-toast" className={`fixed bottom-5 left-4 right-4 z-[60] mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-full px-4 py-3 text-xs font-semibold text-white shadow-lg sm:left-auto sm:right-5 sm:mx-0 ${toast.error ? 'bg-[#a85e50]' : 'bg-[#28513f]'}`}><Check size={14} className="shrink-0"/><span className="min-w-0">{toast.text}</span></div>}
   </main>;
 }
