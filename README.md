@@ -38,6 +38,16 @@ Todos os valores abaixo são calculados **dentro de um mês**, só com as catego
 
 Uma categoria aberta reserva o orçamento inteiro no cartão. Ao ser fechada, ela libera a sobra e deixa comprometido só o valor gasto. Categorias fechadas não aceitam novos lançamentos nem alterações nos existentes. Remover o cartão apaga todos os meses, categorias e lançamentos.
 
+## Como adicionar uma funcionalidade
+
+O projeto segue *spec-driven development*. Para cada nova funcionalidade:
+
+1. Crie uma spec nova em `specs/<nome-da-funcionalidade>.md` antes de escrever código, usando [`specs/historico-mensal.md`](specs/historico-mensal.md) como modelo.
+2. Implemente seguindo as tarefas da spec e, ao terminar, marque o Status como `Implementada`.
+3. Atualize o [`FUNCIONALIDADES.md`](FUNCIONALIDADES.md) no mesmo PR: uma seção nova para a funcionalidade, com link para a spec, e ajustes nos cenários existentes que mudaram.
+
+O passo a passo completo está no [`CLAUDE.md`](CLAUDE.md).
+
 ## Pré-requisitos
 
 - Node.js 20 ou mais recente
