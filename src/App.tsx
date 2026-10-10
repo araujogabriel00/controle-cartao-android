@@ -2,16 +2,27 @@ import { type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { currentMonth, isFutureMonth, isMonthKey } from '@/lib/format';
 import NotFound from '@/pages/not-found';
 import Dashboard from '@/pages/dashboard';
+import Historico from '@/pages/historico';
 import {
+  Redirect,
   Route,
   Switch,
   useLocation,
   Router as WouterRouter,
 } from 'wouter';
+import { useHashLocation } from 'wouter/use-hash-location';
 
 const queryClient = new QueryClient();
+
+// Invalid and future months go back to the current one (RN-03); the current
+// month always lives at "/".
+function MonthRoute({ month }: { month: string }) {
+  if (!isMonthKey(month) || isFutureMonth(month) || month === currentMonth()) return <Redirect to="/" replace />;
+  return <Dashboard key={month} month={month} />;
+}
 
 function Router() {
   return (
@@ -19,7 +30,9 @@ function Router() {
     // survives a page crash.
     <RoutedErrorBoundary>
       <Switch>
-        <Route path="/" component={Dashboard} />
+        <Route path="/">{() => <Dashboard key={currentMonth()} month={currentMonth()} />}</Route>
+        <Route path="/mes/:month">{(params) => <MonthRoute month={params.month} />}</Route>
+        <Route path="/historico" component={Historico} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>
@@ -35,7 +48,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter>
+        {/* Hash routes: the bundle uses a relative base, so nested paths would
+            break asset URLs on reload. */}
+        <WouterRouter hook={useHashLocation}>
           <Router />
         </WouterRouter>
       </TooltipProvider>
