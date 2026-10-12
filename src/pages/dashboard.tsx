@@ -8,6 +8,8 @@ import {
   useCreateCard, useUpdateCard, useDeleteCard, useSelectCard, useCreateCategory,
   useUpdateCategory, useDeleteCategory, useSetCategoryClosed,
   useCreateMovement, useUpdateMovement, useDeleteMovement, useStartMonth,
+  useCreatePurchase, useUpdatePurchase, useDeletePurchase, useGetLastPlannedMonth, useGetMonthPreview,
+  getGetLastPlannedMonthQueryKey, getGetMonthPreviewQueryKey,
   type Cards,
 } from '@workspace/api-client-react';
 import {
@@ -20,14 +22,31 @@ import { CardCarousel, type CarouselCard } from '@/components/card-carousel';
 import { Progress } from '@/components/progress';
 import { CARD_COLOR_KEYS, CARD_COLORS, type CardColor } from '@/lib/card-colors';
 import {
-  capitalize, currentMonth, dateLabel, defaultDateFor, firstDayOf, lastDayOf,
+  capitalize, currentMonth, dateLabel, defaultDateFor, firstDayOf, isFutureMonth, lastDayOf,
   money, monthLabel, monthName, monthPath, shiftMonth, type MonthKey,
 } from '@/lib/format';
 
 type CategoryRecord = { id: number; name: string; amount: number; usedAmount: number; availableAmount: number; percentUsed: number; isClosed: boolean };
-type MovementRecord = { id: number; categoryId: number; description: string; amount: number; date: string };
+type MovementRecord = {
+  id: number; categoryId: number; description: string; amount: number; date: string;
+  installment?: number; installmentCount?: number;
+  purchase?: { id: number; totalAmount: number; installmentCount: number; firstInstallment: number };
+};
 type DialogKind = 'card' | 'category' | 'movement';
-type DialogRecord = { id?: number; categoryId?: number; name?: string; amount?: number; limitAmount?: number; color?: CardColor; description?: string; date?: string };
+type DialogRecord = {
+  id?: number; categoryId?: number; name?: string; amount?: number; limitAmount?: number; color?: CardColor; description?: string; date?: string;
+  // Installment purchases: `amount` is the purchase total and `installment` the one in this month.
+  isPurchase?: boolean; purchaseId?: number; installmentCount?: number; installment?: number; firstInstallment?: number;
+};
+
+// Same split as the data layer: the leftover cents go to installment 1.
+function splitPreview(total: number, count: number, installment: number, date: string) {
+  if (!(total > 0) || !Number.isInteger(count) || count < 2 || !Number.isInteger(installment) || installment < 1 || installment > count || !date) return null;
+  const base = Math.floor(Math.round(total * 100) / count) / 100;
+  const first = Math.round((total - base * (count - 1)) * 100) / 100;
+  const last = shiftMonth(date.slice(0, 7), count - installment);
+  return { base, first, lastLabel: `${monthName(last)}/${last.slice(0, 4)}` };
+}
 
 
 function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
@@ -40,11 +59,19 @@ function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
   const [date, setDate] = useState(initial.date?.slice(0, 10) ?? defaultDateFor(month));
   const [categoryId, setCategoryId] = useState(String(initial.categoryId ?? categories.find((item) => !item.isClosed)?.id ?? ''));
   const [color, setColor] = useState<CardColor>(initial.color ?? 'verde');
+  const [isPurchase, setIsPurchase] = useState(Boolean(initial.isPurchase));
+  const [installmentCount, setInstallmentCount] = useState(String(initial.installmentCount ?? 2));
+  const [installment, setInstallment] = useState(String(initial.installment ?? 1));
+  const [firstInstallment, setFirstInstallment] = useState(String(initial.firstInstallment ?? 1));
   const isEdit = Boolean(initial.id);
-  const title = kind === 'card' ? (isEdit ? 'Ajustar cartão' : 'Seu cartão') : kind === 'category' ? (isEdit ? 'Editar categoria' : 'Nova categoria') : (isEdit ? 'Editar lançamento' : 'Novo lançamento');
+  const editsPurchase = isEdit && Boolean(initial.purchaseId);
+  const title = kind === 'card' ? (isEdit ? 'Ajustar cartão' : 'Seu cartão') : kind === 'category' ? (isEdit ? 'Editar categoria' : 'Nova categoria')
+    : isPurchase ? (isEdit ? 'Editar compra parcelada' : 'Nova compra parcelada') : (isEdit ? 'Editar lançamento' : 'Novo lançamento');
+  const split = isPurchase ? splitPreview(Number(amount), Number(installmentCount), Number(installment), date) : null;
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    onSave(kind === 'card' ? { name, limitAmount: Number(amount), color } : kind === 'category' ? { name, amount: Number(amount) } : { description, amount: Number(amount), date, categoryId: Number(categoryId) });
+    onSave(kind === 'card' ? { name, limitAmount: Number(amount), color } : kind === 'category' ? { name, amount: Number(amount) }
+      : { description, amount: Number(amount), date, categoryId: Number(categoryId), isPurchase, installmentCount: Number(installmentCount), installment: Number(installment), firstInstallment: editsPurchase ? Number(firstInstallment) : undefined });
   };
   // Scrolls (instead of clipping) when the keyboard shrinks the viewport, and stays clear of the system bars.
   const closeOnBackdrop = (event: MouseEvent<HTMLDivElement>) => { if (event.target === event.currentTarget) onClose(); };
@@ -57,12 +84,25 @@ function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
         <label className="field-label">Em qual envelope?</label>
         <div className="relative mb-4"><select data-testid="select-movement-category" required value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="field-input appearance-none">{categories.filter((item) => !item.isClosed || item.id === initial.categoryId).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><ChevronDown className="pointer-events-none absolute right-4 top-3.5 text-[#768579]" size={16}/></div>
         <label className="field-label">O que foi?</label><input data-testid="input-movement-description" required maxLength={200} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex.: mercado da semana" className="field-input mb-4"/>
+        {(!isEdit || editsPurchase) && <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-[#e6dfd1] bg-[#f4f0e6] px-4 py-3">
+          <span id="purchase-switch-label" className="text-[13px] font-semibold text-[#3d5948]">Compra parcelada</span>
+          <button type="button" role="switch" data-testid="switch-installments" aria-checked={isPurchase} aria-labelledby="purchase-switch-label" disabled={isEdit} onClick={() => setIsPurchase(!isPurchase)} className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-70 ${isPurchase ? 'bg-[#28513f]' : 'bg-[#cfc8b9]'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${isPurchase ? 'left-[22px]' : 'left-0.5'}`}/></button>
+        </div>}
       </> : <>
         <label className="field-label">{kind === 'card' ? 'Nome do cartão' : 'Nome da categoria'}</label><input data-testid={kind === 'card' ? 'input-card-name' : 'input-category-name'} required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder={kind === 'card' ? 'Ex.: Cartão principal' : 'Ex.: Casa e contas'} className="field-input mb-4"/>
       </>}
-      <label className="field-label">{kind === 'card' ? 'Limite total' : kind === 'category' ? 'Orçamento planejado' : 'Valor confirmado'}</label>
+      <label className="field-label">{kind === 'card' ? 'Limite total' : kind === 'category' ? 'Orçamento planejado' : isPurchase ? 'Valor total da compra' : 'Valor confirmado'}</label>
       <div className="relative mb-4"><span className="absolute left-4 top-3 text-[#7d887d]">R$</span><input data-testid={kind === 'card' ? 'input-card-limit' : kind === 'category' ? 'input-category-budget' : 'input-movement-amount'} required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="field-input pl-12"/></div>
-      {kind === 'movement' && <><label className="field-label">Data da compra</label><input data-testid="input-movement-date" required type="date" min={firstDayOf(month)} max={lastDayOf(month)} value={date} onChange={(e) => setDate(e.target.value)} className="field-input mb-6"/></>}
+      {kind === 'movement' && isPurchase && <div className={`mb-4 grid gap-3 ${editsPurchase ? 'grid-cols-3' : 'grid-cols-2'}`}>
+        <div className="min-w-0"><label htmlFor="input-installment-count" className="field-label">Nº de parcelas</label><input id="input-installment-count" data-testid="input-installment-count" required type="number" step="1" value={installmentCount} onChange={(e) => setInstallmentCount(e.target.value)} className="field-input"/></div>
+        <div className="min-w-0"><label htmlFor="input-installment" className="field-label">Parcela neste mês</label><input id="input-installment" data-testid="input-installment" required type="number" step="1" value={installment} onChange={(e) => setInstallment(e.target.value)} className="field-input"/></div>
+        {editsPurchase && <div className="min-w-0"><label htmlFor="input-first-installment" className="field-label">Começa na parcela</label><input id="input-first-installment" data-testid="input-first-installment" required type="number" step="1" value={firstInstallment} onChange={(e) => setFirstInstallment(e.target.value)} className="field-input"/></div>}
+      </div>}
+      {kind === 'movement' && <><label className="field-label">Data da compra</label><input data-testid="input-movement-date" required type="date" min={firstDayOf(month)} max={lastDayOf(month)} value={date} onChange={(e) => setDate(e.target.value)} className={`field-input ${isPurchase ? 'mb-3' : 'mb-6'}`}/></>}
+      {kind === 'movement' && isPurchase && <div className="mb-6 space-y-2">
+        {split && <p data-testid="text-installment-preview" className="text-[11px] text-[#5d7364]"><b className="font-semibold text-[#3d5948]">{installmentCount}x de {money(split.base)}</b> · última em {split.lastLabel}{split.first !== split.base && <> · 1ª de {money(split.first)}</>}</p>}
+        {editsPurchase && <p data-testid="text-purchase-warning" className="rounded-xl bg-[#f5e9e1] px-3 py-2 text-[11px] leading-5 text-[#8c5a4c]">As mudanças valem para todas as parcelas, menos as que estão em categorias fechadas.</p>}
+      </div>}
       {kind === 'card' && <><span id="card-color-label" className="field-label">Cor do cartão</span><div role="group" aria-labelledby="card-color-label" className="mb-6 flex flex-wrap gap-2.5">{CARD_COLOR_KEYS.map((key) => <button key={key} type="button" data-testid={`button-card-color-${key}`} aria-label={CARD_COLORS[key].label} aria-pressed={color === key} onClick={() => setColor(key)} className={`grid h-9 w-9 place-items-center rounded-full ring-offset-2 ring-offset-[#fbf8f0] transition ${color === key ? 'ring-2 ring-[#294438]' : 'hover:scale-105'}`} style={{ background: CARD_COLORS[key].background }}>{color === key && <Check size={15} className="text-white"/>}</button>)}</div></>}
       {kind === 'category' && <div className="mb-6"/>}
       <div className="flex gap-3"><button type="button" onClick={onClose} className="flex-1 rounded-full border border-[#dcd5c8] px-4 py-3 text-sm font-semibold text-[#546b5d] transition hover:bg-[#f1ede3]">Cancelar</button><button disabled={busy} type="submit" className="flex-1 rounded-full bg-[#28513f] px-4 py-3 text-sm font-semibold text-[#fffaf0] transition hover:bg-[#1f4333] disabled:opacity-60">{busy ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Adicionar'}</button></div>
@@ -95,6 +135,10 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   const client = useQueryClient();
   const [, navigate] = useLocation();
   const isCurrentMonth = month === currentMonth();
+  // A future month only opens as a read-only preview of its installments (RN-14).
+  const isPreview = isFutureMonth(month);
+  const lastPlannedMonth = useGetLastPlannedMonth({ query: { queryKey: getGetLastPlannedMonthQueryKey() } }).data ?? null;
+  const canGoNext = month < currentMonth() || Boolean(lastPlannedMonth && month < lastPlannedMonth);
   const health = useHealthCheck({ query: { queryKey: getHealthCheckQueryKey(), retry: 1 } });
   const cardsQuery = useGetCards(month, { query: { queryKey: getGetCardsQueryKey(month), refetchOnWindowFocus: true } });
   const cards = (cardsQuery.data?.cards ?? []) as CarouselCard[];
@@ -106,6 +150,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   const categoriesQuery = useGetCategories(cardId, month, { query: { queryKey: getGetCategoriesQueryKey(cardId, month), refetchOnWindowFocus: true } });
   const monthStatus = useGetMonthStatus(cardId).data;
   const consolidated = useGetConsolidated(month, { query: { queryKey: getGetConsolidatedQueryKey(month), enabled: cards.length > 1, refetchOnWindowFocus: true } }).data;
+  const preview = useGetMonthPreview(cardId, month, { query: { queryKey: getGetMonthPreviewQueryKey(cardId, month), enabled: isPreview && Boolean(card), refetchOnWindowFocus: true } }).data;
   const categories = (categoriesQuery.data ?? []) as CategoryRecord[];
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const selected = categories.find((item) => item.id === selectedId) ?? categories.find((item) => !item.isClosed) ?? categories[0];
@@ -134,8 +179,11 @@ export default function Dashboard({ month }: { month: MonthKey }) {
     void client.invalidateQueries({ queryKey: getGetOverviewQueryKey() });
     void client.invalidateQueries({ queryKey: getGetCategoriesQueryKey() });
     void client.invalidateQueries({ queryKey: getGetMonthHistoryQueryKey() });
+    // Recording installments can start months and touch other categories.
+    void client.invalidateQueries({ queryKey: ['installments'] });
     if (withMovements && categoryId) void client.invalidateQueries({ queryKey: getGetMovementsQueryKey(categoryId) });
   };
+  const refreshAll = () => { refresh(); void client.invalidateQueries({ queryKey: ['movements'] }); };
   const notify = (text: string) => { setToast({ text }); window.setTimeout(() => setToast(null), 3200); };
   // Validation errors from the store are already written for the user.
   const failed = (error?: Error) => { setToast({ text: error?.message || 'Não foi possível salvar. Tente novamente.', error: true }); window.setTimeout(() => setToast(null), 4200); };
@@ -157,14 +205,17 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   const createMovement = useCreateMovement({ mutation: { onSuccess: (_result, vars) => { refresh(true, vars.categoryId); setDialog(null); notify('Lançamento confirmado.'); }, onError: failed } });
   const updateMovement = useUpdateMovement({ mutation: { onSuccess: () => { refresh(true, selected?.id); setDialog(null); notify('Lançamento atualizado.'); }, onError: failed } });
   const deleteMovement = useDeleteMovement({ mutation: { onSuccess: (_result, vars) => { refresh(true, selected?.id); notify('Lançamento excluído.'); }, onError: failed } });
-  const startMonth = useStartMonth({ mutation: { onSuccess: (_result, vars) => { refresh(); if (vars.copyFrom) notify(`Categorias de ${monthName(vars.copyFrom)} copiadas.`); }, onError: failed } });
+  const createPurchase = useCreatePurchase({ mutation: { onSuccess: () => { refreshAll(); setDialog(null); notify('Compra parcelada registrada.'); }, onError: failed } });
+  const updatePurchase = useUpdatePurchase({ mutation: { onSuccess: () => { refreshAll(); setDialog(null); notify('Compra parcelada atualizada.'); }, onError: failed } });
+  const deletePurchase = useDeletePurchase({ mutation: { onSuccess: () => { refreshAll(); notify('Compra parcelada removida.'); }, onError: failed } });
+  const startMonth = useStartMonth({ mutation: { onSuccess: (_result, vars) => { refreshAll(); if (vars.copyFrom) notify(`Categorias de ${monthName(vars.copyFrom)} copiadas.`); }, onError: failed } });
   const askMonthStart = isCurrentMonth && Boolean(card) && Boolean(monthStatus?.needsStart && monthStatus.previousHasCategories && monthStatus.previousMonth);
   // Nothing to copy from this card's last month: start the new month empty without asking.
   useEffect(() => {
     if (card && isCurrentMonth && monthStatus?.needsStart && !monthStatus.previousHasCategories && !startMonth.isPending) startMonth.mutate({ cardId: card.id, month, copyFrom: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card?.id, isCurrentMonth, month, monthStatus?.needsStart, monthStatus?.previousHasCategories]);
-  const isMutating = createCard.isPending || updateCard.isPending || createCategory.isPending || updateCategory.isPending || createMovement.isPending || updateMovement.isPending;
+  const isMutating = createCard.isPending || updateCard.isPending || createCategory.isPending || updateCategory.isPending || createMovement.isPending || updateMovement.isPending || createPurchase.isPending || updatePurchase.isPending;
 
   const totals = useMemo(() => {
     const spent = categories.reduce((sum, item) => sum + item.usedAmount, 0);
@@ -183,6 +234,10 @@ export default function Dashboard({ month }: { month: MonthKey }) {
     } else if (dialog.kind === 'category') {
       const data = { name: values.name ?? '', amount: Number(values.amount) };
       if (dialog.initial.id) updateCategory.mutate({ categoryId: dialog.initial.id, data }); else if (card) createCategory.mutate({ cardId: card.id, month, data });
+    } else if (values.isPurchase) {
+      const data = { description: values.description ?? '', totalAmount: Number(values.amount), installmentCount: Number(values.installmentCount), installment: Number(values.installment), firstInstallment: values.firstInstallment, date: values.date ?? defaultDateFor(month) };
+      const categoryId = Number(values.categoryId);
+      if (dialog.initial.purchaseId) updatePurchase.mutate({ purchaseId: dialog.initial.purchaseId, categoryId, data }); else createPurchase.mutate({ categoryId, data });
     } else {
       const data = { description: values.description ?? '', amount: Number(values.amount), date: values.date ?? defaultDateFor(month) };
       if (dialog.initial.id) updateMovement.mutate({ movementId: dialog.initial.id, data }); else createMovement.mutate({ categoryId: Number(values.categoryId), data });
@@ -204,12 +259,13 @@ export default function Dashboard({ month }: { month: MonthKey }) {
       <nav aria-label="Mês" className="enter mt-5 flex items-center justify-between gap-2 rounded-full border border-[#e1dbce] bg-[#fbf8f0] p-1.5">
         <button data-testid="button-previous-month" aria-label="Mês anterior" onClick={() => navigate(monthPath(shiftMonth(month, -1)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#546b5d] transition hover:bg-[#ece7dc]"><ChevronLeft size={17}/></button>
         <div className="min-w-0 text-center"><p data-testid="text-month" className="truncate font-display text-[17px] text-[#234638]">{capitalize(monthLabel(month))}</p>{!isCurrentMonth && <button data-testid="button-current-month" onClick={() => navigate('/')} className="text-[10px] font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4">Voltar para o mês atual</button>}</div>
-        <button data-testid="button-next-month" aria-label="Próximo mês" disabled={isCurrentMonth} onClick={() => navigate(monthPath(shiftMonth(month, 1)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#546b5d] transition hover:bg-[#ece7dc] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"><ChevronRight size={17}/></button>
+        <button data-testid="button-next-month" aria-label="Próximo mês" disabled={!canGoNext} onClick={() => navigate(monthPath(shiftMonth(month, 1)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#546b5d] transition hover:bg-[#ece7dc] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"><ChevronRight size={17}/></button>
       </nav>
+      {isPreview && <p data-testid="text-preview-banner" className="enter mt-3 flex items-start gap-2 rounded-2xl border border-[#e6d7b8] bg-[#f8efd9] px-4 py-3 text-[11px] leading-5 text-[#7a6a45]"><CalendarDays size={14} className="mt-0.5 shrink-0"/><span><b className="font-semibold">Prévia de {monthName(month)}:</b> aqui aparecem só as parcelas já previstas.</span></p>}
 
       <section className="enter mt-9 flex flex-col justify-between gap-5 sm:mt-12 sm:flex-row sm:items-end" style={{ animationDelay: '.06s' }}>
         <div><p className="font-mono-data text-[10px] uppercase tracking-[.2em] text-[#9a8d71]">Seu dinheiro, com intenção</p><h1 className="mt-2 font-display text-[42px] leading-[1.05] tracking-[-.03em] text-[#234638] sm:text-[54px]">Tudo no seu <em className="font-medium text-[#d78470]">lugar.</em></h1><p className="mt-3 max-w-lg text-sm leading-6 text-[#6e7a6f]">Planeje com leveza. Confirme cada gasto. E acompanhe seu cartão sem surpresas.</p></div>
-        <button data-testid="button-new-movement" onClick={() => setDialog({ kind: 'movement', initial: {} })} disabled={!categories.some((item) => !item.isClosed)} className="flex w-fit items-center gap-2 rounded-full bg-[#28513f] px-5 py-3.5 text-[13px] font-semibold text-[#fffaf0] shadow-[0_8px_18px_-10px_rgba(38,80,61,.7)] transition hover:-translate-y-0.5 hover:bg-[#1f4333] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16}/> Registrar gasto</button>
+        {!isPreview && <button data-testid="button-new-movement" onClick={() => setDialog({ kind: 'movement', initial: {} })} disabled={!categories.some((item) => !item.isClosed)} className="flex w-fit items-center gap-2 rounded-full bg-[#28513f] px-5 py-3.5 text-[13px] font-semibold text-[#fffaf0] shadow-[0_8px_18px_-10px_rgba(38,80,61,.7)] transition hover:-translate-y-0.5 hover:bg-[#1f4333] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16}/> Registrar gasto</button>}
       </section>
 
       {!cards.length ? <section className="enter mt-9 overflow-hidden rounded-[28px] bg-[#28513f] p-7 text-[#fffaf0] sm:p-10">
@@ -233,12 +289,24 @@ export default function Dashboard({ month }: { month: MonthKey }) {
         </div>
         <article className="enter rounded-[26px] border border-[#e1dbce] bg-[#fbf8f0] p-6 sm:p-8" style={{ animationDelay: '.08s' }}>
           <div className="flex items-center justify-between"><div><p className="font-mono-data text-[10px] uppercase tracking-[.17em] text-[#9a8d71]">O mês em perspectiva</p><h2 className="mt-2 font-display text-[24px] text-[#234638]">{capitalize(monthLabel(month))}</h2></div><div className="grid h-10 w-10 place-items-center rounded-full bg-[#f0e9d9] text-[#587764]"><LayoutDashboard size={17}/></div></div>
+          {isPreview ? <div className="mt-7 rounded-2xl bg-[#f5e9e1] p-4"><span className="text-[10px] text-[#927b70]">Parcelas previstas</span><p data-testid="text-preview-total" className="mt-2 font-mono-data text-[18px] text-[#a55f50]">{money(preview?.amount ?? 0)}</p></div> : <>
           <div className="mt-7 grid grid-cols-2 gap-3"><div className="min-w-0 rounded-2xl bg-[#f2eee4] p-4"><span className="text-[10px] text-[#7c877a]">Orçamentos em aberto</span><p className="mt-2 font-mono-data text-[16px] text-[#315944] [overflow-wrap:anywhere] sm:text-[18px]">{money(overview?.openBudgetAmount ?? totals.planned)}</p></div><div className="min-w-0 rounded-2xl bg-[#f5e9e1] p-4"><span className="text-[10px] text-[#927b70]">Categorias fechadas</span><p className="mt-2 font-mono-data text-[16px] text-[#a55f50] [overflow-wrap:anywhere] sm:text-[18px]">{money(overview?.closedSpentAmount ?? 0)}</p></div></div>
           <div className="mt-5 flex items-center gap-2 border-t border-[#e9e3d8] pt-4 text-[11px] text-[#748075]"><BadgeCheck size={15} className="text-[#668a6d]"/><span><b className="font-semibold text-[#42624d]">{overview?.openCategoryCount ?? categories.filter((c) => !c.isClosed).length} categorias ativas</b> para o que importa {isCurrentMonth ? 'neste mês' : `em ${monthName(month)}`}.</span></div>
+          </>}
         </article>
       </section>
       </>}
 
+      {isPreview ? <section data-testid="section-planned" aria-label="Parcelas previstas" className="enter mt-10" style={{ animationDelay: '.13s' }}>
+        <div className="flex items-center gap-2 text-[#ac8f60]"><CalendarDays size={14}/><p className="font-mono-data text-[10px] uppercase tracking-[.2em]">Prévia</p></div>
+        <h2 className="mt-2 font-display text-[30px] text-[#234638]">Parcelas previstas</h2>
+        {preview?.groups.length ? <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          {preview.groups.map((group) => <article key={group.categoryName} data-testid={`card-planned-${group.categoryName}`} className="min-w-0 overflow-hidden rounded-[22px] border border-[#e1dbce] bg-[#fbf8f0]">
+            <div className="flex items-center justify-between gap-3 border-b border-[#ece6da] px-4 py-3.5 sm:px-5"><span className="flex min-w-0 items-center gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-[12px] bg-[#e4ece2] text-[#52735c]"><FolderClosed size={15}/></span><span className="truncate text-[14px] font-semibold text-[#345443]">{group.categoryName}</span></span><span className="shrink-0 font-mono-data text-[13px] text-[#a36354]">{money(group.amount)}</span></div>
+            <div className="divide-y divide-[#ece6da]">{group.installments.map((item) => <div key={`${item.purchaseId}-${item.installment}`} className="flex items-center gap-3 px-4 py-3 sm:px-5"><div className="min-w-0 flex-1"><p className="flex items-center gap-2 text-[12px] font-semibold text-[#3d5948]"><span className="truncate">{item.description}</span><span className="shrink-0 rounded-full bg-[#ece6da] px-2 py-0.5 font-mono-data text-[9px] font-medium text-[#6f7a6e]">{item.installment}/{item.installmentCount}</span></p><p className="mt-1 flex items-center gap-1 text-[10px] text-[#8b9185]"><CalendarDays size={11}/>{dateLabel(item.date)}</p></div><p className="shrink-0 font-mono-data text-[12px] text-[#a36354]">− {money(item.amount)}</p></div>)}</div>
+          </article>)}
+        </div> : <div className="mt-5 rounded-2xl border border-dashed border-[#d9d2c4] bg-[#f8f5ed] px-5 py-9 text-center"><h3 className="font-display text-[20px] text-[#345443]">Nenhuma parcela prevista.</h3><p className="mx-auto mt-1 max-w-xs text-xs leading-5 text-[#7d887c]">{card ? `O cartão “${card.name}” não tem parcelas em ${monthName(month)}.` : 'Cadastre um cartão para começar.'}</p></div>}
+      </section> :
       <section className="mt-10 grid gap-8 lg:grid-cols-[1.08fr_.92fr]">
         {/* .enter leaves a transform behind, so each column is its own stacking context;
             lift this one while a menu is open so the aside below can't cover it. */}
@@ -260,14 +328,19 @@ export default function Dashboard({ month }: { month: MonthKey }) {
           <div className="flex flex-wrap items-end justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-2 text-[#ac8f60]"><Banknote size={14}/><p className="font-mono-data text-[10px] uppercase tracking-[.2em]">Movimentações</p></div><h2 className="mt-2 font-display text-[30px] text-[#234638]">O que já aconteceu</h2></div>{selected && <div className="relative max-w-[145px]"><select value={selected.id} onChange={(e) => setSelectedId(Number(e.target.value))} className="w-full appearance-none truncate rounded-full border border-[#d9d2c4] bg-[#faf7ef] py-2 pl-3 pr-8 text-[10px] font-semibold text-[#496754]">{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><ChevronDown size={13} className="pointer-events-none absolute right-3 top-2.5 text-[#758579]"/></div>}</div>
           <div className="mt-5 overflow-hidden rounded-[22px] border border-[#e1dbce] bg-[#fbf8f0]">
             {movementsQuery.isLoading ? <div className="space-y-4 p-5"><div className="h-9 animate-pulse rounded bg-[#eee9df]"/><div className="h-9 animate-pulse rounded bg-[#eee9df]"/><div className="h-9 animate-pulse rounded bg-[#eee9df]"/></div> : movements.length ? <div className="divide-y divide-[#ece6da]">
-              {(showAll ? movements : movements.slice(0, 5)).map((movement) => <div data-testid={`row-movement-${movement.id}`} key={movement.id} className="group flex items-center gap-3 px-4 py-3.5 sm:px-5"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#f1e9df] text-[#bb7865]"><ArrowUpRight size={16}/></span><div className="min-w-0 flex-1"><p className="truncate text-[12px] font-semibold text-[#3d5948]">{movement.description}</p><p className="mt-1 flex items-center gap-1 text-[10px] text-[#8b9185]"><CalendarDays size={11}/>{dateLabel(movement.date)}</p></div><div className="text-right"><p className="font-mono-data text-[12px] text-[#a36354]">− {money(movement.amount)}</p>{!selected?.isClosed && <div className="mt-1 flex justify-end gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100"><button aria-label="Editar lançamento" onClick={() => setDialog({ kind: 'movement', initial: { id: movement.id, categoryId: movement.categoryId, description: movement.description, amount: movement.amount, date: movement.date } })} className="rounded p-1 text-[#7c897e] hover:bg-[#eee9df]"><FilePenLine size={12}/></button><button aria-label="Excluir lançamento" onClick={() => { if (askDelete(`o lançamento “${movement.description}”`)) deleteMovement.mutate({ movementId: movement.id }); }} className="rounded p-1 text-[#ad6a5a] hover:bg-[#f4e8e1]"><Trash2 size={12}/></button></div>}</div></div>)}
+              {(showAll ? movements : movements.slice(0, 5)).map((movement) => <div data-testid={`row-movement-${movement.id}`} key={movement.id} className="group flex items-center gap-3 px-4 py-3.5 sm:px-5"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#f1e9df] text-[#bb7865]"><ArrowUpRight size={16}/></span><div className="min-w-0 flex-1"><p className="flex items-center gap-2 text-[12px] font-semibold text-[#3d5948]"><span className="truncate">{movement.description}</span>{movement.installment && <span data-testid={`badge-installment-${movement.id}`} className="shrink-0 rounded-full bg-[#ece6da] px-2 py-0.5 font-mono-data text-[9px] font-medium text-[#6f7a6e]">{movement.installment}/{movement.purchase?.installmentCount ?? movement.installmentCount}</span>}</p><p className="mt-1 flex items-center gap-1 text-[10px] text-[#8b9185]"><CalendarDays size={11}/>{dateLabel(movement.date)}</p></div><div className="text-right"><p className="font-mono-data text-[12px] text-[#a36354]">− {money(movement.amount)}</p>{!selected?.isClosed && <div className="mt-1 flex justify-end gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100"><button aria-label="Editar lançamento" onClick={() => setDialog({ kind: 'movement', initial: movement.purchase
+                ? { id: movement.id, categoryId: movement.categoryId, description: movement.description, amount: movement.purchase.totalAmount, date: movement.date, isPurchase: true, purchaseId: movement.purchase.id, installmentCount: movement.purchase.installmentCount, installment: movement.installment, firstInstallment: movement.purchase.firstInstallment }
+                : { id: movement.id, categoryId: movement.categoryId, description: movement.description, amount: movement.amount, date: movement.date } })} className="rounded p-1 text-[#7c897e] hover:bg-[#eee9df]"><FilePenLine size={12}/></button><button aria-label="Excluir lançamento" onClick={() => {
+                if (movement.purchase) { if (window.confirm(`Remover a compra parcelada “${movement.description}” e todas as suas parcelas? As parcelas em categorias fechadas ficam. Esta ação não pode ser desfeita.`)) deletePurchase.mutate({ purchaseId: movement.purchase.id }); }
+                else if (askDelete(`o lançamento “${movement.description}”`)) deleteMovement.mutate({ movementId: movement.id });
+              }} className="rounded p-1 text-[#ad6a5a] hover:bg-[#f4e8e1]"><Trash2 size={12}/></button></div>}</div></div>)}
               {movements.length > 5 && <button onClick={() => setShowAll(!showAll)} className="w-full border-t border-[#ece6da] py-3 text-[10px] font-semibold text-[#567360] hover:bg-[#f7f3e9]">{showAll ? 'Mostrar menos' : `Ver mais ${movements.length - 5} lançamentos`}</button>}
             </div> : <div className="px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#f0eadd] text-[#9b8c69]"><ArrowDownLeft size={18}/></div><h3 className="mt-3 font-display text-[20px] text-[#345443]">Ainda sem lançamentos</h3><p className="mt-1 text-xs leading-5 text-[#7d887c]">{selected ? `Os gastos de “${selected.name}” aparecem aqui assim que você registrar.` : 'Crie uma categoria para começar a registrar seus gastos.'}</p>{selected && !selected.isClosed && <button onClick={() => setDialog({ kind: 'movement', initial: { categoryId: selected.id } })} className="mt-4 text-xs font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4">Registrar o primeiro gasto</button>}</div>}
             {movementsQuery.isError && <div className="flex items-center justify-between border-t border-[#ece6da] px-5 py-3 text-xs text-[#a45e50]"><span>Não foi possível carregar os lançamentos.</span><button onClick={() => void movementsQuery.refetch()} className="font-semibold underline">Tentar novamente</button></div>}
           </div>
           {card && <div className="mt-5 flex items-start gap-3 rounded-2xl border border-[#e2dccf] bg-[#f0ece2] p-4"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-[#65806a]"/><p className="text-[10px] leading-5 text-[#778175]">Planejado e confirmado ficam lado a lado. Assim, cada decisão cabe no seu ritmo — sem sustos no fim do mês.</p></div>}
         </aside>
-      </section>
+      </section>}
 
       <footer className="mt-12 flex flex-col justify-between gap-2 border-t border-[#ded8ca] pt-4 text-[10px] text-[#919489] sm:flex-row"><span>Um jeito mais gentil de acompanhar o que importa.</span><span className="font-mono-data tracking-wide">CONTROLE DO CARTÃO · 01</span></footer>
     </div>

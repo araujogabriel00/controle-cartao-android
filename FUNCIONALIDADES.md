@@ -7,6 +7,8 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 > Todos os valores são calculados **dentro de um mês**: cartão, categorias, lançamentos e visão geral mostram só o mês que está aberto no painel. O funcionamento por mês está detalhado na seção [9. Histórico mensal](#9-histórico-mensal) e na spec [`specs/historico-mensal.md`](specs/historico-mensal.md).
 >
 > O app aceita **vários cartões**, e cada um tem o próprio limite, meses, categorias e lançamentos. As categorias, os lançamentos, a visão geral e o histórico mostram sempre o **cartão selecionado** no carrossel. Os detalhes estão na seção [10. Múltiplos cartões](#10-múltiplos-cartões) e na spec [`specs/multiplos-cartoes.md`](specs/multiplos-cartoes.md).
+>
+> Uma **compra parcelada** vira um lançamento comum em cada mês em que cai, e os meses futuros abrem só como prévia das parcelas. Os detalhes estão na seção [11. Parcelamento](#11-parcelamento) e na spec [`specs/parcelamento.md`](specs/parcelamento.md).
 
 ## Sumário
 
@@ -20,6 +22,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 8. [Formatação](#8-formatação)
 9. [Histórico mensal](#9-histórico-mensal)
 10. [Múltiplos cartões](#10-múltiplos-cartões)
+11. [Parcelamento](#11-parcelamento)
 
 ---
 
@@ -191,6 +194,17 @@ Funcionalidade: Planejar o orçamento por categorias
     Então vejo a mensagem "Envelope removido."
     E a categoria "Mercado" não aparece mais na lista
 
+  @regra
+  Cenário: Categoria com parcelas não pode ser removida
+    Dado que a categoria "Eletrônicos" tem a parcela "1/3" de uma compra parcelada
+    Quando eu removo "Eletrônicos" e confirmo
+    Então vejo a mensagem de erro "Esta categoria tem parcelas. Exclua a compra parcelada antes."
+
+  Cenário: Renomear uma categoria com parcelas
+    Dado que a categoria "Eletrônicos" tem a parcela "1/3" de "Fone"
+    Quando eu renomeio "Eletrônicos" para "Tecnologia"
+    Então as parcelas de "Fone" dos próximos meses passam a cair em "Tecnologia"
+
   Cenário: Alternar entre categorias abertas e fechadas
     Dado que existem 3 categorias abertas e 1 fechada
     Então a aba "Em andamento" mostra o contador "3"
@@ -306,6 +320,7 @@ Funcionalidade: Registrar e acompanhar gastos
     E clico em "Salvar alterações"
     Então vejo a mensagem "Lançamento atualizado."
     E o lançamento mostra "− R$ 250,00"
+    Mas se o lançamento for uma parcela, abre "Editar compra parcelada" (seção 11)
 
   Cenário: Excluir um lançamento
     Dado que a categoria "Mercado" tem o lançamento "Mercado da semana"
@@ -314,6 +329,7 @@ Funcionalidade: Registrar e acompanhar gastos
     Quando eu confirmo
     Então vejo a mensagem "Lançamento excluído."
     E o lançamento não aparece mais na lista
+    Mas se o lançamento for uma parcela, a exclusão remove a compra parcelada inteira (seção 11)
 
   Cenário: Lançamentos de categoria fechada não podem ser alterados
     Dado que a categoria "Viagem" está fechada e tem lançamentos
@@ -434,7 +450,7 @@ Funcionalidade: Carregamento e tratamento de erros
     Então vejo a página de "não encontrado"
 
   Cenário: Mês inválido ou futuro
-    Quando eu acesso "#/mes/2026-13" ou um mês depois do atual
+    Quando eu acesso "#/mes/2026-13" ou um mês depois do último mês com parcelas previstas
     Então sou levado para o painel do mês atual
 ```
 
@@ -567,6 +583,7 @@ Funcionalidade: Histórico mensal do cartão
 
   Cenário: Navegar entre meses
     Dado que estou no painel de outubro de 2026, o mês atual
+    E que não há parcelas previstas para os próximos meses
     Então o botão "Próximo mês" está desabilitado
     Quando eu clico em "Mês anterior"
     Então vejo o painel de setembro de 2026
@@ -586,6 +603,7 @@ Funcionalidade: Histórico mensal do cartão
     E que outubro de 2026 tem categorias
     Quando eu abro o aplicativo e clico em "Começar do zero"
     Então novembro começa sem categorias
+    Mas as categorias com parcelas previstas para novembro são criadas com as parcelas (seção 11)
 
   Cenário: Virada de mês com vários cartões
     Dado que hoje é 01/11/2026
@@ -687,4 +705,76 @@ Funcionalidade: Múltiplos cartões
     Dado que o app tinha um único cartão salvo antes dos múltiplos cartões existirem
     Quando eu abro a nova versão
     Então ele aparece como o primeiro cartão do carrossel, verde e selecionado, sem perda de dados
+```
+
+## 11. Parcelamento
+
+Resumo das compras parceladas. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/parcelamento.md`](specs/parcelamento.md).
+
+```gherkin
+# language: pt
+Funcionalidade: Parcelamento
+  Como pessoa que compra parcelado no cartão
+  Quero registrar a compra uma vez e ver cada parcela cair no seu mês
+  Para saber quanto do cartão já está comprometido agora e nos próximos meses
+
+  Contexto:
+    Dado que hoje é 12/10/2026
+    E que o cartão "Nubank" tem a categoria aberta "Eletrônicos" em outubro de 2026
+
+  Cenário: Registrar uma compra parcelada
+    Quando eu clico em "Registrar gasto" e ligo "Compra parcelada"
+    E registro "Fone" com valor total de R$ 100,00 em 3 parcelas, em 15/10/2026
+    Então antes de salvar vejo "3x de R$ 33,33 · última em dezembro/2026 · 1ª de R$ 33,34"
+    E depois de salvar vejo a mensagem "Compra parcelada registrada."
+    E "Eletrônicos" de outubro tem "Fone" de R$ 33,34 com o selo "1/3"
+
+  @regra
+  Cenário: Cada mês compromete só a sua parcela
+    Quando eu registro "Notebook" de R$ 3.000,00 em 10x
+    Então só R$ 300,00 entram no usado de "Eletrônicos" em outubro
+
+  Cenário: Compra que já estava em andamento
+    Quando eu registro "Geladeira" de R$ 1.000,00 em 10x com "Parcela neste mês" igual a 3
+    Então outubro tem a parcela "3/10" de R$ 100,00
+    E as parcelas 4 a 10 ficam previstas de novembro de 2026 a maio de 2027
+
+  Cenário: Prévia de um mês futuro
+    Dado que registrei "Fone" em 3x
+    Quando eu clico em "Próximo mês"
+    Então vejo a prévia de novembro, só para leitura, com "Fone" "2/3" no grupo "Eletrônicos"
+    E não vejo "Registrar gasto" nem "Nova categoria"
+    E o botão "Próximo mês" para no último mês com parcelas previstas
+
+  Cenário: Próximos meses no histórico
+    Dado que registrei "Fone" em 3x
+    Quando eu abro o Histórico
+    Então a seção "Próximos meses" mostra novembro e dezembro de 2026 com o valor das parcelas
+    E tocar num mês abre a prévia dele
+
+  @regra
+  Cenário: A parcela entra quando o mês começa
+    Dado que hoje é 01/11/2026
+    Quando novembro começa, copiando as categorias ou do zero
+    Então "Fone" "2/3" entra em "Eletrônicos" de novembro
+    E se a categoria não existir, ela é criada com orçamento igual às parcelas
+
+  Cenário: Editar a compra a partir de uma parcela
+    Quando eu clico em "Editar lançamento" na parcela "1/3"
+    Então vejo "Editar compra parcelada" com o valor total, as parcelas e "Começa na parcela"
+    E vejo o aviso "As mudanças valem para todas as parcelas, menos as que estão em categorias fechadas."
+    Quando eu mudo o valor total para R$ 120,00
+    Então todas as parcelas passam a valer R$ 40,00
+
+  @regra
+  Cenário: Parcelas em categorias fechadas não mudam
+    Dado que a parcela "1/6" de "TV" está numa categoria fechada
+    Quando eu edito a compra ou a excluo
+    Então a parcela "1/6" continua igual
+    E ao excluir, ela fica como lançamento comum
+
+  @regra
+  Cenário: Parcela não se altera sozinha
+    Quando eu clico em "Excluir lançamento" numa parcela
+    Então o sistema pede confirmação para remover a compra parcelada e todas as suas parcelas
 ```

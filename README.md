@@ -2,13 +2,13 @@
 
 Versão Android do [Controle do Cartão](../controle-cartao): mesma interface do app web, empacotada com [Capacitor](https://capacitorjs.com) e com **todos os dados salvos no próprio celular**, sem servidor nem internet.
 
-As funcionalidades estão descritas em BDD em [`FUNCIONALIDADES.md`](FUNCIONALIDADES.md), e o histórico mensal em [`specs/historico-mensal.md`](specs/historico-mensal.md).
+As funcionalidades estão descritas em BDD em [`FUNCIONALIDADES.md`](FUNCIONALIDADES.md), e as especificações de cada uma ficam em [`specs/`](specs).
 
 ## Como funciona
 
 - A interface (`src/pages/dashboard.tsx`, `src/index.css`) é a mesma do app web.
 - O pacote `@workspace/api-client-react`, que no app web chama a API, aqui é um **alias** para `src/data/api.ts`. Esse módulo exporta os mesmos hooks (`useGetCard`, `useCreateMovement`, …), mas lê e grava localmente.
-- `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 2`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
+- `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 4`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
 - As fontes (Fraunces, DM Sans e DM Mono) vêm junto com o app via `@fontsource`, então funcionam offline.
 
 ### Histórico mensal
@@ -22,8 +22,17 @@ Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês 
 - `#/` mostra o mês corrente, `#/mes/AAAA-MM` mostra um mês passado e `#/historico` lista todos os meses com seus totais. As rotas usam hash porque o bundle tem base relativa.
 - Na virada do mês, o app pergunta, para cada cartão, se quer copiar as categorias do mês anterior (abertas e sem lançamentos) ou começar do zero. Se o mês anterior não tinha categorias, o novo mês começa vazio sem perguntar.
 - Cada mês guarda o limite do cartão da época. Editar o limite muda só o mês corrente daquele cartão.
-- Meses passados continuam editáveis; o que bloqueia alterações é a categoria estar fechada. Meses futuros não podem ser abertos.
-- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, e o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`.
+- Meses passados continuam editáveis; o que bloqueia alterações é a categoria estar fechada. Meses futuros abrem só como prévia das parcelas previstas, até o último mês com parcela, e não podem ser iniciados.
+- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, e a `version: 4` acrescenta a lista vazia de compras parceladas.
+
+### Parcelamento
+
+A especificação completa está em [`specs/parcelamento.md`](specs/parcelamento.md).
+
+- Uma compra parcelada guarda o valor total, o nº de parcelas, a parcela inicial e o nome da categoria. A divisão é feita em centavos, e o resto fica na parcela 1.
+- Cada parcela vira um **lançamento comum** no mês em que cai, na categoria com o mesmo nome. A categoria é criada se não existir, com orçamento igual às parcelas. Por isso as regras de cálculo abaixo valem sem mudança: cada mês compromete só a sua parcela.
+- As parcelas de meses futuros não são gravadas. Elas são calculadas a partir da compra e gravadas quando o mês é iniciado, depois da cópia das categorias.
+- Editar ou excluir uma parcela muda a compra inteira, menos as parcelas que estão em categorias fechadas.
 
 ### Regras de cálculo
 

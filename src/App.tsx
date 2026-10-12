@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { getGetLastPlannedMonthQueryKey, useGetLastPlannedMonth } from '@workspace/api-client-react';
 import { currentMonth, isFutureMonth, isMonthKey } from '@/lib/format';
 import NotFound from '@/pages/not-found';
 import Dashboard from '@/pages/dashboard';
@@ -17,10 +18,16 @@ import { useHashLocation } from 'wouter/use-hash-location';
 
 const queryClient = new QueryClient();
 
-// Invalid and future months go back to the current one (RN-03); the current
-// month always lives at "/".
+// Invalid months go back to the current one (RN-03), and so do future months
+// past the last planned installment (installments RN-14); the current month
+// always lives at "/".
 function MonthRoute({ month }: { month: string }) {
-  if (!isMonthKey(month) || isFutureMonth(month) || month === currentMonth()) return <Redirect to="/" replace />;
+  const lastPlanned = useGetLastPlannedMonth({ query: { queryKey: getGetLastPlannedMonthQueryKey(), enabled: isMonthKey(month) && isFutureMonth(month) } });
+  if (!isMonthKey(month) || month === currentMonth()) return <Redirect to="/" replace />;
+  if (isFutureMonth(month)) {
+    if (lastPlanned.isLoading) return null;
+    if (!lastPlanned.data || month > lastPlanned.data) return <Redirect to="/" replace />;
+  }
   return <Dashboard key={month} month={month} />;
 }
 
