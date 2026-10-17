@@ -8,7 +8,8 @@ import * as store from './store';
 
 export type {
   Card, Cards, CardColor, Category, Consolidated, Movement, Overview, MonthKey, MonthSummary, MonthStatus,
-  CardInput, CategoryInput, MovementInput,
+  FutureInstallments, MonthPreview, PlannedInstallment, StoredPurchase,
+  CardInput, CategoryInput, MovementInput, PurchaseInput,
 } from './store';
 
 type QueryOpts<T> = { query?: Partial<UseQueryOptions<T, Error, T, QueryKey>> };
@@ -31,6 +32,9 @@ export const getGetMonthHistoryQueryKey = (cardId?: number) => key('months', car
 export const getGetMonthStatusQueryKey = (cardId?: number) => key('months', cardId, 'status');
 export const getGetConsolidatedQueryKey = (month?: store.MonthKey) => key('consolidated', month);
 export const getGetConsolidatedHistoryQueryKey = () => ['consolidated', 'history'] as const;
+export const getGetFutureInstallmentsQueryKey = (cardId?: number) => key('installments', cardId);
+export const getGetMonthPreviewQueryKey = (cardId: number, month: store.MonthKey) => ['installments', cardId, 'preview', month] as const;
+export const getGetLastPlannedMonthQueryKey = () => ['installments', 'last'] as const;
 
 function useLocalQuery<T>(queryKey: QueryKey, queryFn: () => Promise<T>, options?: QueryOpts<T>) {
   return useQuery<T, Error, T, QueryKey>({ queryKey, queryFn, ...options?.query });
@@ -67,7 +71,16 @@ export const useGetConsolidated = (month: store.MonthKey, options?: QueryOpts<st
 export const useGetConsolidatedHistory = (options?: QueryOpts<store.Consolidated[]>) =>
   useLocalQuery(getGetConsolidatedHistoryQueryKey(), store.getConsolidatedHistory, options);
 
-export const useStartMonth = (options?: MutationOpts<void, { cardId: number; month: store.MonthKey; copyFrom: store.MonthKey | null }>) =>
+export const useGetFutureInstallments = (cardId: number, options?: QueryOpts<store.FutureInstallments[]>) =>
+  useLocalQuery(getGetFutureInstallmentsQueryKey(cardId), () => store.getFutureInstallments(cardId), options);
+
+export const useGetMonthPreview = (cardId: number, month: store.MonthKey, options?: QueryOpts<store.MonthPreview>) =>
+  useLocalQuery(getGetMonthPreviewQueryKey(cardId, month), () => store.getMonthPreview(cardId, month), options);
+
+export const useGetLastPlannedMonth = (options?: QueryOpts<store.MonthKey | null>) =>
+  useLocalQuery(getGetLastPlannedMonthQueryKey(), store.getLastPlannedMonth, options);
+
+export const useStartMonth =(options?: MutationOpts<void, { cardId: number; month: store.MonthKey; copyFrom: store.MonthKey | null }>) =>
   useMutation({ mutationFn: ({ cardId, month, copyFrom }) => store.startMonth(cardId, month, copyFrom), ...options?.mutation });
 
 export const useSelectCard = (options?: MutationOpts<void, { cardId: number }>) =>
@@ -102,3 +115,12 @@ export const useUpdateMovement = (options?: MutationOpts<store.Movement, { movem
 
 export const useDeleteMovement = (options?: MutationOpts<void, { movementId: number }>) =>
   useMutation({ mutationFn: ({ movementId }) => store.deleteMovement(movementId), ...options?.mutation });
+
+export const useCreatePurchase = (options?: MutationOpts<store.StoredPurchase, { categoryId: number; data: store.PurchaseInput }>) =>
+  useMutation({ mutationFn: ({ categoryId, data }) => store.createPurchase(categoryId, data), ...options?.mutation });
+
+export const useUpdatePurchase = (options?: MutationOpts<store.StoredPurchase, { purchaseId: number; categoryId: number; data: store.PurchaseInput }>) =>
+  useMutation({ mutationFn: ({ purchaseId, categoryId, data }) => store.updatePurchase(purchaseId, categoryId, data), ...options?.mutation });
+
+export const useDeletePurchase = (options?: MutationOpts<void, { purchaseId: number }>) =>
+  useMutation({ mutationFn: ({ purchaseId }) => store.deletePurchase(purchaseId), ...options?.mutation });

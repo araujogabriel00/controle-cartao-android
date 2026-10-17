@@ -5,7 +5,7 @@
 | Status | Implementada |
 | Criada em | 10/10/2026 |
 | Escopo | `src/data/store.ts`, `src/data/api.ts`, `src/pages/*`, `src/App.tsx`, `README.md` |
-| Revisão | Com [`multiplos-cartoes.md`](multiplos-cartoes.md), meses, categorias, limites e a virada de mês passaram a ser **por cartão**. D8 e RN-07 ("remover o cartão apaga o histórico") valem só para o cartão removido, e o histórico mostra o cartão selecionado. |
+| Revisão | Com [`multiplos-cartoes.md`](multiplos-cartoes.md), meses, categorias, limites e a virada de mês passaram a ser **por cartão**. D8 e RN-07 ("remover o cartão apaga o histórico") valem só para o cartão removido, e o histórico mostra o cartão selecionado. Com [`parcelamento.md`](parcelamento.md), D7 e RN-03 mudaram: um mês futuro abre como **prévia só para leitura** até o último mês com parcelas previstas, mas continua sem poder ser iniciado nem receber dados. |
 
 > Esta spec é a fonte da verdade da funcionalidade. A implementação segue a seção [Tarefas](#11-tarefas) e só termina quando todos os [Critérios de aceite](#10-critérios-de-aceite) forem atendidos. Mudanças de comportamento entram primeiro aqui e só depois no código.
 
