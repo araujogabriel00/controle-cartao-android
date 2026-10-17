@@ -6,6 +6,7 @@
 | Criada em | 17/10/2026 |
 | Escopo | `src/data/store.ts`, `src/data/api.ts`, `src/App.tsx`, `src/pages/entradas.tsx` (novo), `src/pages/dashboard.tsx`, `src/pages/historico.tsx`, `src/index.css`, `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`historico-mensal.md`](historico-mensal.md) (conceito de mês e rotas) |
+| Substituída em parte por | [`contas-e-gastos.md`](contas-e-gastos.md): a decisão D3 (entradas fora de qualquer cálculo) e a RN-09 (intervalo de navegação). A tela passa a ter também contas fixas, gastos do dia a dia e o saldo do mês, e as entradas continuam sem alterar os cartões. |
 
 > Esta spec é a fonte da verdade da funcionalidade. A implementação segue a seção [Tarefas](#11-tarefas) e só termina quando todos os [Critérios de aceite](#10-critérios-de-aceite) forem atendidos. Mudanças de comportamento entram primeiro aqui e só depois no código.
 

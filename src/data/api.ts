@@ -11,6 +11,7 @@ export type {
   FutureInstallments, MonthPreview, PlannedInstallment, StoredPurchase,
   CardInput, CategoryInput, MovementInput, PurchaseInput,
   IncomeInput, IncomeKind, IncomeOccurrence, IncomeRange, IncomeScope, Incomes, StoredIncome,
+  Bills, BillOccurrence, BillInput, DailyExpense, DailyExpenses, DailyExpenseInput, MonthCash, StoredBill, StoredDailyExpense,
   Benefits, BenefitItem, BenefitSpend, BenefitRange, BenefitInput, BenefitUpdate, BenefitSpendInput, BenefitSplitItem, BenefitCategoryRow, StoredBenefit, StoredBenefitSpend,
 } from './store';
 export { INCOME_KINDS } from './store';
@@ -40,6 +41,9 @@ export const getGetMonthPreviewQueryKey = (cardId: number, month: store.MonthKey
 export const getGetLastFutureMonthQueryKey = () => ['installments', 'last'] as const;
 export const getGetIncomesQueryKey = (month?: store.MonthKey) => key('incomes', month);
 export const getGetIncomeRangeQueryKey = () => ['income-range'] as const;
+export const getGetBillsQueryKey = (month?: store.MonthKey) => key('bills', month);
+export const getGetDailyExpensesQueryKey = (month?: store.MonthKey) => key('daily', month);
+export const getGetMonthCashQueryKey = (month?: store.MonthKey) => key('cash', month);
 export const getGetBenefitsQueryKey = (month?: store.MonthKey) => key('benefits', month);
 export const getGetBenefitRangeQueryKey = () => ['benefit-range'] as const;
 
@@ -173,3 +177,30 @@ export const useCloseBenefitCategory = (options?: MutationOpts<void, { benefitId
 
 export const useReopenBenefitCategory = (options?: MutationOpts<void, { benefitId: number; categoryId: number; month: store.MonthKey }>) =>
   useMutation({ mutationFn: ({ benefitId, categoryId, month }) => store.reopenBenefitCategory(benefitId, categoryId, month), ...options?.mutation });
+
+export const useGetMonthCash = (month: store.MonthKey, options?: QueryOpts<store.MonthCash>) =>
+  useLocalQuery(getGetMonthCashQueryKey(month), () => store.getMonthCash(month), options);
+
+export const useGetBills = (month: store.MonthKey, options?: QueryOpts<store.Bills>) =>
+  useLocalQuery(getGetBillsQueryKey(month), () => store.getBills(month), options);
+
+export const useCreateBill = (options?: MutationOpts<store.StoredBill, { data: store.BillInput }>) =>
+  useMutation({ mutationFn: ({ data }) => store.createBill(data), ...options?.mutation });
+
+export const useUpdateBill = (options?: MutationOpts<store.StoredBill, { billId: number; month: store.MonthKey; scope: store.IncomeScope; data: store.BillInput }>) =>
+  useMutation({ mutationFn: ({ billId, month, scope, data }) => store.updateBill(billId, month, scope, data), ...options?.mutation });
+
+export const useDeleteBill = (options?: MutationOpts<void, { billId: number; month: store.MonthKey; scope: store.IncomeScope }>) =>
+  useMutation({ mutationFn: ({ billId, month, scope }) => store.deleteBill(billId, month, scope), ...options?.mutation });
+
+export const useGetDailyExpenses = (month: store.MonthKey, options?: QueryOpts<store.DailyExpenses>) =>
+  useLocalQuery(getGetDailyExpensesQueryKey(month), () => store.getDailyExpenses(month), options);
+
+export const useCreateDailyExpense = (options?: MutationOpts<store.StoredDailyExpense, { categoryId: number | null; data: store.DailyExpenseInput }>) =>
+  useMutation({ mutationFn: ({ categoryId, data }) => store.createDailyExpense(categoryId, data), ...options?.mutation });
+
+export const useUpdateDailyExpense = (options?: MutationOpts<store.StoredDailyExpense, { expenseId: number; categoryId: number | null; data: store.DailyExpenseInput }>) =>
+  useMutation({ mutationFn: ({ expenseId, categoryId, data }) => store.updateDailyExpense(expenseId, categoryId, data), ...options?.mutation });
+
+export const useDeleteDailyExpense = (options?: MutationOpts<void, { expenseId: number }>) =>
+  useMutation({ mutationFn: ({ expenseId }) => store.deleteDailyExpense(expenseId), ...options?.mutation });

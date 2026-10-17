@@ -42,6 +42,12 @@ export type StoredIncomeException = {
   incomeId: number; month: MonthKey; skip: boolean; amount?: number; description?: string; day?: number;
 };
 
+// A fixed bill (rent, internet...) always repeats every month; its months are
+// computed, never stored. An exception adjusts or skips a single month.
+export type StoredBill = { id: number; name: string; amount: number; firstMonth: MonthKey; day: number; lastMonth: MonthKey | null };
+export type StoredBillException = { billId: number; month: MonthKey; skip: boolean; name?: string; amount?: number; day?: number };
+export type StoredDailyExpense = { id: number; categoryId: number | null; description: string; amount: number; date: string };
+
 // A benefit (VR/VA...) is a monthly balance, apart from the cards. `amounts` is
 // the history of its monthly value (ascending by `from`); the first entry
 // starts at firstMonth.
@@ -59,7 +65,7 @@ export type StoredBenefitSpend = {
 };
 
 type State = {
-  version: 7;
+  version: 8;
   nextId: number;
   selectedCardId: number | null;
   cards: StoredCard[];
@@ -71,14 +77,18 @@ type State = {
   incomeExceptions: StoredIncomeException[];
   benefits: StoredBenefit[];
   benefitSpends: StoredBenefitSpend[];
+  bills: StoredBill[];
+  billExceptions: StoredBillException[];
+  dailyExpenses: StoredDailyExpense[];
 };
 
 // Previous formats, kept only to migrate saved data.
 type OldCategory = { id: number; cardId: number; month: MonthKey; name: string; amount: number; isClosed: boolean };
 type OldMovement = Omit<StoredMovement, 'cardId' | 'categoryId'> & { categoryId: number };
 type OldPurchase = Omit<StoredPurchase, 'categoryId'> & { categoryName: string };
-type StateV6 = Omit<State, 'version' | 'benefits' | 'benefitSpends'> & { version: 6 };
-type StateV5 = Omit<State, 'version' | 'categories' | 'movements' | 'purchases' | 'benefits' | 'benefitSpends'> & {
+type StateV7 = Omit<State, 'version' | 'bills' | 'billExceptions' | 'dailyExpenses'> & { version: 7 };
+type StateV6 = Omit<StateV7, 'version' | 'benefits' | 'benefitSpends'> & { version: 6 };
+type StateV5 = Omit<StateV6, 'version' | 'categories' | 'movements' | 'purchases'> & {
   version: 5; categories: OldCategory[]; movements: OldMovement[]; purchases: OldPurchase[];
 };
 type StateV4 = Omit<StateV5, 'version' | 'incomes' | 'incomeExceptions'> & { version: 4 };
@@ -99,7 +109,7 @@ type StateV1 = {
   categories: Omit<OldCategory, 'cardId' | 'month'>[];
   movements: OldMovement[];
 };
-type Saved = StateV6 | StateV5 | StateV4 | StateV3 | StateV2 | StateV1;
+type Saved = StateV7 | StateV6 | StateV5 | StateV4 | StateV3 | StateV2 | StateV1;
 
 // limitAmount is the limit of the requested month; currentLimitAmount is the card's own.
 export type Card = StoredCard & { currentLimitAmount: number; usedAmount: number; availableAmount: number; percentUsed: number };
@@ -139,6 +149,13 @@ export type Incomes = { month: MonthKey; totalAmount: number; items: IncomeOccur
 export type IncomeRange = { first: MonthKey; last: MonthKey };
 export type IncomeScope = 'month' | 'forward';
 
+export type BillOccurrence = { billId: number; name: string; amount: number; date: string; lastMonth: MonthKey | null };
+export type Bills = { month: MonthKey; totalAmount: number; items: BillOccurrence[] };
+export type DailyExpense = StoredDailyExpense & { categoryName: string | null };
+export type DailyExpenses = { month: MonthKey; totalAmount: number; items: DailyExpense[]; summary: CategorySummary[] };
+// RN-06: what comes in, what goes out and what is left in the month.
+export type MonthCash = { month: MonthKey; incomeAmount: number; billsAmount: number; dailyAmount: number; cardsAmount: number; balanceAmount: number };
+
 export type BenefitSpend = StoredBenefitSpend & { categoryName: string | null };
 // One line of the "by category" list (RN-17); categoryId null is "Sem categoria".
 export type BenefitCategoryRow = {
@@ -162,6 +179,8 @@ export type BenefitRange = { first: MonthKey; last: MonthKey };
 export type CardInput = { name: string; limitAmount: number; color?: CardColor };
 export type CategoryInput = { name: string };
 export type MovementInput = { description: string; amount: number; date: string };
+export type BillInput = { name: string; amount: number; date: string; lastMonth?: MonthKey | null };
+export type DailyExpenseInput = { description: string; amount: number; date: string };
 export type IncomeInput = { kind: IncomeKind; description?: string; amount: number; date: string; recurring: boolean; lastMonth?: MonthKey | null };
 export type BenefitInput = { name: string; amount: number; firstMonth: MonthKey; lastMonth?: MonthKey | null; split?: BenefitSplitItem[] };
 // `amount` starts to count in the month the update is made for ("Vale a partir de").
@@ -171,7 +190,7 @@ export type BenefitSpendInput = { description: string; amount: number; date: str
 // purchase starts there, on update `firstInstallment` says where it starts.
 export type PurchaseInput = { description: string; totalAmount: number; installmentCount: number; installment: number; firstInstallment?: number; date: string };
 
-const emptyState = (): State => ({ version: 7, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [], benefits: [], benefitSpends: [] });
+const emptyState = (): State => ({ version: 8, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [], benefits: [], benefitSpends: [], bills: [], billExceptions: [], dailyExpenses: [] });
 
 // RN-05 (categories): names match ignoring case and surrounding spaces.
 const nameKey = (name: string) => name.trim().toLocaleLowerCase('pt-BR');
@@ -243,7 +262,13 @@ function migrateV5(old: StateV5): StateV6 {
 }
 
 // Benefits didn't exist before v7.
-const migrateV6 = (old: StateV6): State => ({ ...old, version: 7, benefits: [], benefitSpends: [] });
+const migrateV6 = (old: StateV6): StateV7 => ({ ...old, version: 7, benefits: [], benefitSpends: [] });
+
+// Fixed bills and daily expenses didn't exist before v8.
+const migrateV7 = (old: StateV7): State => ({
+  ...old, version: 8, bills: [], billExceptions: [], dailyExpenses: [],
+  benefits: old.benefits.map((b) => ({ ...b, splits: b.splits ?? [], closures: b.closures ?? [] })),
+});
 
 function migrate(old: Saved): State {
   if (old.version === 1) return migrate(migrateV1(old));
@@ -251,7 +276,8 @@ function migrate(old: Saved): State {
   if (old.version === 3) return migrate(migrateV3(old));
   if (old.version === 4) return migrate(migrateV4(old));
   if (old.version === 5) return migrate(migrateV5(old));
-  return migrateV6(old);
+  if (old.version === 6) return migrate(migrateV6(old));
+  return migrateV7(old);
 }
 
 let statePromise: Promise<State> | null = null;
@@ -269,12 +295,12 @@ function load(): Promise<State> {
     if (!value) return emptyState();
     try {
       const parsed = JSON.parse(value) as State | Saved;
-      if (parsed?.version === 7) {
+      if (parsed?.version === 8) {
         for (const b of parsed.benefits) { b.splits ??= []; b.closures ??= []; }
         return parsed;
       }
       const version: number | undefined = parsed?.version;
-      if (version !== 6 && version !== 5 && version !== 4 && version !== 3 && version !== 2 && version !== 1) return emptyState();
+      if (version !== 7 && version !== 6 && version !== 5 && version !== 4 && version !== 3 && version !== 2 && version !== 1) return emptyState();
       const migrated = migrate(parsed as Saved);
       // Saved right away so the data stays in this month even if the next
       // change only happens in a later month.
@@ -598,7 +624,7 @@ export async function getCategories(): Promise<Category[]> {
     .map((c) => ({
       ...c,
       movementCount: state.movements.filter((m) => m.categoryId === c.id && !isLinked(state, m)).length + state.purchases.filter((p) => p.categoryId === c.id).length
-        + state.benefitSpends.filter((x) => x.categoryId === c.id).length,
+        + state.benefitSpends.filter((x) => x.categoryId === c.id).length + state.dailyExpenses.filter((x) => x.categoryId === c.id).length,
     }))
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 }
@@ -744,6 +770,7 @@ export function deleteCategory(categoryId: number) {
     for (const m of state.movements) if (m.categoryId === categoryId) m.categoryId = null;
     for (const p of state.purchases) if (p.categoryId === categoryId) p.categoryId = null;
     for (const x of state.benefitSpends) if (x.categoryId === categoryId) x.categoryId = null;
+    for (const x of state.dailyExpenses) if (x.categoryId === categoryId) x.categoryId = null;
     for (const b of state.benefits) {
       for (const entry of b.splits) entry.items = entry.items.filter((i) => i.categoryId !== categoryId);
       b.closures = b.closures.filter((c) => c.categoryId !== categoryId);
@@ -899,13 +926,14 @@ export async function getIncomes(month: MonthKey): Promise<Incomes> {
   return { month, totalAmount: cents(items.reduce((sum, item) => sum + item.amount, 0)), items };
 }
 
-// RN-09: from the oldest income (never later than now) to a year ahead. With
-// no income at all only the current month opens.
+// RN-12: from the oldest income, bill or daily expense (never later than now)
+// to a year ahead. With none of them only the current month opens.
 export async function getIncomeRange(): Promise<IncomeRange> {
   const state = await load();
   const now = currentMonth();
-  if (!state.incomes.length) return { first: now, last: now };
-  return { first: state.incomes.reduce((min, i) => (i.firstMonth < min ? i.firstMonth : min), now), last: shiftMonth(now, 12) };
+  const firsts = [...state.incomes.map((i) => i.firstMonth), ...state.bills.map((b) => b.firstMonth), ...state.dailyExpenses.map((x) => monthOf(x.date))];
+  if (!firsts.length) return { first: now, last: now };
+  return { first: firsts.reduce((min, m) => (m < min ? m : min), now), last: shiftMonth(now, 12) };
 }
 
 export function createIncome(input: IncomeInput) {
@@ -1258,4 +1286,179 @@ export function reopenBenefitCategory(benefitId: number, categoryId: number, mon
     if (closure.from === month) benefit.closures = benefit.closures.filter((c) => c !== closure);
     else closure.to = month;
   });
+}
+
+// --- fixed bills ----------------------------------------------------------------
+
+const findBill = (state: State, billId: number) => {
+  const bill = state.bills.find((b) => b.id === billId);
+  if (!bill) throw new Error('Conta fixa não encontrada.');
+  return bill;
+};
+
+// RN-01: every month from firstMonth to lastMonth (or with no end).
+const billOccursIn = (bill: StoredBill, month: MonthKey) => month >= bill.firstMonth && (!bill.lastMonth || month <= bill.lastMonth);
+
+// RN-02: the month's exception, if any, overrides the rule or removes the month.
+function billOccurrenceOf(state: State, bill: StoredBill, month: MonthKey): BillOccurrence | null {
+  if (!billOccursIn(bill, month)) return null;
+  const exception = state.billExceptions.find((e) => e.billId === bill.id && e.month === month);
+  if (exception?.skip) return null;
+  return {
+    billId: bill.id, lastMonth: bill.lastMonth,
+    name: exception?.name ?? bill.name,
+    amount: exception?.amount ?? bill.amount,
+    date: incomeDate(month, exception?.day ?? bill.day),
+  };
+}
+
+const billsOf = (state: State, month: MonthKey) =>
+  state.bills.map((bill) => billOccurrenceOf(state, bill, month)).filter((item): item is BillOccurrence => item !== null);
+
+// RN-07
+function requireBill(input: BillInput) {
+  const name = requireText(input.name, 'Nome', 120);
+  const amount = requireAmount(input.amount, 'Valor');
+  const date = requireDate(input.date);
+  const month = monthOf(date);
+  let lastMonth: MonthKey | null = null;
+  if (input.lastMonth) {
+    if (!isMonthKey(input.lastMonth)) throw new Error('Mês inválido.');
+    if (input.lastMonth < month) throw new Error('O mês final deve ser igual ou posterior ao mês inicial.');
+    lastMonth = input.lastMonth;
+  }
+  return { name, amount, month, day: Number(date.slice(8, 10)), lastMonth };
+}
+
+function requireBillOccurrence(state: State, billId: number, month: MonthKey) {
+  const bill = findBill(state, billId);
+  if (!isMonthKey(month) || !billOccursIn(bill, month)) throw new Error('Esta conta fixa não ocorre neste mês.');
+  return bill;
+}
+
+const dropBillExceptionsFrom = (state: State, billId: number, month: MonthKey) => {
+  state.billExceptions = state.billExceptions.filter((e) => e.billId !== billId || e.month < month);
+};
+
+export async function getBills(month: MonthKey): Promise<Bills> {
+  const items = billsOf(await load(), month).sort((a, b) => a.date.localeCompare(b.date) || a.billId - b.billId);
+  return { month, totalAmount: sum(items.map((i) => i.amount)), items };
+}
+
+export function createBill(input: BillInput) {
+  return mutate((state) => {
+    const { month, ...fields } = requireBill(input);
+    const bill: StoredBill = { id: state.nextId++, firstMonth: month, ...fields };
+    state.bills.push(bill);
+    return bill;
+  });
+}
+
+// RN-09: like the recurring incomes, "month" adjusts one month and "forward" splits the rule.
+export function updateBill(billId: number, month: MonthKey, scope: IncomeScope, input: BillInput) {
+  return mutate((state) => {
+    const bill = requireBillOccurrence(state, billId, month);
+    const { month: inputMonth, ...fields } = requireBill(input);
+    if (inputMonth !== month) throw new Error(`A data deve estar dentro de ${monthLabel(month)}.`);
+    if (scope === 'month') {
+      state.billExceptions = state.billExceptions.filter((e) => !(e.billId === billId && e.month === month));
+      state.billExceptions.push({ billId, month, skip: false, name: fields.name, amount: fields.amount, day: fields.day });
+      return bill;
+    }
+    dropBillExceptionsFrom(state, billId, month);
+    if (month === bill.firstMonth) {
+      Object.assign(bill, fields);
+      return bill;
+    }
+    bill.lastMonth = shiftMonth(month, -1);
+    const next: StoredBill = { id: state.nextId++, firstMonth: month, ...fields };
+    state.bills.push(next);
+    return next;
+  });
+}
+
+// RN-10
+export function deleteBill(billId: number, month: MonthKey, scope: IncomeScope) {
+  return mutate((state) => {
+    const bill = requireBillOccurrence(state, billId, month);
+    if (scope === 'month') {
+      state.billExceptions = state.billExceptions.filter((e) => !(e.billId === billId && e.month === month));
+      state.billExceptions.push({ billId, month, skip: true });
+      return;
+    }
+    if (month === bill.firstMonth) {
+      state.bills = state.bills.filter((b) => b.id !== billId);
+      state.billExceptions = state.billExceptions.filter((e) => e.billId !== billId);
+      return;
+    }
+    bill.lastMonth = shiftMonth(month, -1);
+    dropBillExceptionsFrom(state, billId, month);
+  });
+}
+
+// --- daily expenses -------------------------------------------------------------
+
+// RN-08: any date up to the last day of the month a year ahead.
+function requireDailyExpense(state: State, categoryId: number | null, input: DailyExpenseInput) {
+  const date = requireDate(input.date);
+  if (date > lastDayOf(shiftMonth(currentMonth(), 12))) throw new Error('A data deve ser de até 12 meses à frente.');
+  return {
+    categoryId: requireCategory(state, categoryId),
+    description: requireText(input.description, 'Descrição', 200),
+    amount: requireAmount(input.amount, 'Valor'),
+    date,
+  };
+}
+
+// RF-07 / RF-08: the month's expenses, newest first, and the sum by category.
+export async function getDailyExpenses(month: MonthKey): Promise<DailyExpenses> {
+  const state = await load();
+  const items = state.dailyExpenses
+    .filter((x) => monthOf(x.date) === month)
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
+    .map((x) => ({ ...x, categoryName: categoryNameOf(state, x.categoryId) }));
+  const totalAmount = sum(items.map((x) => x.amount));
+  const byCategory = new Map<number | null, number>();
+  for (const x of items) byCategory.set(x.categoryId, cents((byCategory.get(x.categoryId) ?? 0) + x.amount));
+  const summary = [...byCategory.entries()]
+    .map(([categoryId, amount]) => ({ categoryId, name: categoryNameOf(state, categoryId), amount, percent: percent(amount, totalAmount) }))
+    .sort((a, b) => b.amount - a.amount);
+  return { month, totalAmount, items, summary };
+}
+
+export function createDailyExpense(categoryId: number | null, input: DailyExpenseInput) {
+  return mutate((state) => {
+    const expense: StoredDailyExpense = { id: state.nextId++, ...requireDailyExpense(state, categoryId, input) };
+    state.dailyExpenses.push(expense);
+    return expense;
+  });
+}
+
+export function updateDailyExpense(expenseId: number, categoryId: number | null, input: DailyExpenseInput) {
+  return mutate((state) => {
+    const expense = state.dailyExpenses.find((x) => x.id === expenseId);
+    if (!expense) throw new Error('Gasto não encontrado.');
+    Object.assign(expense, requireDailyExpense(state, categoryId, input));
+    return expense;
+  });
+}
+
+export function deleteDailyExpense(expenseId: number) {
+  return mutate((state) => {
+    if (!state.dailyExpenses.some((x) => x.id === expenseId)) throw new Error('Gasto não encontrado.');
+    state.dailyExpenses = state.dailyExpenses.filter((x) => x.id !== expenseId);
+  });
+}
+
+// --- month cash -----------------------------------------------------------------
+
+// RN-03 to RN-06: what comes in minus bills, daily expenses and what the cards used.
+// It only reads the cards (D7).
+export async function getMonthCash(month: MonthKey): Promise<MonthCash> {
+  const state = await load();
+  const incomeAmount = sum(state.incomes.map((i) => occurrenceOf(state, i, month)).filter((o): o is IncomeOccurrence => o !== null).map((o) => o.amount));
+  const billsAmount = sum(billsOf(state, month).map((b) => b.amount));
+  const dailyAmount = sum(state.dailyExpenses.filter((x) => monthOf(x.date) === month).map((x) => x.amount));
+  const cardsAmount = consolidatedOf(state, month).usedAmount;
+  return { month, incomeAmount, billsAmount, dailyAmount, cardsAmount, balanceAmount: cents(incomeAmount - billsAmount - dailyAmount - cardsAmount) };
 }

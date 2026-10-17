@@ -8,7 +8,7 @@ As funcionalidades estão descritas em BDD em [`FUNCIONALIDADES.md`](FUNCIONALID
 
 - A interface (`src/pages/dashboard.tsx`, `src/index.css`) é a mesma do app web.
 - O pacote `@workspace/api-client-react`, que no app web chama a API, aqui é um **alias** para `src/data/api.ts`. Esse módulo exporta os mesmos hooks (`useGetCard`, `useCreateMovement`, …), mas lê e grava localmente.
-- `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 7`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
+- `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 8`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
 - As fontes (Fraunces, DM Sans e DM Mono) vêm junto com o app via `@fontsource`, então funcionam offline.
 
 ### Compras e categorias
@@ -29,7 +29,7 @@ Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês 
 - Na virada do mês, o mês novo começa sozinho, com o limite atual do cartão, sem perguntar nada.
 - Cada mês guarda o limite do cartão da época. Editar o limite muda só o mês corrente daquele cartão.
 - Meses passados continuam editáveis. Um mês futuro abre até o último mês que tenha parcela prevista ou compra registrada: mostra as parcelas previstas e as compras já registradas, e aceita "Registrar compra", mas não é iniciado até chegar.
-- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, a `version: 4` acrescenta a lista vazia de compras parceladas, a `version: 5` acrescenta as listas vazias de entradas, a `version: 6` troca as categorias-envelope por categorias globais (os lançamentos viram compras no cartão em que estavam; orçamentos e o estado aberto/fechado são descartados), e a `version: 7` acrescenta as listas vazias de benefícios.
+- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, a `version: 4` acrescenta a lista vazia de compras parceladas, a `version: 5` acrescenta as listas vazias de entradas, a `version: 6` troca as categorias-envelope por categorias globais (os lançamentos viram compras no cartão em que estavam; orçamentos e o estado aberto/fechado são descartados), a `version: 7` acrescenta as listas vazias de benefícios, e a `version: 8` acrescenta as listas vazias de contas fixas e de gastos do dia a dia.
 
 ### Parcelamento
 
@@ -47,6 +47,14 @@ A especificação completa está em [`specs/entradas.md`](specs/entradas.md).
 - Salário, pró-labore e bônus ficam na aba **Entradas** (`#/entradas`, `#/entradas/mes/AAAA-MM`), separada dos cartões. As entradas são globais por mês e **não entram em nenhum cálculo dos cartões**.
 - Uma entrada pode se repetir todo mês, com mês final opcional. Os meses são calculados a partir da regra e não ficam gravados. Editar ou excluir uma ocorrência pergunta se vale "Só este mês" ou "Este e os próximos".
 - A navegação vai do mês da entrada mais antiga até 12 meses à frente.
+
+### Contas fixas, gastos do dia a dia e saldo
+
+A especificação completa está em [`specs/contas-e-gastos.md`](specs/contas-e-gastos.md). Tudo fica na aba **Entradas** (`#/entradas`).
+
+- **Conta fixa** (aluguel, internet…): despesa mensal com nome, valor, dia e mês final opcional. Como as entradas recorrentes, os meses são calculados e editar ou excluir pergunta "Só este mês" ou "Este e os próximos".
+- **Gasto do dia a dia**: despesa avulsa (descrição, valor, data) com categoria global opcional e um resumo por categoria no mês. Aceita datas até 12 meses à frente.
+- **Saldo do mês** = entradas − contas fixas − gastos do dia a dia − o usado dos cartões no mês. O saldo é de cada mês e não acumula. A tela **só lê** os cartões: nada daqui altera cartões, compras ou benefícios, e os benefícios não entram no saldo.
 
 ### Benefícios
 
@@ -70,6 +78,7 @@ Todos os valores abaixo são calculados **por cartão e dentro de um mês**, só
 | **Disponível** | limite do mês − usado |
 | Percentual | usado ÷ limite do mês (a barra é limitada a 100%) |
 | Resumo por categoria | soma das compras de cada categoria no mês e a participação no usado; compras sem categoria ficam em "Sem categoria" |
+| **Saldo do mês** (aba Entradas) | entradas − contas fixas − gastos do dia a dia − usado dos cartões |
 
 Não existe reserva de orçamento: o limite só é consumido pelo que foi de fato comprado. Remover um cartão apaga os meses, as compras e as compras parceladas dele, sem alterar os outros cartões nem as categorias.
 
