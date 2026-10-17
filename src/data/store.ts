@@ -27,8 +27,21 @@ export type StoredPurchase = {
   day: number;
 };
 
+export const INCOME_KINDS = ['salario', 'prolabore', 'bonus', 'outro'] as const;
+export type IncomeKind = (typeof INCOME_KINDS)[number];
+// Income is global (no card). A recurring one is a rule from firstMonth to
+// lastMonth (null = no end); its months are computed, never stored.
+export type StoredIncome = {
+  id: number; kind: IncomeKind; description: string; amount: number;
+  firstMonth: MonthKey; day: number; recurring: boolean; lastMonth: MonthKey | null;
+};
+// Adjusts a single month of a recurring income; skip removes that month.
+export type StoredIncomeException = {
+  incomeId: number; month: MonthKey; skip: boolean; amount?: number; description?: string; day?: number;
+};
+
 type State = {
-  version: 4;
+  version: 5;
   nextId: number;
   selectedCardId: number | null;
   cards: StoredCard[];
@@ -36,10 +49,13 @@ type State = {
   categories: StoredCategory[];
   movements: StoredMovement[];
   purchases: StoredPurchase[];
+  incomes: StoredIncome[];
+  incomeExceptions: StoredIncomeException[];
 };
 
 // Previous formats, kept only to migrate saved data.
-type StateV3 = Omit<State, 'version' | 'purchases'> & { version: 3 };
+type StateV4 = Omit<State, 'version' | 'incomes' | 'incomeExceptions'> & { version: 4 };
+type StateV3 = Omit<StateV4, 'version' | 'purchases'> & { version: 3 };
 type CardV2 = Omit<StoredCard, 'color'>;
 type StateV2 = {
   version: 2;
@@ -89,14 +105,20 @@ export type Consolidated = {
   percentUsed: number;
 };
 
+export type IncomeOccurrence = { incomeId: number; kind: IncomeKind; description: string; amount: number; date: string; recurring: boolean; lastMonth: MonthKey | null };
+export type Incomes = { month: MonthKey; totalAmount: number; items: IncomeOccurrence[] };
+export type IncomeRange = { first: MonthKey; last: MonthKey };
+export type IncomeScope = 'month' | 'forward';
+
 export type CardInput = { name: string; limitAmount: number; color?: CardColor };
 export type CategoryInput = { name: string; amount: number };
 export type MovementInput = { description: string; amount: number; date: string };
 // `installment` is the one that falls in the month of `date`; on create the
 // purchase starts there, on update `firstInstallment` says where it starts.
+export type IncomeInput = { kind: IncomeKind; description?: string; amount: number; date: string; recurring: boolean; lastMonth?: MonthKey | null };
 export type PurchaseInput = { description: string; totalAmount: number; installmentCount: number; installment: number; firstInstallment?: number; date: string };
 
-const emptyState = (): State => ({ version: 4, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [] });
+const emptyState = (): State => ({ version: 5, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [] });
 
 // Everything saved before the monthly history existed lands in the month the
 // app is first opened after the update. Movement dates are kept as they were.
@@ -128,7 +150,10 @@ function migrateV2(old: StateV2): StateV3 {
 }
 
 // Nothing was bought in installments before v4.
-const migrateV3 = (old: StateV3): State => ({ ...old, version: 4, purchases: [] });
+const migrateV3 = (old: StateV3): StateV4 => ({ ...old, version: 4, purchases: [] });
+
+// Income didn't exist before v5.
+const migrateV4 = (old: StateV4): State => ({ ...old, version: 5, incomes: [], incomeExceptions: [] });
 
 let statePromise: Promise<State> | null = null;
 let writeQueue: Promise<void> = Promise.resolve();
@@ -144,10 +169,11 @@ function load(): Promise<State> {
   statePromise ??= Preferences.get({ key: STORAGE_KEY }).then(({ value }) => {
     if (!value) return emptyState();
     try {
-      const parsed = JSON.parse(value) as State | StateV3 | StateV2 | StateV1;
-      if (parsed?.version === 4) return parsed;
-      if (parsed?.version !== 3 && parsed?.version !== 2 && parsed?.version !== 1) return emptyState();
-      const migrated = migrateV3(parsed.version === 3 ? parsed : migrateV2(parsed.version === 1 ? migrateV1(parsed) : parsed));
+      const parsed = JSON.parse(value) as State | StateV4 | StateV3 | StateV2 | StateV1;
+      if (parsed?.version === 5) return parsed;
+      if (parsed?.version !== 4 && parsed?.version !== 3 && parsed?.version !== 2 && parsed?.version !== 1) return emptyState();
+      const v4 = parsed.version === 4 ? parsed : migrateV3(parsed.version === 3 ? parsed : migrateV2(parsed.version === 1 ? migrateV1(parsed) : parsed));
+      const migrated = migrateV4(v4);
       // Saved right away so the data stays in this month even if the next
       // change only happens in a later month.
       void persist(migrated).catch(() => undefined);
@@ -740,5 +766,144 @@ export function deletePurchase(purchaseId: number) {
     state.movements = state.movements.filter((m) => m.purchaseId !== purchase.id || findCategory(state, m.categoryId).isClosed);
     for (const m of state.movements) if (m.purchaseId === purchase.id) delete m.purchaseId;
     state.purchases = state.purchases.filter((p) => p.id !== purchase.id);
+  });
+}
+
+// --- income -------------------------------------------------------------------
+
+const findIncome = (state: State, incomeId: number) => {
+  const income = state.incomes.find((i) => i.id === incomeId);
+  if (!income) throw new Error('Entrada não encontrada.');
+  return income;
+};
+
+// RN-01: a one-off income occurs in its own month; a recurring one from
+// firstMonth to lastMonth (or with no end).
+const incomeOccursIn = (income: StoredIncome, month: MonthKey) =>
+  income.recurring ? month >= income.firstMonth && (!income.lastMonth || month <= income.lastMonth) : month === income.firstMonth;
+
+// D10: the same day, or the month's last day when it has no such day.
+function incomeDate(month: MonthKey, day: number) {
+  const date = `${month}-${String(day).padStart(2, '0')}`;
+  const last = lastDayOf(month);
+  return date > last ? last : date;
+}
+
+const exceptionOf = (state: State, incomeId: number, month: MonthKey) =>
+  state.incomeExceptions.find((e) => e.incomeId === incomeId && e.month === month);
+
+// RN-02: the month's exception, if any, overrides the rule or removes the month.
+function occurrenceOf(state: State, income: StoredIncome, month: MonthKey): IncomeOccurrence | null {
+  if (!incomeOccursIn(income, month)) return null;
+  const exception = exceptionOf(state, income.id, month);
+  if (exception?.skip) return null;
+  return {
+    incomeId: income.id, kind: income.kind, recurring: income.recurring, lastMonth: income.lastMonth,
+    description: exception?.description ?? income.description,
+    amount: exception?.amount ?? income.amount,
+    date: incomeDate(month, exception?.day ?? income.day),
+  };
+}
+
+// RN-04
+function requireIncome(input: IncomeInput) {
+  if (!INCOME_KINDS.includes(input?.kind)) throw new Error('Tipo é obrigatório.');
+  const description = typeof input.description === 'string' ? input.description.trim() : '';
+  if (description.length > 200) throw new Error('Descrição deve ter no máximo 200 caracteres.');
+  const amount = Number(input.amount);
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error('Valor deve ser maior que zero.');
+  const date = requireDate(input.date);
+  const month = monthOf(date);
+  const recurring = Boolean(input.recurring);
+  let lastMonth: MonthKey | null = null;
+  if (recurring && input.lastMonth) {
+    if (!isMonthKey(input.lastMonth)) throw new Error('Mês inválido.');
+    if (input.lastMonth < month) throw new Error('O mês final deve ser igual ou posterior ao mês inicial.');
+    lastMonth = input.lastMonth;
+  }
+  return { kind: input.kind, description, amount: cents(amount), month, day: Number(date.slice(8, 10)), recurring, lastMonth };
+}
+
+const dropExceptionsFrom = (state: State, incomeId: number, month: MonthKey) => {
+  state.incomeExceptions = state.incomeExceptions.filter((e) => e.incomeId !== incomeId || e.month < month);
+};
+
+const removeIncome = (state: State, incomeId: number) => {
+  state.incomes = state.incomes.filter((i) => i.id !== incomeId);
+  state.incomeExceptions = state.incomeExceptions.filter((e) => e.incomeId !== incomeId);
+};
+
+function requireOccurrence(state: State, incomeId: number, month: MonthKey) {
+  const income = findIncome(state, incomeId);
+  if (!isMonthKey(month) || !incomeOccursIn(income, month)) throw new Error('Esta entrada não ocorre neste mês.');
+  return income;
+}
+
+export async function getIncomes(month: MonthKey): Promise<Incomes> {
+  const state = await load();
+  const items = state.incomes
+    .map((income) => occurrenceOf(state, income, month))
+    .filter((item): item is IncomeOccurrence => item !== null)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.incomeId - b.incomeId);
+  return { month, totalAmount: cents(items.reduce((sum, item) => sum + item.amount, 0)), items };
+}
+
+// RN-09: from the oldest income (never later than now) to a year ahead. With
+// no income at all only the current month opens.
+export async function getIncomeRange(): Promise<IncomeRange> {
+  const state = await load();
+  const now = currentMonth();
+  if (!state.incomes.length) return { first: now, last: now };
+  return { first: state.incomes.reduce((min, i) => (i.firstMonth < min ? i.firstMonth : min), now), last: shiftMonth(now, 12) };
+}
+
+export function createIncome(input: IncomeInput) {
+  return mutate((state) => {
+    const { month, ...fields } = requireIncome(input);
+    const income: StoredIncome = { id: state.nextId++, firstMonth: month, ...fields };
+    state.incomes.push(income);
+    return income;
+  });
+}
+
+// RN-05 / RN-06: "month" adjusts one month; "forward" splits the rule.
+export function updateIncome(incomeId: number, month: MonthKey, scope: IncomeScope, input: IncomeInput) {
+  return mutate((state) => {
+    const income = requireOccurrence(state, incomeId, month);
+    const { month: inputMonth, ...fields } = requireIncome(input);
+    if (!income.recurring) {
+      Object.assign(income, { firstMonth: inputMonth, ...fields });
+      return income;
+    }
+    if (inputMonth !== month) throw new Error(`A data deve estar dentro de ${monthLabel(month)}.`);
+    if (scope === 'month') {
+      state.incomeExceptions = state.incomeExceptions.filter((e) => !(e.incomeId === incomeId && e.month === month));
+      state.incomeExceptions.push({ incomeId, month, skip: false, amount: fields.amount, description: fields.description, day: fields.day });
+      return income;
+    }
+    dropExceptionsFrom(state, incomeId, month);
+    if (month === income.firstMonth) {
+      Object.assign(income, fields);
+      return income;
+    }
+    income.lastMonth = shiftMonth(month, -1);
+    const next: StoredIncome = { id: state.nextId++, firstMonth: month, ...fields };
+    state.incomes.push(next);
+    return next;
+  });
+}
+
+// RN-07 / RN-08
+export function deleteIncome(incomeId: number, month: MonthKey, scope: IncomeScope) {
+  return mutate((state) => {
+    const income = requireOccurrence(state, incomeId, month);
+    if (!income.recurring || (scope === 'forward' && month === income.firstMonth)) return removeIncome(state, incomeId);
+    if (scope === 'month') {
+      state.incomeExceptions = state.incomeExceptions.filter((e) => !(e.incomeId === incomeId && e.month === month));
+      state.incomeExceptions.push({ incomeId, month, skip: true });
+      return;
+    }
+    income.lastMonth = shiftMonth(month, -1);
+    dropExceptionsFrom(state, incomeId, month);
   });
 }

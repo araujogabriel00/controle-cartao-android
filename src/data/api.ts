@@ -10,7 +10,9 @@ export type {
   Card, Cards, CardColor, Category, Consolidated, Movement, Overview, MonthKey, MonthSummary, MonthStatus,
   FutureInstallments, MonthPreview, PlannedInstallment, StoredPurchase,
   CardInput, CategoryInput, MovementInput, PurchaseInput,
+  IncomeInput, IncomeKind, IncomeOccurrence, IncomeRange, IncomeScope, Incomes, StoredIncome,
 } from './store';
+export { INCOME_KINDS } from './store';
 
 type QueryOpts<T> = { query?: Partial<UseQueryOptions<T, Error, T, QueryKey>> };
 type MutationOpts<TData, TVars> = { mutation?: UseMutationOptions<TData, Error, TVars> };
@@ -35,6 +37,8 @@ export const getGetConsolidatedHistoryQueryKey = () => ['consolidated', 'history
 export const getGetFutureInstallmentsQueryKey = (cardId?: number) => key('installments', cardId);
 export const getGetMonthPreviewQueryKey = (cardId: number, month: store.MonthKey) => ['installments', cardId, 'preview', month] as const;
 export const getGetLastPlannedMonthQueryKey = () => ['installments', 'last'] as const;
+export const getGetIncomesQueryKey = (month?: store.MonthKey) => key('incomes', month);
+export const getGetIncomeRangeQueryKey = () => ['income-range'] as const;
 
 function useLocalQuery<T>(queryKey: QueryKey, queryFn: () => Promise<T>, options?: QueryOpts<T>) {
   return useQuery<T, Error, T, QueryKey>({ queryKey, queryFn, ...options?.query });
@@ -124,3 +128,18 @@ export const useUpdatePurchase = (options?: MutationOpts<store.StoredPurchase, {
 
 export const useDeletePurchase = (options?: MutationOpts<void, { purchaseId: number }>) =>
   useMutation({ mutationFn: ({ purchaseId }) => store.deletePurchase(purchaseId), ...options?.mutation });
+
+export const useGetIncomes = (month: store.MonthKey, options?: QueryOpts<store.Incomes>) =>
+  useLocalQuery(getGetIncomesQueryKey(month), () => store.getIncomes(month), options);
+
+export const useGetIncomeRange = (options?: QueryOpts<store.IncomeRange>) =>
+  useLocalQuery(getGetIncomeRangeQueryKey(), store.getIncomeRange, options);
+
+export const useCreateIncome = (options?: MutationOpts<store.StoredIncome, { data: store.IncomeInput }>) =>
+  useMutation({ mutationFn: ({ data }) => store.createIncome(data), ...options?.mutation });
+
+export const useUpdateIncome = (options?: MutationOpts<store.StoredIncome, { incomeId: number; month: store.MonthKey; scope: store.IncomeScope; data: store.IncomeInput }>) =>
+  useMutation({ mutationFn: ({ incomeId, month, scope, data }) => store.updateIncome(incomeId, month, scope, data), ...options?.mutation });
+
+export const useDeleteIncome = (options?: MutationOpts<void, { incomeId: number; month: store.MonthKey; scope: store.IncomeScope }>) =>
+  useMutation({ mutationFn: ({ incomeId, month, scope }) => store.deleteIncome(incomeId, month, scope), ...options?.mutation });
