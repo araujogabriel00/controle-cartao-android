@@ -8,17 +8,19 @@ export type { MonthKey } from '@/lib/format';
 export type { CardColor } from '@/lib/card-colors';
 export type StoredCard = { id: number; name: string; limitAmount: number; color: CardColor };
 export type StoredMonth = { cardId: number; month: MonthKey; limitAmount: number };
-export type StoredCategory = { id: number; cardId: number; month: MonthKey; name: string; amount: number; isClosed: boolean };
-// Installments carry the purchase they belong to; installmentCount stays even
-// after the purchase is gone, so a kept installment still shows "k/N".
+// Global (purchases and categories D2): no card, month or budget.
+export type StoredCategory = { id: number; name: string };
+// A purchase on a card; its month is monthOf(date). Installments carry the
+// purchase they belong to; installmentCount stays even after the purchase is
+// gone, so a kept installment still shows "k/N".
 export type StoredMovement = {
-  id: number; categoryId: number; description: string; amount: number; date: string;
+  id: number; cardId: number; categoryId: number | null; description: string; amount: number; date: string;
   purchaseId?: number; installment?: number; installmentCount?: number;
 };
 export type StoredPurchase = {
   id: number;
   cardId: number;
-  categoryName: string;
+  categoryId: number | null;
   description: string;
   totalAmount: number;
   installmentCount: number;
@@ -41,7 +43,7 @@ export type StoredIncomeException = {
 };
 
 type State = {
-  version: 5;
+  version: 6;
   nextId: number;
   selectedCardId: number | null;
   cards: StoredCard[];
@@ -54,7 +56,13 @@ type State = {
 };
 
 // Previous formats, kept only to migrate saved data.
-type StateV4 = Omit<State, 'version' | 'incomes' | 'incomeExceptions'> & { version: 4 };
+type OldCategory = { id: number; cardId: number; month: MonthKey; name: string; amount: number; isClosed: boolean };
+type OldMovement = Omit<StoredMovement, 'cardId' | 'categoryId'> & { categoryId: number };
+type OldPurchase = Omit<StoredPurchase, 'categoryId'> & { categoryName: string };
+type StateV5 = Omit<State, 'version' | 'categories' | 'movements' | 'purchases'> & {
+  version: 5; categories: OldCategory[]; movements: OldMovement[]; purchases: OldPurchase[];
+};
+type StateV4 = Omit<StateV5, 'version' | 'incomes' | 'incomeExceptions'> & { version: 4 };
 type StateV3 = Omit<StateV4, 'version' | 'purchases'> & { version: 3 };
 type CardV2 = Omit<StoredCard, 'color'>;
 type StateV2 = {
@@ -62,46 +70,48 @@ type StateV2 = {
   nextId: number;
   card: CardV2 | null;
   months: Omit<StoredMonth, 'cardId'>[];
-  categories: Omit<StoredCategory, 'cardId'>[];
-  movements: StoredMovement[];
+  categories: Omit<OldCategory, 'cardId'>[];
+  movements: OldMovement[];
 };
 type StateV1 = {
   version: 1;
   nextId: number;
   card: CardV2 | null;
-  categories: Omit<StoredCategory, 'cardId' | 'month'>[];
-  movements: StoredMovement[];
+  categories: Omit<OldCategory, 'cardId' | 'month'>[];
+  movements: OldMovement[];
 };
+type Saved = StateV5 | StateV4 | StateV3 | StateV2 | StateV1;
 
 // limitAmount is the limit of the requested month; currentLimitAmount is the card's own.
 export type Card = StoredCard & { currentLimitAmount: number; usedAmount: number; availableAmount: number; percentUsed: number };
 export type Cards = { selectedCardId: number | null; nextColor: CardColor; cards: Card[] };
-export type Category = StoredCategory & { usedAmount: number; availableAmount: number; percentUsed: number };
+export type Category = StoredCategory & { movementCount: number };
+export type CategorySummary = { categoryId: number | null; name: string | null; amount: number; percent: number };
 export type Movement = StoredMovement & {
+  categoryName: string | null;
   purchase?: { id: number; totalAmount: number; installmentCount: number; firstInstallment: number };
 };
-export type PlannedInstallment = { purchaseId: number; description: string; installment: number; installmentCount: number; amount: number; date: string };
-export type MonthPreview = { month: MonthKey; amount: number; groups: { categoryName: string; amount: number; installments: PlannedInstallment[] }[] };
+export type PlannedInstallment = {
+  purchaseId: number; description: string; installment: number; installmentCount: number; amount: number; date: string;
+  categoryId: number | null; categoryName: string | null;
+};
+export type MonthPreview = { month: MonthKey; amount: number; installments: PlannedInstallment[] };
 export type FutureInstallments = { month: MonthKey; amount: number; count: number };
-export type Overview = { openBudgetAmount: number; closedSpentAmount: number; openCategoryCount: number };
 export type MonthSummary = {
   month: MonthKey;
   limitAmount: number;
-  spentAmount: number;
-  plannedAmount: number;
-  committedAmount: number;
+  usedAmount: number;
+  availableAmount: number;
   percentUsed: number;
-  categoryCount: number;
   movementCount: number;
 };
-export type MonthStatus = { needsStart: boolean; previousMonth: MonthKey | null; previousHasCategories: boolean };
+export type MonthStatus = { needsStart: boolean };
 export type Consolidated = {
   month: MonthKey;
   cardCount: number;
   limitAmount: number;
-  committedAmount: number;
+  usedAmount: number;
   availableAmount: number;
-  spentAmount: number;
   percentUsed: number;
 };
 
@@ -111,14 +121,17 @@ export type IncomeRange = { first: MonthKey; last: MonthKey };
 export type IncomeScope = 'month' | 'forward';
 
 export type CardInput = { name: string; limitAmount: number; color?: CardColor };
-export type CategoryInput = { name: string; amount: number };
+export type CategoryInput = { name: string };
 export type MovementInput = { description: string; amount: number; date: string };
+export type IncomeInput = { kind: IncomeKind; description?: string; amount: number; date: string; recurring: boolean; lastMonth?: MonthKey | null };
 // `installment` is the one that falls in the month of `date`; on create the
 // purchase starts there, on update `firstInstallment` says where it starts.
-export type IncomeInput = { kind: IncomeKind; description?: string; amount: number; date: string; recurring: boolean; lastMonth?: MonthKey | null };
 export type PurchaseInput = { description: string; totalAmount: number; installmentCount: number; installment: number; firstInstallment?: number; date: string };
 
-const emptyState = (): State => ({ version: 5, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [] });
+const emptyState = (): State => ({ version: 6, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [] });
+
+// RN-05 (categories): names match ignoring case and surrounding spaces.
+const nameKey = (name: string) => name.trim().toLocaleLowerCase('pt-BR');
 
 // Everything saved before the monthly history existed lands in the month the
 // app is first opened after the update. Movement dates are kept as they were.
@@ -137,7 +150,7 @@ function migrateV1(old: StateV1): StateV2 {
 // The single card becomes the first (and selected) card, in the original green.
 function migrateV2(old: StateV2): StateV3 {
   const card = old.card;
-  if (!card) return { ...emptyState(), version: 3, nextId: old.nextId };
+  if (!card) return { version: 3, nextId: old.nextId, selectedCardId: null, cards: [], months: [], categories: [], movements: [] };
   return {
     version: 3,
     nextId: old.nextId,
@@ -153,7 +166,46 @@ function migrateV2(old: StateV2): StateV3 {
 const migrateV3 = (old: StateV3): StateV4 => ({ ...old, version: 4, purchases: [] });
 
 // Income didn't exist before v5.
-const migrateV4 = (old: StateV4): State => ({ ...old, version: 5, incomes: [], incomeExceptions: [] });
+const migrateV4 = (old: StateV4): StateV5 => ({ ...old, version: 5, incomes: [], incomeExceptions: [] });
+
+// RN-14: one global category per distinct name; budgets and open/closed are
+// dropped; every old movement becomes a purchase on its category's card.
+function migrateV5(old: StateV5): State {
+  const byName = new Map<string, StoredCategory>();
+  const categories: StoredCategory[] = [];
+  let nextId = old.nextId;
+  const categoryFor = (name: string) => {
+    const key = nameKey(name);
+    let category = byName.get(key);
+    if (!category) {
+      category = { id: nextId++, name: name.trim() };
+      byName.set(key, category);
+      categories.push(category);
+    }
+    return category.id;
+  };
+  for (const c of [...old.categories].sort((a, b) => a.id - b.id)) categoryFor(c.name);
+  const oldCategories = new Map(old.categories.map((c) => [c.id, c]));
+  const movements = old.movements.flatMap((m): StoredMovement[] => {
+    const category = oldCategories.get(m.categoryId);
+    if (!category) return [];
+    const { categoryId: _old, ...rest } = m;
+    return [{ ...rest, cardId: category.cardId, categoryId: categoryFor(category.name) }];
+  });
+  const purchases = old.purchases.map((p): StoredPurchase => {
+    const { categoryName, ...rest } = p;
+    return { ...rest, categoryId: categoryFor(categoryName) };
+  });
+  return { ...old, version: 6, nextId, categories, movements, purchases };
+}
+
+function migrate(old: Saved): State {
+  if (old.version === 1) return migrate(migrateV1(old));
+  if (old.version === 2) return migrate(migrateV2(old));
+  if (old.version === 3) return migrate(migrateV3(old));
+  if (old.version === 4) return migrate(migrateV4(old));
+  return migrateV5(old);
+}
 
 let statePromise: Promise<State> | null = null;
 let writeQueue: Promise<void> = Promise.resolve();
@@ -169,11 +221,11 @@ function load(): Promise<State> {
   statePromise ??= Preferences.get({ key: STORAGE_KEY }).then(({ value }) => {
     if (!value) return emptyState();
     try {
-      const parsed = JSON.parse(value) as State | StateV4 | StateV3 | StateV2 | StateV1;
-      if (parsed?.version === 5) return parsed;
-      if (parsed?.version !== 4 && parsed?.version !== 3 && parsed?.version !== 2 && parsed?.version !== 1) return emptyState();
-      const v4 = parsed.version === 4 ? parsed : migrateV3(parsed.version === 3 ? parsed : migrateV2(parsed.version === 1 ? migrateV1(parsed) : parsed));
-      const migrated = migrateV4(v4);
+      const parsed = JSON.parse(value) as State | Saved;
+      if (parsed?.version === 6) return parsed;
+      const version: number | undefined = parsed?.version;
+      if (version !== 5 && version !== 4 && version !== 3 && version !== 2 && version !== 1) return emptyState();
+      const migrated = migrate(parsed as Saved);
       // Saved right away so the data stays in this month even if the next
       // change only happens in a later month.
       void persist(migrated).catch(() => undefined);
@@ -197,16 +249,14 @@ async function mutate<T>(change: (state: State) => T): Promise<T> {
 }
 
 const cents = (value: number) => Math.round(value * 100) / 100;
+const sum = (values: number[]) => cents(values.reduce((total, value) => total + value, 0));
 const percent = (used: number, total: number) => (total > 0 ? (used / total) * 100 : 0);
 
-const categoriesOf = (state: State, cardId: number, month: MonthKey) => state.categories.filter((c) => c.cardId === cardId && c.month === month);
 const findMonth = (state: State, cardId: number, month: MonthKey) => state.months.find((m) => m.cardId === cardId && m.month === month);
 const cardOf = (state: State, cardId: number) => state.cards.find((c) => c.id === cardId);
+const categoryNameOf = (state: State, categoryId: number | null) => (categoryId === null ? null : state.categories.find((c) => c.id === categoryId)?.name ?? null);
 
 // --- installments -------------------------------------------------------------
-
-// RN-04: category names match ignoring case and surrounding spaces.
-const nameKey = (name: string) => name.trim().toLocaleLowerCase('pt-BR');
 
 // RN-01: the cents left over from the split go to installment 1.
 function installmentAmount(purchase: StoredPurchase, k: number) {
@@ -227,9 +277,11 @@ function installmentDate(purchase: StoredPurchase, k: number) {
 const installmentsOf = (purchase: StoredPurchase) =>
   Array.from({ length: purchase.installmentCount - purchase.firstInstallment + 1 }, (_, i) => purchase.firstInstallment + i);
 
+type Planned = PlannedInstallment & { cardId: number; month: MonthKey };
+
 // Installments of future months, which only exist as part of the purchase
 // until their month comes. A null cardId means every card.
-function plannedOf(state: State, cardId: number | null, month?: MonthKey) {
+function plannedOf(state: State, cardId: number | null, month?: MonthKey): Planned[] {
   const current = currentMonth();
   return state.purchases
     .filter((p) => cardId === null || p.cardId === cardId)
@@ -237,80 +289,58 @@ function plannedOf(state: State, cardId: number | null, month?: MonthKey) {
       .filter((k) => installmentMonth(p, k) > current && (!month || installmentMonth(p, k) === month))
       .map((k) => ({
         cardId: p.cardId,
-        categoryName: p.categoryName,
         month: installmentMonth(p, k),
-        installment: { purchaseId: p.id, description: p.description, installment: k, installmentCount: p.installmentCount, amount: installmentAmount(p, k), date: installmentDate(p, k) } as PlannedInstallment,
+        purchaseId: p.id,
+        description: p.description,
+        installment: k,
+        installmentCount: p.installmentCount,
+        amount: installmentAmount(p, k),
+        date: installmentDate(p, k),
+        categoryId: p.categoryId,
+        categoryName: categoryNameOf(state, p.categoryId),
       })));
 }
 
-function categoryUsed(state: State, categoryId: number) {
-  return cents(state.movements.filter((m) => m.categoryId === categoryId).reduce((sum, m) => sum + m.amount, 0));
+// --- month totals -------------------------------------------------------------
+
+const movementsOf = (state: State, cardId: number, month: MonthKey) =>
+  state.movements.filter((m) => m.cardId === cardId && monthOf(m.date) === month);
+
+// RN-01: the purchases of the month; a future month adds its planned installments.
+function usedOf(state: State, cardId: number, month: MonthKey) {
+  const planned = isFutureMonth(month) ? plannedOf(state, cardId, month).map((p) => p.amount) : [];
+  return sum([...movementsOf(state, cardId, month).map((m) => m.amount), ...planned]);
 }
 
-function toCategory(state: State, category: StoredCategory): Category {
-  const usedAmount = categoryUsed(state, category.id);
-  return { ...category, usedAmount, availableAmount: cents(category.amount - usedAmount), percentUsed: percent(usedAmount, category.amount) };
-}
-
-function overviewOf(state: State, cardId: number, month: MonthKey): Overview {
-  const categories = categoriesOf(state, cardId, month);
-  const open = categories.filter((c) => !c.isClosed);
-  const closed = categories.filter((c) => c.isClosed);
-  return {
-    openBudgetAmount: cents(open.reduce((sum, c) => sum + c.amount, 0)),
-    closedSpentAmount: cents(closed.reduce((sum, c) => sum + categoryUsed(state, c.id), 0)),
-    openCategoryCount: open.length,
-  };
-}
-
-// A month that was never started borrows the card's current limit.
+// A month that was never started (or is still in the future) borrows the card's current limit.
 function monthLimit(state: State, card: StoredCard, month: MonthKey) {
   return findMonth(state, card.id, month)?.limitAmount ?? card.limitAmount;
 }
 
 function summaryOf(state: State, card: StoredCard, month: MonthKey): MonthSummary {
-  // RN-14: a future month is a preview made only of its planned installments.
-  if (isFutureMonth(month)) {
-    const planned = plannedOf(state, card.id, month);
-    const amount = cents(planned.reduce((sum, p) => sum + p.installment.amount, 0));
-    return { month, limitAmount: card.limitAmount, spentAmount: amount, plannedAmount: 0, committedAmount: amount, percentUsed: percent(amount, card.limitAmount), categoryCount: 0, movementCount: planned.length };
-  }
-  const categories = categoriesOf(state, card.id, month);
-  const ids = new Set(categories.map((c) => c.id));
-  const movements = state.movements.filter((m) => ids.has(m.categoryId));
-  const { openBudgetAmount, closedSpentAmount } = overviewOf(state, card.id, month);
   const limitAmount = monthLimit(state, card, month);
-  const committedAmount = cents(openBudgetAmount + closedSpentAmount);
-  return {
-    month,
-    limitAmount,
-    spentAmount: cents(movements.reduce((sum, m) => sum + m.amount, 0)),
-    plannedAmount: openBudgetAmount,
-    committedAmount,
-    percentUsed: percent(committedAmount, limitAmount),
-    categoryCount: categories.length,
-    movementCount: movements.length,
-  };
+  const usedAmount = usedOf(state, card.id, month);
+  const movementCount = movementsOf(state, card.id, month).length + (isFutureMonth(month) ? plannedOf(state, card.id, month).length : 0);
+  return { month, limitAmount, usedAmount, availableAmount: cents(limitAmount - usedAmount), percentUsed: percent(usedAmount, limitAmount), movementCount };
 }
 
 function toCard(state: State, card: StoredCard, month: MonthKey): Card {
-  const { committedAmount, limitAmount, percentUsed } = summaryOf(state, card, month);
-  return { ...card, limitAmount, currentLimitAmount: card.limitAmount, usedAmount: committedAmount, availableAmount: cents(limitAmount - committedAmount), percentUsed };
+  const { usedAmount, limitAmount, availableAmount, percentUsed } = summaryOf(state, card, month);
+  return { ...card, limitAmount, currentLimitAmount: card.limitAmount, usedAmount, availableAmount, percentUsed };
 }
 
-// RN-02: every card counts, even the ones that haven't started this month.
+// RN-03: every card counts, even the ones that haven't started this month.
 function consolidatedOf(state: State, month: MonthKey): Consolidated {
   const summaries = state.cards.map((card) => summaryOf(state, card, month));
-  const limitAmount = cents(summaries.reduce((sum, s) => sum + s.limitAmount, 0));
-  const committedAmount = cents(summaries.reduce((sum, s) => sum + s.committedAmount, 0));
+  const limitAmount = sum(summaries.map((s) => s.limitAmount));
+  const usedAmount = sum(summaries.map((s) => s.usedAmount));
   return {
     month,
     cardCount: state.cards.length,
     limitAmount,
-    committedAmount,
-    availableAmount: cents(limitAmount - committedAmount),
-    spentAmount: cents(summaries.reduce((sum, s) => sum + s.spentAmount, 0)),
-    percentUsed: percent(committedAmount, limitAmount),
+    usedAmount,
+    availableAmount: cents(limitAmount - usedAmount),
+    percentUsed: percent(usedAmount, limitAmount),
   };
 }
 
@@ -353,12 +383,6 @@ function requireMonth(value: unknown): MonthKey {
   return month;
 }
 
-// RN-01 (monthly history): a movement's date must fall inside its category's month.
-function requireDateInMonth(date: string, month: MonthKey) {
-  if (monthOf(date) !== month) throw new Error(`A data deve estar dentro de ${monthLabel(month)}.`);
-  return date;
-}
-
 function requireColor(value: unknown): CardColor {
   if (!isCardColor(value)) throw new Error('Cor inválida.');
   return value;
@@ -369,6 +393,20 @@ function requireUniqueName(state: State, name: string, exceptId?: number) {
   const key = name.toLocaleLowerCase('pt-BR');
   if (state.cards.some((c) => c.id !== exceptId && c.name.trim().toLocaleLowerCase('pt-BR') === key)) throw new Error('Já existe um cartão com esse nome.');
   return name;
+}
+
+// RN-05 (categories)
+function requireCategoryName(state: State, value: unknown, exceptId?: number) {
+  const name = requireText(value, 'Nome da categoria', 120);
+  if (state.categories.some((c) => c.id !== exceptId && nameKey(c.name) === nameKey(name))) throw new Error('Já existe uma categoria com esse nome.');
+  return name;
+}
+
+// RN-04: the category is optional, but it must exist when given.
+function requireCategory(state: State, categoryId: number | null | undefined) {
+  if (categoryId === null || categoryId === undefined) return null;
+  if (!state.categories.some((c) => c.id === categoryId)) throw new Error('Categoria não encontrada.');
+  return categoryId;
 }
 
 function findCard(state: State, cardId: number) {
@@ -389,13 +427,9 @@ function findMovement(state: State, movementId: number) {
   return movement;
 }
 
-function requireOpen(category: StoredCategory) {
-  if (category.isClosed) throw new Error('A categoria está fechada.');
-}
-
 const isLinked = (state: State, movement: StoredMovement) => state.purchases.some((p) => p.id === movement.purchaseId);
 
-// RN-09: an installment only changes through its purchase.
+// RN-11: an installment only changes through its purchase.
 function requireStandalone(state: State, movement: StoredMovement) {
   if (isLinked(state, movement)) throw new Error('Este lançamento é uma parcela. Altere a compra parcelada.');
 }
@@ -407,6 +441,13 @@ function ensureMonth(state: State, card: StoredCard, month: MonthKey) {
   return true;
 }
 
+// RN-07: a purchase in a past or current month starts that month; a future
+// month stays unstarted until it arrives (D12).
+function ensureMonthOf(state: State, card: StoredCard, date: string) {
+  const month = monthOf(date);
+  if (!isFutureMonth(month)) ensureMonth(state, card, month);
+}
+
 function findPurchase(state: State, purchaseId: number) {
   const purchase = state.purchases.find((p) => p.id === purchaseId);
   if (!purchase) throw new Error('Compra parcelada não encontrada.');
@@ -416,40 +457,29 @@ function findPurchase(state: State, purchaseId: number) {
 const hasInstallment = (state: State, purchaseId: number, k: number) =>
   state.movements.some((m) => m.purchaseId === purchaseId && m.installment === k);
 
-// RN-03: records installment k, starting its month and creating the category
-// when needed. `created` holds the categories made in this pass, whose budget
-// grows with every installment they get (D6).
-function placeInstallment(state: State, purchase: StoredPurchase, k: number, created: Set<number>, into?: StoredCategory) {
-  const month = installmentMonth(purchase, k);
-  const amount = installmentAmount(purchase, k);
-  ensureMonth(state, findCard(state, purchase.cardId), month);
-  let category = into ?? categoriesOf(state, purchase.cardId, month).find((c) => nameKey(c.name) === nameKey(purchase.categoryName));
-  if (!category) {
-    category = { id: state.nextId++, cardId: purchase.cardId, month, name: purchase.categoryName, amount: 0, isClosed: false };
-    state.categories.push(category);
-    created.add(category.id);
-  }
-  if (category.isClosed) throw new Error(`A categoria ${category.name} está fechada em ${monthLabel(month)}.`);
-  if (created.has(category.id)) category.amount = cents(category.amount + amount);
+// RN-08: records installment k as a purchase, starting its month if needed.
+function placeInstallment(state: State, purchase: StoredPurchase, k: number) {
+  ensureMonth(state, findCard(state, purchase.cardId), installmentMonth(purchase, k));
   state.movements.push({
-    id: state.nextId++, categoryId: category.id, description: purchase.description, amount, date: installmentDate(purchase, k),
+    id: state.nextId++, cardId: purchase.cardId, categoryId: purchase.categoryId, description: purchase.description,
+    amount: installmentAmount(purchase, k), date: installmentDate(purchase, k),
     purchaseId: purchase.id, installment: k, installmentCount: purchase.installmentCount,
   });
 }
 
 // Records every missing installment of the card up to the current month.
-function syncPurchases(state: State, cardId: number, created = new Set<number>()) {
+function syncPurchases(state: State, cardId: number) {
   const current = currentMonth();
   for (const purchase of state.purchases.filter((p) => p.cardId === cardId)) {
     for (const k of installmentsOf(purchase)) {
       if (installmentMonth(purchase, k) > current) break;
-      if (!hasInstallment(state, purchase.id, k)) placeInstallment(state, purchase, k, created);
+      if (!hasInstallment(state, purchase.id, k)) placeInstallment(state, purchase, k);
     }
   }
 }
 
-// RN-05. On create the purchase starts at `installment`.
-function requirePurchase(input: PurchaseInput, category: StoredCategory, firstFallback?: number) {
+// RN-05 / RN-15. On create the purchase starts at `installment`.
+function requirePurchase(input: PurchaseInput, firstFallback?: number) {
   const installmentCount = Number(input.installmentCount);
   if (!Number.isInteger(installmentCount) || installmentCount < 2 || installmentCount > 24) throw new Error('Nº de parcelas deve ser de 2 a 24.');
   const installment = Number(input.installment);
@@ -459,16 +489,15 @@ function requirePurchase(input: PurchaseInput, category: StoredCategory, firstFa
   const minimum = cents(installmentCount * 0.01);
   const totalAmount = Number(input.totalAmount);
   if (!Number.isFinite(totalAmount) || cents(totalAmount) < minimum) throw new Error(`Valor total deve ser de pelo menos ${money(minimum)}.`);
-  const date = requireDateInMonth(requireDate(input.date), category.month);
+  const date = requireDate(input.date);
+  if (isFutureMonth(monthOf(date))) throw new Error('Compra parcelada não aceita data em mês futuro.');
   return {
-    categoryName: category.name,
     description: requireText(input.description, 'Descrição', 200),
     totalAmount: cents(totalAmount),
     installmentCount,
     firstInstallment,
-    firstMonth: shiftMonth(category.month, firstInstallment - installment),
+    firstMonth: shiftMonth(monthOf(date), firstInstallment - installment),
     day: Number(date.slice(8, 10)),
-    installment,
   };
 }
 
@@ -485,55 +514,73 @@ export async function getCard(cardId: number, month: MonthKey): Promise<Card | n
   return card ? toCard(state, card, month) : null;
 }
 
-export async function getOverview(cardId: number, month: MonthKey): Promise<Overview> {
-  return overviewOf(await load(), cardId, month);
-}
-
-export async function getCategories(cardId: number, month: MonthKey): Promise<Category[]> {
+// RF-03: the card's purchases of the month, newest first.
+export async function getMovements(cardId: number, month: MonthKey): Promise<Movement[]> {
   const state = await load();
-  return categoriesOf(state, cardId, month).map((c) => toCategory(state, c));
-}
-
-export async function getMovements(categoryId: number): Promise<Movement[]> {
-  const state = await load();
-  return state.movements
-    .filter((m) => m.categoryId === categoryId)
+  return movementsOf(state, cardId, month)
     .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
     .map((m) => {
       const purchase = state.purchases.find((p) => p.id === m.purchaseId);
-      return purchase ? { ...m, purchase: { id: purchase.id, totalAmount: purchase.totalAmount, installmentCount: purchase.installmentCount, firstInstallment: purchase.firstInstallment } } : m;
+      const base = { ...m, categoryName: categoryNameOf(state, m.categoryId) };
+      return purchase ? { ...base, purchase: { id: purchase.id, totalAmount: purchase.totalAmount, installmentCount: purchase.installmentCount, firstInstallment: purchase.firstInstallment } } : base;
     });
 }
 
-// RN-13: planned installments of the card, one entry per future month.
+// RF-05: amount and share of each category in the month, biggest first.
+export async function getCategorySummary(cardId: number, month: MonthKey): Promise<CategorySummary[]> {
+  const state = await load();
+  const rows = [
+    ...movementsOf(state, cardId, month).map((m) => ({ categoryId: m.categoryId, amount: m.amount })),
+    ...(isFutureMonth(month) ? plannedOf(state, cardId, month).map((p) => ({ categoryId: p.categoryId, amount: p.amount })) : []),
+  ];
+  const total = sum(rows.map((r) => r.amount));
+  const byCategory = new Map<number | null, number>();
+  for (const row of rows) byCategory.set(row.categoryId, cents((byCategory.get(row.categoryId) ?? 0) + row.amount));
+  return [...byCategory.entries()]
+    .map(([categoryId, amount]) => ({ categoryId, name: categoryNameOf(state, categoryId), amount, percent: percent(amount, total) }))
+    .sort((a, b) => b.amount - a.amount);
+}
+
+// RF-07: a purchase counts once, and so does an installment purchase.
+export async function getCategories(): Promise<Category[]> {
+  const state = await load();
+  return state.categories
+    .map((c) => ({
+      ...c,
+      movementCount: state.movements.filter((m) => m.categoryId === c.id && !isLinked(state, m)).length + state.purchases.filter((p) => p.categoryId === c.id).length,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+}
+
+// RF-11: planned installments and registered purchases of the card, one entry per future month.
 export async function getFutureInstallments(cardId: number): Promise<FutureInstallments[]> {
+  const state = await load();
   const byMonth = new Map<MonthKey, FutureInstallments>();
-  for (const { month, installment } of plannedOf(await load(), cardId)) {
+  const add = (month: MonthKey, amount: number) => {
     const entry = byMonth.get(month) ?? { month, amount: 0, count: 0 };
-    entry.amount = cents(entry.amount + installment.amount);
+    entry.amount = cents(entry.amount + amount);
     entry.count += 1;
     byMonth.set(month, entry);
-  }
+  };
+  for (const { month, amount } of plannedOf(state, cardId)) add(month, amount);
+  for (const m of state.movements) if (m.cardId === cardId && isFutureMonth(monthOf(m.date))) add(monthOf(m.date), m.amount);
   return [...byMonth.values()].sort((a, b) => a.month.localeCompare(b.month));
 }
 
-// RF-09: planned installments of the card in a future month, grouped by category name.
+// RF-10: planned installments of the card in a future month (read-only).
 export async function getMonthPreview(cardId: number, month: MonthKey): Promise<MonthPreview> {
-  const groups = new Map<string, MonthPreview['groups'][number]>();
-  for (const { categoryName, installment } of plannedOf(await load(), cardId, month)) {
-    const group = groups.get(nameKey(categoryName)) ?? { categoryName, amount: 0, installments: [] };
-    group.amount = cents(group.amount + installment.amount);
-    group.installments.push(installment);
-    groups.set(nameKey(categoryName), group);
-  }
-  const list = [...groups.values()];
-  for (const group of list) group.installments.sort((a, b) => a.date.localeCompare(b.date) || a.purchaseId - b.purchaseId);
-  return { month, amount: cents(list.reduce((sum, g) => sum + g.amount, 0)), groups: list };
+  const planned = plannedOf(await load(), cardId, month).sort((a, b) => a.date.localeCompare(b.date) || a.purchaseId - b.purchaseId);
+  return { month, amount: sum(planned.map((p) => p.amount)), installments: planned };
 }
 
-// RN-14: the furthest month a preview can open, across every card.
-export async function getLastPlannedMonth(): Promise<MonthKey | null> {
-  return plannedOf(await load(), null).map((p) => p.month).sort().at(-1) ?? null;
+// RN-13: the furthest future month that has a planned installment or a purchase, across every card.
+export async function getLastFutureMonth(): Promise<MonthKey | null> {
+  const state = await load();
+  const months = [
+    ...plannedOf(state, null).map((p) => p.month),
+    ...state.movements.map((m) => monthOf(m.date)).filter(isFutureMonth),
+  ];
+  return months.sort().at(-1) ?? null;
 }
 
 export async function getMonthHistory(cardId: number): Promise<MonthSummary[]> {
@@ -548,17 +595,7 @@ export async function getMonthHistory(cardId: number): Promise<MonthSummary[]> {
 
 export async function getMonthStatus(cardId: number): Promise<MonthStatus> {
   const state = await load();
-  const current = currentMonth();
-  const previousMonth = state.months
-    .filter((m) => m.cardId === cardId && m.month < current)
-    .map((m) => m.month)
-    .sort()
-    .at(-1) ?? null;
-  return {
-    needsStart: Boolean(cardOf(state, cardId)) && !findMonth(state, cardId, current),
-    previousMonth,
-    previousHasCategories: previousMonth !== null && categoriesOf(state, cardId, previousMonth).length > 0,
-  };
+  return { needsStart: Boolean(cardOf(state, cardId)) && !findMonth(state, cardId, currentMonth()) };
 }
 
 export async function getConsolidated(month: MonthKey): Promise<Consolidated> {
@@ -575,18 +612,12 @@ export async function getConsolidatedHistory(): Promise<Consolidated[]> {
 
 // --- months -----------------------------------------------------------------
 
-// Copies names and budgets from the same card only: the new categories start
-// open and empty. The installments come after the copy, so they land in the
-// copied categories (RN-15), and any month skipped on the way gets its own.
-export function startMonth(cardId: number, month: MonthKey, copyFrom: MonthKey | null) {
+// RN-07: the month starts by itself with the card's current limit, and the
+// installments that are due are recorded.
+export function startMonth(cardId: number, month: MonthKey) {
   return mutate((state) => {
     const card = findCard(state, cardId);
-    const target = requireMonth(month);
-    if (ensureMonth(state, card, target) && copyFrom) {
-      for (const source of categoriesOf(state, cardId, requireMonth(copyFrom))) {
-        state.categories.push({ id: state.nextId++, cardId, month: target, name: source.name, amount: source.amount, isClosed: false });
-      }
-    }
+    ensureMonth(state, card, requireMonth(month));
     syncPurchases(state, cardId);
   });
 }
@@ -624,15 +655,13 @@ export function saveCard(input: CardInput, mode: 'create' | 'update', cardId?: n
   });
 }
 
-// Removing a card wipes its months, categories and movements, and nothing else.
+// RN-12: removing a card wipes its months, purchases and installment purchases; categories stay.
 export function deleteCard(cardId: number) {
   return mutate((state) => {
     findCard(state, cardId);
-    const categoryIds = new Set(state.categories.filter((c) => c.cardId === cardId).map((c) => c.id));
     state.cards = state.cards.filter((c) => c.id !== cardId);
     state.months = state.months.filter((m) => m.cardId !== cardId);
-    state.categories = state.categories.filter((c) => c.cardId !== cardId);
-    state.movements = state.movements.filter((m) => !categoryIds.has(m.categoryId));
+    state.movements = state.movements.filter((m) => m.cardId !== cardId);
     state.purchases = state.purchases.filter((p) => p.cardId !== cardId);
     if (state.selectedCardId === cardId) state.selectedCardId = state.cards[0]?.id ?? null;
   });
@@ -640,13 +669,9 @@ export function deleteCard(cardId: number) {
 
 // --- categories -------------------------------------------------------------
 
-export function createCategory(cardId: number, month: MonthKey, input: CategoryInput) {
+export function createCategory(input: CategoryInput) {
   return mutate((state) => {
-    if (!state.cards.length) throw new Error('Cadastre um cartão antes de criar categorias.');
-    const card = findCard(state, cardId);
-    const target = requireMonth(month);
-    const category = { id: state.nextId++, cardId, month: target, name: requireText(input.name, 'Nome da categoria', 120), amount: requireAmount(input.amount, 'Orçamento planejado'), isClosed: false };
-    ensureMonth(state, card, target);
+    const category: StoredCategory = { id: state.nextId++, name: requireCategoryName(state, input.name) };
     state.categories.push(category);
     return category;
   });
@@ -655,53 +680,45 @@ export function createCategory(cardId: number, month: MonthKey, input: CategoryI
 export function updateCategory(categoryId: number, input: CategoryInput) {
   return mutate((state) => {
     const category = findCategory(state, categoryId);
-    category.name = requireText(input.name, 'Nome da categoria', 120);
-    category.amount = requireAmount(input.amount, 'Orçamento planejado');
-    // RN-11: the purchases with an installment here follow the new name.
-    const purchaseIds = new Set(state.movements.filter((m) => m.categoryId === category.id && m.purchaseId !== undefined).map((m) => m.purchaseId));
-    for (const purchase of state.purchases) if (purchaseIds.has(purchase.id)) purchase.categoryName = category.name;
+    category.name = requireCategoryName(state, input.name, category.id);
     return category;
   });
 }
 
-export function setCategoryClosed(categoryId: number, isClosed: boolean) {
-  return mutate((state) => {
-    const category = findCategory(state, categoryId);
-    category.isClosed = Boolean(isClosed);
-    return category;
-  });
-}
-
+// RN-06: purchases and installment purchases keep existing, without a category.
 export function deleteCategory(categoryId: number) {
   return mutate((state) => {
     findCategory(state, categoryId);
-    if (state.movements.some((m) => m.categoryId === categoryId && isLinked(state, m))) throw new Error('Esta categoria tem parcelas. Exclua a compra parcelada antes.');
     state.categories = state.categories.filter((c) => c.id !== categoryId);
-    state.movements = state.movements.filter((m) => m.categoryId !== categoryId);
+    for (const m of state.movements) if (m.categoryId === categoryId) m.categoryId = null;
+    for (const p of state.purchases) if (p.categoryId === categoryId) p.categoryId = null;
   });
 }
 
-// --- movements --------------------------------------------------------------
+// --- purchases (movements) ----------------------------------------------------
 
-export function createMovement(categoryId: number, input: MovementInput) {
+export function createMovement(cardId: number, categoryId: number | null, input: MovementInput) {
   return mutate((state) => {
-    const category = findCategory(state, categoryId);
-    requireOpen(category);
-    const movement = { id: state.nextId++, categoryId, description: requireText(input.description, 'Descrição', 200), amount: requireAmount(input.amount, 'Valor'), date: requireDateInMonth(requireDate(input.date), category.month) };
+    const card = findCard(state, cardId);
+    const movement: StoredMovement = {
+      id: state.nextId++, cardId, categoryId: requireCategory(state, categoryId),
+      description: requireText(input.description, 'Descrição', 200), amount: requireAmount(input.amount, 'Valor'), date: requireDate(input.date),
+    };
+    ensureMonthOf(state, card, movement.date);
     state.movements.push(movement);
     return movement;
   });
 }
 
-export function updateMovement(movementId: number, input: MovementInput) {
+export function updateMovement(movementId: number, categoryId: number | null, input: MovementInput) {
   return mutate((state) => {
     const movement = findMovement(state, movementId);
     requireStandalone(state, movement);
-    const category = findCategory(state, movement.categoryId);
-    requireOpen(category);
-    movement.description = requireText(input.description, 'Descrição', 200);
-    movement.amount = requireAmount(input.amount, 'Valor');
-    movement.date = requireDateInMonth(requireDate(input.date), category.month);
+    Object.assign(movement, {
+      categoryId: requireCategory(state, categoryId),
+      description: requireText(input.description, 'Descrição', 200), amount: requireAmount(input.amount, 'Valor'), date: requireDate(input.date),
+    });
+    ensureMonthOf(state, findCard(state, movement.cardId), movement.date);
     return movement;
   });
 }
@@ -710,61 +727,39 @@ export function deleteMovement(movementId: number) {
   return mutate((state) => {
     const movement = findMovement(state, movementId);
     requireStandalone(state, movement);
-    requireOpen(findCategory(state, movement.categoryId));
-    state.movements = state.movements.filter((m) => m.id !== movementId);
+    state.movements = state.movements.filter((m) => m.id !== movement.id);
   });
 }
 
-// --- purchases ----------------------------------------------------------------
+// --- installment purchases ----------------------------------------------------
 
-export function createPurchase(categoryId: number, input: PurchaseInput) {
+export function createPurchase(cardId: number, categoryId: number | null, input: PurchaseInput) {
   return mutate((state) => {
-    const category = findCategory(state, categoryId);
-    requireOpen(category);
-    const { installment, ...fields } = requirePurchase(input, category);
-    const purchase: StoredPurchase = { id: state.nextId++, cardId: category.cardId, ...fields };
+    findCard(state, cardId);
+    const purchase: StoredPurchase = { id: state.nextId++, cardId, categoryId: requireCategory(state, categoryId), ...requirePurchase(input) };
     state.purchases.push(purchase);
-    // The chosen category gets its installment even if another one shares the name.
-    placeInstallment(state, purchase, installment, new Set(), category);
-    syncPurchases(state, purchase.cardId);
+    syncPurchases(state, cardId);
     return purchase;
   });
 }
 
-// RN-06 / RN-07: everything is recalculated except the installments in closed
-// categories, which must keep their month and stay in the purchase.
-export function updatePurchase(purchaseId: number, categoryId: number, input: PurchaseInput) {
+// RN-09: every recorded installment is dropped and recorded again.
+export function updatePurchase(purchaseId: number, categoryId: number | null, input: PurchaseInput) {
   return mutate((state) => {
     const purchase = findPurchase(state, purchaseId);
-    const category = findCategory(state, categoryId);
-    if (category.cardId !== purchase.cardId) throw new Error('Categoria não encontrada.');
-    requireOpen(category);
-    const { installment, ...fields } = requirePurchase(input, category, purchase.firstInstallment);
-    const next: StoredPurchase = { ...purchase, ...fields };
-    const own = state.movements.filter((m) => m.purchaseId === purchase.id);
-    const fixed = own.filter((m) => findCategory(state, m.categoryId).isClosed);
-    for (const m of fixed) {
-      const k = m.installment ?? 0;
-      if (k < next.firstInstallment || k > next.installmentCount || installmentMonth(next, k) !== findCategory(state, m.categoryId).month) {
-        throw new Error(`A parcela ${k}/${purchase.installmentCount} está numa categoria fechada e não pode mudar de mês nem sair da compra.`);
-      }
-    }
-    const fixedIds = new Set(fixed.map((m) => m.id));
-    state.movements = state.movements.filter((m) => m.purchaseId !== purchase.id || fixedIds.has(m.id));
-    for (const m of fixed) m.installmentCount = next.installmentCount;
+    const next = { categoryId: requireCategory(state, categoryId), ...requirePurchase(input, purchase.firstInstallment) };
+    state.movements = state.movements.filter((m) => m.purchaseId !== purchase.id);
     Object.assign(purchase, next);
-    if (!hasInstallment(state, purchase.id, installment)) placeInstallment(state, purchase, installment, new Set(), category);
     syncPurchases(state, purchase.cardId);
     return purchase;
   });
 }
 
-// RN-08: installments in closed categories stay as ordinary movements.
+// RN-10
 export function deletePurchase(purchaseId: number) {
   return mutate((state) => {
     const purchase = findPurchase(state, purchaseId);
-    state.movements = state.movements.filter((m) => m.purchaseId !== purchase.id || findCategory(state, m.categoryId).isClosed);
-    for (const m of state.movements) if (m.purchaseId === purchase.id) delete m.purchaseId;
+    state.movements = state.movements.filter((m) => m.purchaseId !== purchase.id);
     state.purchases = state.purchases.filter((p) => p.id !== purchase.id);
   });
 }

@@ -8,31 +8,37 @@ As funcionalidades estão descritas em BDD em [`FUNCIONALIDADES.md`](FUNCIONALID
 
 - A interface (`src/pages/dashboard.tsx`, `src/index.css`) é a mesma do app web.
 - O pacote `@workspace/api-client-react`, que no app web chama a API, aqui é um **alias** para `src/data/api.ts`. Esse módulo exporta os mesmos hooks (`useGetCard`, `useCreateMovement`, …), mas lê e grava localmente.
-- `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 5`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
+- `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 6`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
 - As fontes (Fraunces, DM Sans e DM Mono) vêm junto com o app via `@fontsource`, então funcionam offline.
+
+### Compras e categorias
+
+A especificação completa está em [`specs/compras-e-categorias.md`](specs/compras-e-categorias.md).
+
+- As compras são registradas **direto no cartão**, sem planejamento prévio, e cada uma **consome o limite pelo valor gasto**. Gastar acima do limite é permitido (o disponível fica negativo).
+- A **categoria é opcional** e vem de uma lista **global**, a mesma para todos os cartões. Ela só classifica: não tem orçamento, mês nem estado aberto/fechado. Excluir uma categoria deixa as compras dela "Sem categoria".
+- A tela do cartão mostra a lista de compras do mês, o filtro por categoria e o resumo por categoria. As categorias são gerenciadas no diálogo "Categorias".
 
 ### Histórico mensal
 
-Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês do calendário**. As especificações completas estão em [`specs/historico-mensal.md`](specs/historico-mensal.md) e [`specs/multiplos-cartoes.md`](specs/multiplos-cartoes.md).
+Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês do calendário**: a data da compra define o mês dela. As especificações completas estão em [`specs/historico-mensal.md`](specs/historico-mensal.md) e [`specs/multiplos-cartoes.md`](specs/multiplos-cartoes.md).
 
-- O app aceita vários cartões, cada um com cor, limite, meses, categorias e lançamentos próprios. A troca é feita num carrossel horizontal no estilo das carteiras digitais, e o app lembra o último cartão usado.
-- Com 2 cartões ou mais, o painel mostra a faixa "Todos os cartões" (comprometido, disponível e limite somados no mês), e o histórico ganha uma linha com o total de cada mês.
-
-- Cada categoria pertence a um mês, e um lançamento só aceita data dentro do mês da sua categoria.
-- `#/` mostra o mês corrente, `#/mes/AAAA-MM` mostra um mês passado e `#/historico` lista todos os meses com seus totais. As rotas usam hash porque o bundle tem base relativa.
-- Na virada do mês, o app pergunta, para cada cartão, se quer copiar as categorias do mês anterior (abertas e sem lançamentos) ou começar do zero. Se o mês anterior não tinha categorias, o novo mês começa vazio sem perguntar.
+- O app aceita vários cartões, cada um com cor, limite, meses e compras próprios. A troca é feita num carrossel horizontal no estilo das carteiras digitais, e o app lembra o último cartão usado.
+- Com 2 cartões ou mais, o painel mostra a faixa "Todos os cartões" (usado, disponível e limite somados no mês), e o histórico ganha uma linha com o total de cada mês.
+- `#/` mostra o mês corrente, `#/mes/AAAA-MM` mostra outro mês e `#/historico` lista todos os meses com seus totais. As rotas usam hash porque o bundle tem base relativa.
+- Na virada do mês, o mês novo começa sozinho, com o limite atual do cartão, sem perguntar nada.
 - Cada mês guarda o limite do cartão da época. Editar o limite muda só o mês corrente daquele cartão.
-- Meses passados continuam editáveis; o que bloqueia alterações é a categoria estar fechada. Meses futuros abrem só como prévia das parcelas previstas, até o último mês com parcela, e não podem ser iniciados.
-- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, a `version: 4` acrescenta a lista vazia de compras parceladas, e a `version: 5` acrescenta as listas vazias de entradas.
+- Meses passados continuam editáveis. Um mês futuro abre até o último mês que tenha parcela prevista ou compra registrada: mostra as parcelas previstas e as compras já registradas, e aceita "Registrar compra", mas não é iniciado até chegar.
+- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, a `version: 4` acrescenta a lista vazia de compras parceladas, a `version: 5` acrescenta as listas vazias de entradas, e a `version: 6` troca as categorias-envelope por categorias globais (os lançamentos viram compras no cartão em que estavam; orçamentos e o estado aberto/fechado são descartados).
 
 ### Parcelamento
 
 A especificação completa está em [`specs/parcelamento.md`](specs/parcelamento.md).
 
-- Uma compra parcelada guarda o valor total, o nº de parcelas, a parcela inicial e o nome da categoria. A divisão é feita em centavos, e o resto fica na parcela 1.
-- Cada parcela vira um **lançamento comum** no mês em que cai, na categoria com o mesmo nome. A categoria é criada se não existir, com orçamento igual às parcelas. Por isso as regras de cálculo abaixo valem sem mudança: cada mês compromete só a sua parcela.
-- As parcelas de meses futuros não são gravadas. Elas são calculadas a partir da compra e gravadas quando o mês é iniciado, depois da cópia das categorias.
-- Editar ou excluir uma parcela muda a compra inteira, menos as parcelas que estão em categorias fechadas.
+- Uma compra parcelada guarda o valor total, o nº de parcelas, a parcela inicial e a categoria. A divisão é feita em centavos, e o resto fica na parcela 1.
+- Cada parcela vira uma **compra comum** no mês em que cai, na categoria da compra parcelada. A compra parcelada não aceita data em mês futuro.
+- As parcelas de meses futuros não são gravadas: elas são calculadas a partir da compra e gravadas quando o mês começa.
+- Editar ou excluir uma parcela muda a compra inteira, todas as parcelas.
 
 ### Entradas
 
@@ -44,19 +50,16 @@ A especificação completa está em [`specs/entradas.md`](specs/entradas.md).
 
 ### Regras de cálculo
 
-Todos os valores abaixo são calculados **por cartão e dentro de um mês**, só com as categorias daquele cartão naquele mês. O total "Todos os cartões" soma, para cada cartão, o limite do mês e o comprometido.
+Todos os valores abaixo são calculados **por cartão e dentro de um mês**, só com as compras daquele cartão naquele mês. O total "Todos os cartões" soma, para cada cartão, o limite do mês e o usado.
 
 | Valor | Cálculo |
 | ----- | ------- |
-| Usado da categoria | soma dos lançamentos da categoria |
-| Disponível da categoria | orçamento − usado |
-| **Valor do mês** | soma de todos os lançamentos do mês |
-| **Já comprometido (cartão)** | soma dos orçamentos das categorias **abertas** + soma do que foi gasto nas categorias **fechadas** |
-| Disponível para usar | limite do mês − comprometido |
-| Orçamentos em aberto | soma dos orçamentos das categorias abertas |
-| Categorias fechadas | soma do gasto nas categorias fechadas |
+| **Usado (cartão)** | soma das compras do cartão no mês. Num mês futuro, soma também as parcelas previstas |
+| **Disponível** | limite do mês − usado |
+| Percentual | usado ÷ limite do mês (a barra é limitada a 100%) |
+| Resumo por categoria | soma das compras de cada categoria no mês e a participação no usado; compras sem categoria ficam em "Sem categoria" |
 
-Uma categoria aberta reserva o orçamento inteiro no cartão. Ao ser fechada, ela libera a sobra e deixa comprometido só o valor gasto. Categorias fechadas não aceitam novos lançamentos nem alterações nos existentes. Remover um cartão apaga os meses, categorias e lançamentos dele, sem alterar os outros cartões.
+Não existe reserva de orçamento: o limite só é consumido pelo que foi de fato comprado. Remover um cartão apaga os meses, as compras e as compras parceladas dele, sem alterar os outros cartões nem as categorias.
 
 ## Como adicionar uma funcionalidade
 

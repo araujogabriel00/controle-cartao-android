@@ -204,9 +204,9 @@ Funcionalidade: Entradas
 
   # --- RN-10 / D3 --------------------------------------------------------------
   Cenário: Entradas não mexem nos cartões
-    Dado que o cartão "Nubank" tem R$ 800,00 comprometido em outubro de 2026
+    Dado que o cartão "Nubank" tem R$ 800,00 usados em outubro de 2026
     Quando eu registro um salário de R$ 5.000,00
-    Então o comprometido e o disponível do "Nubank" continuam iguais
+    Então o usado e o disponível do "Nubank" continuam iguais
 
   # --- RN-11 -------------------------------------------------------------------
   Cenário: Migração de dados antigos

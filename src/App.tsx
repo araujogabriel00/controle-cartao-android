@@ -2,7 +2,7 @@ import { type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { getGetIncomeRangeQueryKey, getGetLastPlannedMonthQueryKey, useGetIncomeRange, useGetLastPlannedMonth } from '@workspace/api-client-react';
+import { getGetIncomeRangeQueryKey, getGetLastFutureMonthQueryKey, useGetIncomeRange, useGetLastFutureMonth } from '@workspace/api-client-react';
 import { currentMonth, isFutureMonth, isMonthKey } from '@/lib/format';
 import NotFound from '@/pages/not-found';
 import Dashboard from '@/pages/dashboard';
@@ -23,7 +23,7 @@ const queryClient = new QueryClient();
 // past the last planned installment (installments RN-14); the current month
 // always lives at "/".
 function MonthRoute({ month }: { month: string }) {
-  const lastPlanned = useGetLastPlannedMonth({ query: { queryKey: getGetLastPlannedMonthQueryKey(), enabled: isMonthKey(month) && isFutureMonth(month) } });
+  const lastPlanned = useGetLastFutureMonth({ query: { queryKey: getGetLastFutureMonthQueryKey(), enabled: isMonthKey(month) && isFutureMonth(month) } });
   if (!isMonthKey(month) || month === currentMonth()) return <Redirect to="/" replace />;
   if (isFutureMonth(month)) {
     if (lastPlanned.isLoading) return null;
