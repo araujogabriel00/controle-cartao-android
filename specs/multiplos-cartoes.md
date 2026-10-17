@@ -6,6 +6,7 @@
 | Criada em | 10/10/2026 |
 | Escopo | `src/data/store.ts`, `src/data/api.ts`, `src/lib/`, `src/components/card-carousel.tsx`, `src/pages/*`, `FUNCIONALIDADES.md`, `specs/historico-mensal.md`, `README.md` |
 | Depende de | [`historico-mensal.md`](historico-mensal.md) |
+| Substituída em parte por | [`compras-e-categorias.md`](compras-e-categorias.md): o "comprometido" de cada cartão passa a ser o "usado" (soma das compras); categorias deixam de ser por cartão e passam a ser globais. |
 
 > Esta spec é a fonte da verdade da funcionalidade. A implementação segue a seção [Tarefas](#11-tarefas) e só termina quando todos os [Critérios de aceite](#10-critérios-de-aceite) forem atendidos. Mudanças de comportamento entram primeiro aqui e só depois no código.
 

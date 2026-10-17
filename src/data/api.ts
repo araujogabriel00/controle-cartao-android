@@ -7,7 +7,7 @@ import {
 import * as store from './store';
 
 export type {
-  Card, Cards, CardColor, Category, Consolidated, Movement, Overview, MonthKey, MonthSummary, MonthStatus,
+  Card, Cards, CardColor, Category, CategorySummary, Consolidated, Movement, MonthKey, MonthSummary, MonthStatus,
   FutureInstallments, MonthPreview, PlannedInstallment, StoredPurchase,
   CardInput, CategoryInput, MovementInput, PurchaseInput,
   IncomeInput, IncomeKind, IncomeOccurrence, IncomeRange, IncomeScope, Incomes, StoredIncome,
@@ -27,16 +27,16 @@ const key = (...parts: (string | number | undefined)[]) => {
 export const getHealthCheckQueryKey = () => ['health'] as const;
 export const getGetCardsQueryKey = (month?: store.MonthKey) => key('cards', month);
 export const getGetCardQueryKey = (cardId?: number, month?: store.MonthKey) => key('card', cardId, month);
-export const getGetOverviewQueryKey = (cardId?: number, month?: store.MonthKey) => key('overview', cardId, month);
-export const getGetCategoriesQueryKey = (cardId?: number, month?: store.MonthKey) => key('categories', cardId, month);
-export const getGetMovementsQueryKey = (categoryId: number) => ['movements', categoryId] as const;
+export const getGetCategoriesQueryKey = () => ['categories'] as const;
+export const getGetCategorySummaryQueryKey = (cardId?: number, month?: store.MonthKey) => key('category-summary', cardId, month);
+export const getGetMovementsQueryKey = (cardId?: number, month?: store.MonthKey) => key('movements', cardId, month);
 export const getGetMonthHistoryQueryKey = (cardId?: number) => key('months', cardId);
 export const getGetMonthStatusQueryKey = (cardId?: number) => key('months', cardId, 'status');
 export const getGetConsolidatedQueryKey = (month?: store.MonthKey) => key('consolidated', month);
 export const getGetConsolidatedHistoryQueryKey = () => ['consolidated', 'history'] as const;
 export const getGetFutureInstallmentsQueryKey = (cardId?: number) => key('installments', cardId);
 export const getGetMonthPreviewQueryKey = (cardId: number, month: store.MonthKey) => ['installments', cardId, 'preview', month] as const;
-export const getGetLastPlannedMonthQueryKey = () => ['installments', 'last'] as const;
+export const getGetLastFutureMonthQueryKey = () => ['installments', 'last'] as const;
 export const getGetIncomesQueryKey = (month?: store.MonthKey) => key('incomes', month);
 export const getGetIncomeRangeQueryKey = () => ['income-range'] as const;
 
@@ -54,14 +54,14 @@ export const useGetCards = (month: store.MonthKey, options?: QueryOpts<store.Car
 export const useGetCard = (cardId: number, month: store.MonthKey, options?: QueryOpts<store.Card | null>) =>
   useLocalQuery(getGetCardQueryKey(cardId, month), () => store.getCard(cardId, month), options);
 
-export const useGetOverview = (cardId: number, month: store.MonthKey, options?: QueryOpts<store.Overview>) =>
-  useLocalQuery(getGetOverviewQueryKey(cardId, month), () => store.getOverview(cardId, month), options);
+export const useGetCategories = (options?: QueryOpts<store.Category[]>) =>
+  useLocalQuery(getGetCategoriesQueryKey(), store.getCategories, options);
 
-export const useGetCategories = (cardId: number, month: store.MonthKey, options?: QueryOpts<store.Category[]>) =>
-  useLocalQuery(getGetCategoriesQueryKey(cardId, month), () => store.getCategories(cardId, month), options);
+export const useGetCategorySummary = (cardId: number, month: store.MonthKey, options?: QueryOpts<store.CategorySummary[]>) =>
+  useLocalQuery(getGetCategorySummaryQueryKey(cardId, month), () => store.getCategorySummary(cardId, month), options);
 
-export const useGetMovements = (categoryId: number, options?: QueryOpts<store.Movement[]>) =>
-  useLocalQuery(getGetMovementsQueryKey(categoryId), () => store.getMovements(categoryId), options);
+export const useGetMovements = (cardId: number, month: store.MonthKey, options?: QueryOpts<store.Movement[]>) =>
+  useLocalQuery(getGetMovementsQueryKey(cardId, month), () => store.getMovements(cardId, month), options);
 
 export const useGetMonthHistory = (cardId: number, options?: QueryOpts<store.MonthSummary[]>) =>
   useLocalQuery(getGetMonthHistoryQueryKey(cardId), () => store.getMonthHistory(cardId), options);
@@ -81,11 +81,11 @@ export const useGetFutureInstallments = (cardId: number, options?: QueryOpts<sto
 export const useGetMonthPreview = (cardId: number, month: store.MonthKey, options?: QueryOpts<store.MonthPreview>) =>
   useLocalQuery(getGetMonthPreviewQueryKey(cardId, month), () => store.getMonthPreview(cardId, month), options);
 
-export const useGetLastPlannedMonth = (options?: QueryOpts<store.MonthKey | null>) =>
-  useLocalQuery(getGetLastPlannedMonthQueryKey(), store.getLastPlannedMonth, options);
+export const useGetLastFutureMonth = (options?: QueryOpts<store.MonthKey | null>) =>
+  useLocalQuery(getGetLastFutureMonthQueryKey(), store.getLastFutureMonth, options);
 
-export const useStartMonth =(options?: MutationOpts<void, { cardId: number; month: store.MonthKey; copyFrom: store.MonthKey | null }>) =>
-  useMutation({ mutationFn: ({ cardId, month, copyFrom }) => store.startMonth(cardId, month, copyFrom), ...options?.mutation });
+export const useStartMonth = (options?: MutationOpts<void, { cardId: number; month: store.MonthKey }>) =>
+  useMutation({ mutationFn: ({ cardId, month }) => store.startMonth(cardId, month), ...options?.mutation });
 
 export const useSelectCard = (options?: MutationOpts<void, { cardId: number }>) =>
   useMutation({ mutationFn: ({ cardId }) => store.selectCard(cardId), ...options?.mutation });
@@ -99,8 +99,8 @@ export const useUpdateCard = (options?: MutationOpts<store.StoredCard, { cardId:
 export const useDeleteCard = (options?: MutationOpts<void, { cardId: number }>) =>
   useMutation({ mutationFn: ({ cardId }) => store.deleteCard(cardId), ...options?.mutation });
 
-export const useCreateCategory = (options?: MutationOpts<store.StoredCategory, { cardId: number; month: store.MonthKey; data: store.CategoryInput }>) =>
-  useMutation({ mutationFn: ({ cardId, month, data }) => store.createCategory(cardId, month, data), ...options?.mutation });
+export const useCreateCategory = (options?: MutationOpts<store.StoredCategory, { data: store.CategoryInput }>) =>
+  useMutation({ mutationFn: ({ data }) => store.createCategory(data), ...options?.mutation });
 
 export const useUpdateCategory = (options?: MutationOpts<store.StoredCategory, { categoryId: number; data: store.CategoryInput }>) =>
   useMutation({ mutationFn: ({ categoryId, data }) => store.updateCategory(categoryId, data), ...options?.mutation });
@@ -108,22 +108,19 @@ export const useUpdateCategory = (options?: MutationOpts<store.StoredCategory, {
 export const useDeleteCategory = (options?: MutationOpts<void, { categoryId: number }>) =>
   useMutation({ mutationFn: ({ categoryId }) => store.deleteCategory(categoryId), ...options?.mutation });
 
-export const useSetCategoryClosed = (options?: MutationOpts<store.StoredCategory, { categoryId: number; data: { isClosed: boolean } }>) =>
-  useMutation({ mutationFn: ({ categoryId, data }) => store.setCategoryClosed(categoryId, data.isClosed), ...options?.mutation });
+export const useCreateMovement = (options?: MutationOpts<store.StoredMovement, { cardId: number; categoryId: number | null; data: store.MovementInput }>) =>
+  useMutation({ mutationFn: ({ cardId, categoryId, data }) => store.createMovement(cardId, categoryId, data), ...options?.mutation });
 
-export const useCreateMovement = (options?: MutationOpts<store.Movement, { categoryId: number; data: store.MovementInput }>) =>
-  useMutation({ mutationFn: ({ categoryId, data }) => store.createMovement(categoryId, data), ...options?.mutation });
-
-export const useUpdateMovement = (options?: MutationOpts<store.Movement, { movementId: number; data: store.MovementInput }>) =>
-  useMutation({ mutationFn: ({ movementId, data }) => store.updateMovement(movementId, data), ...options?.mutation });
+export const useUpdateMovement = (options?: MutationOpts<store.StoredMovement, { movementId: number; categoryId: number | null; data: store.MovementInput }>) =>
+  useMutation({ mutationFn: ({ movementId, categoryId, data }) => store.updateMovement(movementId, categoryId, data), ...options?.mutation });
 
 export const useDeleteMovement = (options?: MutationOpts<void, { movementId: number }>) =>
   useMutation({ mutationFn: ({ movementId }) => store.deleteMovement(movementId), ...options?.mutation });
 
-export const useCreatePurchase = (options?: MutationOpts<store.StoredPurchase, { categoryId: number; data: store.PurchaseInput }>) =>
-  useMutation({ mutationFn: ({ categoryId, data }) => store.createPurchase(categoryId, data), ...options?.mutation });
+export const useCreatePurchase = (options?: MutationOpts<store.StoredPurchase, { cardId: number; categoryId: number | null; data: store.PurchaseInput }>) =>
+  useMutation({ mutationFn: ({ cardId, categoryId, data }) => store.createPurchase(cardId, categoryId, data), ...options?.mutation });
 
-export const useUpdatePurchase = (options?: MutationOpts<store.StoredPurchase, { purchaseId: number; categoryId: number; data: store.PurchaseInput }>) =>
+export const useUpdatePurchase = (options?: MutationOpts<store.StoredPurchase, { purchaseId: number; categoryId: number | null; data: store.PurchaseInput }>) =>
   useMutation({ mutationFn: ({ purchaseId, categoryId, data }) => store.updatePurchase(purchaseId, categoryId, data), ...options?.mutation });
 
 export const useDeletePurchase = (options?: MutationOpts<void, { purchaseId: number }>) =>
