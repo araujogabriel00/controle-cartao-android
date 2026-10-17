@@ -8,6 +8,7 @@ import {
   useCreateCard, useUpdateCard, useDeleteCard, useSelectCard, useCreateCategory, useUpdateCategory, useDeleteCategory,
   useCreateMovement, useUpdateMovement, useDeleteMovement, useStartMonth,
   useCreatePurchase, useUpdatePurchase, useDeletePurchase, useGetLastFutureMonth, useGetMonthPreview,
+  useCreateRecurring, useUpdateRecurring, useDeleteRecurring,
   getGetLastFutureMonthQueryKey, getGetMonthPreviewQueryKey,
   type Cards, type Category, type Movement, type PlannedInstallment,
 } from '@workspace/api-client-react';
@@ -18,11 +19,12 @@ import {
 import { CardCarousel, type CarouselCard } from '@/components/card-carousel';
 import { AppTabs } from '@/components/app-tabs';
 import { CategoriesDialog } from '@/components/categories-dialog';
+import { ScopeDialog } from '@/components/scope-dialog';
 import { Progress } from '@/components/progress';
 import { dialogOverlay, dialogPanel } from '@/lib/dialog-styles';
 import { CARD_COLOR_KEYS, CARD_COLORS, type CardColor } from '@/lib/card-colors';
 import {
-  capitalize, currentMonth, dateLabel, defaultDateFor, firstDayOf, isFutureMonth,
+  capitalize, currentMonth, dateLabel, defaultDateFor, firstDayOf, isFutureMonth, lastDayOf,
   money, monthLabel, monthName, monthOf, monthPath, plural, shiftMonth, type MonthKey,
 } from '@/lib/format';
 
@@ -31,11 +33,13 @@ type DialogRecord = {
   id?: number; categoryId?: number | null; name?: string; amount?: number; limitAmount?: number; color?: CardColor; description?: string; date?: string;
   // Installment purchases: `amount` is the purchase total and `installment` the one in this month.
   isPurchase?: boolean; purchaseId?: number; installmentCount?: number; installment?: number; firstInstallment?: number;
+  // Recurring purchases: `amount` is the monthly value; `scope` is what an edit applies to (RF-04).
+  isRecurring?: boolean; recurringId?: number; lastMonth?: string | null; scope?: 'month' | 'forward';
 };
 // One line of the month's list: a registered purchase or a planned installment (future months).
 type Row = {
   key: string; description: string; date: string; amount: number; categoryId: number | null; categoryName: string | null;
-  installment?: number; installmentCount?: number; movement?: Movement; planned?: PlannedInstallment;
+  installment?: number; installmentCount?: number; recurring?: boolean; movement?: Movement; planned?: PlannedInstallment;
 };
 
 // Same split as the data layer: the leftover cents go to installment 1.
@@ -65,15 +69,22 @@ function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
   const [installmentCount, setInstallmentCount] = useState(String(initial.installmentCount ?? 2));
   const [installment, setInstallment] = useState(String(initial.installment ?? 1));
   const [firstInstallment, setFirstInstallment] = useState(String(initial.firstInstallment ?? 1));
+  // D2: a recurring purchase repeats every month; it never shares the form with an installment purchase.
+  const [isRecurring, setIsRecurring] = useState(Boolean(initial.isRecurring));
+  const [lastMonth, setLastMonth] = useState<string>(initial.lastMonth ?? '');
   const isEdit = Boolean(initial.id);
   const editsPurchase = isEdit && Boolean(initial.purchaseId);
+  const editsRecurring = isEdit && Boolean(initial.recurringId);
+  const onlyThisMonth = initial.scope === 'month';
+  const chargeMonth = (initial.date ?? date).slice(0, 7);
   const title = kind === 'card' ? (isEdit ? 'Ajustar cartão' : 'Seu cartão')
+    : isRecurring ? (isEdit ? 'Editar compra recorrente' : 'Nova compra recorrente')
     : isPurchase ? (isEdit ? 'Editar compra parcelada' : 'Nova compra parcelada') : (isEdit ? 'Editar compra' : 'Nova compra');
   const split = isPurchase ? splitPreview(Number(amount), Number(installmentCount), Number(installment), date) : null;
   const submit = (event: FormEvent) => {
     event.preventDefault();
     onSave(kind === 'card' ? { name, limitAmount: Number(amount), color }
-      : { description, amount: Number(amount), date, categoryId: categoryId ? Number(categoryId) : null, isPurchase, installmentCount: Number(installmentCount), installment: Number(installment), firstInstallment: editsPurchase ? Number(firstInstallment) : undefined });
+      : { description, amount: Number(amount), date, categoryId: categoryId ? Number(categoryId) : null, isPurchase, installmentCount: Number(installmentCount), installment: Number(installment), firstInstallment: editsPurchase ? Number(firstInstallment) : undefined, isRecurring, lastMonth: isRecurring && lastMonth ? lastMonth : null });
   };
   // Scrolls (instead of clipping) when the keyboard shrinks the viewport, and stays clear of the system bars.
   const closeOnBackdrop = (event: MouseEvent<HTMLDivElement>) => { if (event.target === event.currentTarget) onClose(); };
@@ -85,22 +96,31 @@ function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
       {kind === 'movement' ? <>
         <label className="field-label">O que foi?</label><input data-testid="input-movement-description" required maxLength={200} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex.: mercado da semana" className="field-input mb-4"/>
         <label className="field-label">Categoria</label>
-        <div className="relative mb-4"><select data-testid="select-movement-category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="field-input appearance-none"><option value="">Sem categoria</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><ChevronDown className="pointer-events-none absolute right-4 top-3.5 text-[#768579]" size={16}/></div>
+        <div className="relative mb-4"><select data-testid="select-movement-category" disabled={onlyThisMonth} value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="field-input appearance-none disabled:opacity-60"><option value="">Sem categoria</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><ChevronDown className="pointer-events-none absolute right-4 top-3.5 text-[#768579]" size={16}/></div>
         {(!isEdit || editsPurchase) && <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-[#e6dfd1] bg-[#f4f0e6] px-4 py-3">
           <span id="purchase-switch-label" className="text-[13px] font-semibold text-[#3d5948]">Compra parcelada</span>
-          <button type="button" role="switch" data-testid="switch-installments" aria-checked={isPurchase} aria-labelledby="purchase-switch-label" disabled={isEdit} onClick={() => setIsPurchase(!isPurchase)} className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-70 ${isPurchase ? 'bg-[#28513f]' : 'bg-[#cfc8b9]'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${isPurchase ? 'left-[22px]' : 'left-0.5'}`}/></button>
+          <button type="button" role="switch" data-testid="switch-installments" aria-checked={isPurchase} aria-labelledby="purchase-switch-label" disabled={isEdit} onClick={() => { setIsPurchase(!isPurchase); if (!isPurchase) setIsRecurring(false); }} className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-70 ${isPurchase ? 'bg-[#28513f]' : 'bg-[#cfc8b9]'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${isPurchase ? 'left-[22px]' : 'left-0.5'}`}/></button>
+        </div>}
+        {!isEdit && <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-[#e6dfd1] bg-[#f4f0e6] px-4 py-3">
+          <span id="recurring-switch-label" className="text-[13px] font-semibold text-[#3d5948]">Compra recorrente</span>
+          <button type="button" role="switch" data-testid="switch-recurring" aria-checked={isRecurring} aria-labelledby="recurring-switch-label" onClick={() => { setIsRecurring(!isRecurring); if (!isRecurring) setIsPurchase(false); }} className={`relative h-6 w-11 shrink-0 rounded-full transition ${isRecurring ? 'bg-[#28513f]' : 'bg-[#cfc8b9]'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${isRecurring ? 'left-[22px]' : 'left-0.5'}`}/></button>
         </div>}
       </> : <>
         <label className="field-label">Nome do cartão</label><input data-testid="input-card-name" required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Cartão principal" className="field-input mb-4"/>
       </>}
-      <label className="field-label">{kind === 'card' ? 'Limite total' : isPurchase ? 'Valor total da compra' : 'Valor da compra'}</label>
+      <label className="field-label">{kind === 'card' ? 'Limite total' : isPurchase ? 'Valor total da compra' : isRecurring ? 'Valor mensal' : 'Valor da compra'}</label>
       <div className="relative mb-4"><span className="absolute left-4 top-3 text-[#7d887d]">R$</span><input data-testid={kind === 'card' ? 'input-card-limit' : 'input-movement-amount'} required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="field-input pl-12"/></div>
       {kind === 'movement' && isPurchase && <div className={`mb-4 grid gap-3 ${editsPurchase ? 'grid-cols-3' : 'grid-cols-2'}`}>
         <div className="min-w-0"><label htmlFor="input-installment-count" className="field-label">Nº de parcelas</label><input id="input-installment-count" data-testid="input-installment-count" required type="number" step="1" value={installmentCount} onChange={(e) => setInstallmentCount(e.target.value)} className="field-input"/></div>
         <div className="min-w-0"><label htmlFor="input-installment" className="field-label">Parcela neste mês</label><input id="input-installment" data-testid="input-installment" required type="number" step="1" value={installment} onChange={(e) => setInstallment(e.target.value)} className="field-input"/></div>
         {editsPurchase && <div className="min-w-0"><label htmlFor="input-first-installment" className="field-label">Começa na parcela</label><input id="input-first-installment" data-testid="input-first-installment" required type="number" step="1" value={firstInstallment} onChange={(e) => setFirstInstallment(e.target.value)} className="field-input"/></div>}
       </div>}
-      {kind === 'movement' && <><label className="field-label">Data da compra</label><input data-testid="input-movement-date" required type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`field-input ${isPurchase ? 'mb-3' : 'mb-6'}`}/></>}
+      {kind === 'movement' && <><label className="field-label">Data da compra</label><input data-testid="input-movement-date" required type="date" min={editsRecurring ? firstDayOf(chargeMonth) : undefined} max={editsRecurring ? lastDayOf(chargeMonth) : undefined} value={date} onChange={(e) => setDate(e.target.value)} className={`field-input ${isPurchase || isRecurring ? 'mb-3' : 'mb-6'}`}/></>}
+      {kind === 'movement' && isRecurring && <div className="mb-6 space-y-3">
+        {!onlyThisMonth && <div><label htmlFor="input-recurring-last-month" className="field-label">Até (mês, opcional)</label><input id="input-recurring-last-month" data-testid="input-recurring-last-month" type="month" value={lastMonth} onChange={(e) => setLastMonth(e.target.value)} className="field-input"/></div>}
+        {date && <p data-testid="text-recurring-preview" className="text-[11px] text-[#5d7364]"><b className="font-semibold text-[#3d5948]">Todo mês, dia {Number(date.slice(8, 10))}</b>, a partir de {monthLabel(date.slice(0, 7))} · {lastMonth && !onlyThisMonth ? `até ${monthLabel(lastMonth)}` : 'sem data final'}</p>}
+        {editsRecurring && <p data-testid="text-recurring-warning" className="rounded-xl bg-[#f5e9e1] px-3 py-2 text-[11px] leading-5 text-[#8c5a4c]">{onlyThisMonth ? `A mudança vale só para ${monthLabel(chargeMonth)}.` : 'As mudanças valem deste mês em diante.'}</p>}
+      </div>}
       {kind === 'movement' && isPurchase && <div className="mb-6 space-y-2">
         {split && <p data-testid="text-installment-preview" className="text-[11px] text-[#5d7364]"><b className="font-semibold text-[#3d5948]">{installmentCount}x de {money(split.base)}</b> · última em {split.lastLabel}{split.first !== split.base && <> · 1ª de {money(split.first)}</>}</p>}
         {editsPurchase && <p data-testid="text-purchase-warning" className="rounded-xl bg-[#f5e9e1] px-3 py-2 text-[11px] leading-5 text-[#8c5a4c]">As mudanças valem para todas as parcelas.</p>}
@@ -141,6 +161,8 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   const [showCategories, setShowCategories] = useState(false);
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
   const [showAll, setShowAll] = useState(false);
+  // RF-04 / RF-05: editing or deleting a charge of a recurring purchase asks for the scope first.
+  const [scopeAsk, setScopeAsk] = useState<{ action: 'edit' | 'delete'; movement: Movement } | null>(null);
 
   // Prefix keys: refreshes every card and month, plus the history, the totals and the planned installments.
   const refresh = () => {
@@ -171,18 +193,21 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   const createPurchase = useCreatePurchase({ mutation: { onSuccess: () => { refresh(); setDialog(null); notify('Compra parcelada registrada.'); }, onError: failed } });
   const updatePurchase = useUpdatePurchase({ mutation: { onSuccess: () => { refresh(); setDialog(null); notify('Compra parcelada atualizada.'); }, onError: failed } });
   const deletePurchase = useDeletePurchase({ mutation: { onSuccess: () => { refresh(); notify('Compra parcelada removida.'); }, onError: failed } });
+  const createRecurring = useCreateRecurring({ mutation: { onSuccess: () => { refresh(); setDialog(null); notify('Compra recorrente registrada.'); }, onError: failed } });
+  const updateRecurring = useUpdateRecurring({ mutation: { onSuccess: () => { refresh(); setDialog(null); notify('Compra recorrente atualizada.'); }, onError: failed } });
+  const deleteRecurring = useDeleteRecurring({ mutation: { onSuccess: () => { refresh(); notify('Compra recorrente removida.'); }, onError: failed } });
   const startMonth = useStartMonth({ mutation: { onSuccess: () => refresh(), onError: failed } });
   // RF-12: the new month starts by itself, with no question.
   useEffect(() => {
     if (card && isCurrentMonth && monthStatus?.needsStart && !startMonth.isPending) startMonth.mutate({ cardId: card.id, month });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card?.id, isCurrentMonth, month, monthStatus?.needsStart]);
-  const isMutating = createCard.isPending || updateCard.isPending || createMovement.isPending || updateMovement.isPending || createPurchase.isPending || updatePurchase.isPending;
+  const isMutating = createCard.isPending || updateCard.isPending || createMovement.isPending || updateMovement.isPending || createPurchase.isPending || updatePurchase.isPending || createRecurring.isPending || updateRecurring.isPending;
 
   const movements = movementsQuery.data ?? [];
   const rows: Row[] = [
-    ...movements.map((movement): Row => ({ key: `m${movement.id}`, description: movement.description, date: movement.date, amount: movement.amount, categoryId: movement.categoryId, categoryName: movement.categoryName, installment: movement.installment, installmentCount: movement.purchase?.installmentCount ?? movement.installmentCount, movement })),
-    ...(isFuture ? (preview?.installments ?? []).map((planned): Row => ({ key: `p${planned.purchaseId}-${planned.installment}`, description: planned.description, date: planned.date, amount: planned.amount, categoryId: planned.categoryId, categoryName: planned.categoryName, installment: planned.installment, installmentCount: planned.installmentCount, planned })) : []),
+    ...movements.map((movement): Row => ({ key: `m${movement.id}`, description: movement.description, date: movement.date, amount: movement.amount, categoryId: movement.categoryId, categoryName: movement.categoryName, installment: movement.installment, installmentCount: movement.purchase?.installmentCount ?? movement.installmentCount, recurring: movement.recurringId !== undefined, movement })),
+    ...(isFuture ? (preview?.installments ?? []).map((planned): Row => ({ key: `p${planned.kind}${planned.purchaseId ?? planned.recurringId}-${planned.installment ?? 0}`, description: planned.description, date: planned.date, amount: planned.amount, categoryId: planned.categoryId, categoryName: planned.categoryName, installment: planned.installment, installmentCount: planned.installmentCount, recurring: planned.kind === 'recurring', planned })) : []),
   ].sort(sortRows);
   const chips = summary.map((item) => ({ key: filterKey(item.categoryId), label: item.name ?? 'Sem categoria' }));
   const activeFilter = chips.some((chip) => chip.key === filter) ? filter : 'all';
@@ -199,6 +224,12 @@ export default function Dashboard({ month }: { month: MonthKey }) {
     }
     const categoryId = values.categoryId ?? null;
     const date = values.date ?? defaultDateFor(month);
+    if (values.isRecurring) {
+      const data = { description: values.description ?? '', amount: Number(values.amount), date, lastMonth: values.lastMonth ?? null };
+      if (dialog.initial.recurringId) updateRecurring.mutate({ recurringId: dialog.initial.recurringId, month: monthOf(dialog.initial.date ?? date), scope: dialog.initial.scope ?? 'forward', categoryId, data });
+      else if (card) createRecurring.mutate({ cardId: card.id, categoryId, data });
+      return;
+    }
     if (values.isPurchase) {
       const data = { description: values.description ?? '', totalAmount: Number(values.amount), installmentCount: Number(values.installmentCount), installment: Number(values.installment), firstInstallment: values.firstInstallment, date };
       if (dialog.initial.purchaseId) updatePurchase.mutate({ purchaseId: dialog.initial.purchaseId, categoryId, data }); else if (card) createPurchase.mutate({ cardId: card.id, categoryId, data });
@@ -208,13 +239,27 @@ export default function Dashboard({ month }: { month: MonthKey }) {
     }
   };
   const askDelete = (label: string) => window.confirm(`Remover ${label}? Esta ação não pode ser desfeita.`);
-  const editMovement = (movement: Movement) => setDialog({
+  const editMovement = (movement: Movement) => movement.recurring ? setScopeAsk({ action: 'edit', movement }) : setDialog({
     kind: 'movement',
     initial: movement.purchase
       ? { id: movement.id, categoryId: movement.categoryId, description: movement.description, amount: movement.purchase.totalAmount, date: movement.date, isPurchase: true, purchaseId: movement.purchase.id, installmentCount: movement.purchase.installmentCount, installment: movement.installment, firstInstallment: movement.purchase.firstInstallment }
       : { id: movement.id, categoryId: movement.categoryId, description: movement.description, amount: movement.amount, date: movement.date },
   });
+  const chooseScope = (scope: 'month' | 'forward') => {
+    if (!scopeAsk?.movement.recurring) return;
+    const { action, movement } = scopeAsk;
+    const recurring = movement.recurring!;
+    const chargeMonth = monthOf(movement.date);
+    setScopeAsk(null);
+    if (action === 'edit') {
+      setDialog({ kind: 'movement', initial: { id: movement.id, categoryId: movement.categoryId, description: movement.description, amount: movement.amount, date: movement.date, isRecurring: true, recurringId: recurring.id, lastMonth: recurring.lastMonth, scope } });
+      return;
+    }
+    const what = scope === 'month' ? `“${movement.description}” só em ${monthLabel(chargeMonth)}` : `“${movement.description}” de ${monthLabel(chargeMonth)} em diante`;
+    if (askDelete(what)) deleteRecurring.mutate({ recurringId: recurring.id, month: chargeMonth, scope });
+  };
   const removeMovement = (movement: Movement) => {
+    if (movement.recurring) { setScopeAsk({ action: 'delete', movement }); return; }
     if (movement.purchase) { if (window.confirm(`Remover a compra parcelada “${movement.description}” e todas as suas parcelas? Esta ação não pode ser desfeita.`)) deletePurchase.mutate({ purchaseId: movement.purchase.id }); }
     else if (askDelete(`a compra “${movement.description}”`)) deleteMovement.mutate({ movementId: movement.id });
   };
@@ -240,7 +285,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
         <div className="min-w-0 text-center"><p data-testid="text-month" className="truncate font-display text-[17px] text-[#234638]">{capitalize(monthLabel(month))}</p>{!isCurrentMonth && <button data-testid="button-current-month" onClick={() => navigate('/')} className="text-[10px] font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4">Voltar para o mês atual</button>}</div>
         <button data-testid="button-next-month" aria-label="Próximo mês" disabled={!canGoNext} onClick={() => navigate(monthPath(shiftMonth(month, 1)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#546b5d] transition hover:bg-[#ece7dc] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"><ChevronRight size={17}/></button>
       </nav>
-      {isFuture && <p data-testid="text-preview-banner" className="enter mt-3 flex items-start gap-2 rounded-2xl border border-[#e6d7b8] bg-[#f8efd9] px-4 py-3 text-[11px] leading-5 text-[#7a6a45]"><CalendarDays size={14} className="mt-0.5 shrink-0"/><span><b className="font-semibold">{capitalize(monthName(month))} ainda não começou:</b> aparecem as parcelas previstas e as compras já registradas.</span></p>}
+      {isFuture && <p data-testid="text-preview-banner" className="enter mt-3 flex items-start gap-2 rounded-2xl border border-[#e6d7b8] bg-[#f8efd9] px-4 py-3 text-[11px] leading-5 text-[#7a6a45]"><CalendarDays size={14} className="mt-0.5 shrink-0"/><span><b className="font-semibold">{capitalize(monthName(month))} ainda não começou:</b> aparecem as parcelas e cobranças previstas e as compras já registradas.</span></p>}
 
       <section className="enter mt-9 flex flex-col justify-between gap-5 sm:mt-12 sm:flex-row sm:items-end" style={{ animationDelay: '.06s' }}>
         <div><p className="font-mono-data text-[10px] uppercase tracking-[.2em] text-[#9a8d71]">Seu dinheiro, com intenção</p><h1 className="mt-2 font-display text-[42px] leading-[1.05] tracking-[-.03em] text-[#234638] sm:text-[54px]">Tudo no seu <em className="font-medium text-[#d78470]">lugar.</em></h1><p className="mt-3 max-w-lg text-sm leading-6 text-[#6e7a6f]">Registre cada compra, veja quanto do limite já foi usado e acompanhe seu mês sem surpresas.</p></div>
@@ -289,7 +334,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
               {(showAll ? visibleRows : visibleRows.slice(0, 8)).map((row) => <div data-testid={row.movement ? `row-movement-${row.movement.id}` : `row-planned-${row.key}`} key={row.key} className="group flex items-center gap-3 px-4 py-3.5 sm:px-5">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#f1e9df] text-[#bb7865]"><ArrowUpRight size={16}/></span>
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-2 text-[12px] font-semibold text-[#3d5948]"><span className="truncate">{row.description}</span>{row.installment && <span data-testid={row.movement ? `badge-installment-${row.movement.id}` : undefined} className="shrink-0 rounded-full bg-[#ece6da] px-2 py-0.5 font-mono-data text-[9px] font-medium text-[#6f7a6e]">{row.installment}/{row.installmentCount}</span>}{row.planned && <span className="shrink-0 rounded-full bg-[#f8efd9] px-2 py-0.5 text-[9px] font-medium text-[#7a6a45]">prevista</span>}</p>
+                  <p className="flex items-center gap-2 text-[12px] font-semibold text-[#3d5948]"><span className="truncate">{row.description}</span>{row.installment && <span data-testid={row.movement ? `badge-installment-${row.movement.id}` : undefined} className="shrink-0 rounded-full bg-[#ece6da] px-2 py-0.5 font-mono-data text-[9px] font-medium text-[#6f7a6e]">{row.installment}/{row.installmentCount}</span>}{row.recurring && <span data-testid="badge-recurring" className="shrink-0 rounded-full bg-[#e4ece2] px-2 py-0.5 text-[9px] font-semibold text-[#52735c]">Mensal</span>}{row.planned && <span className="shrink-0 rounded-full bg-[#f8efd9] px-2 py-0.5 text-[9px] font-medium text-[#7a6a45]">prevista</span>}</p>
                   <p className="mt-1 flex items-center gap-2 text-[10px] text-[#8b9185]"><span className="flex items-center gap-1"><CalendarDays size={11}/>{dateLabel(row.date)}</span>{row.categoryName && <span data-testid="text-movement-category" className="truncate rounded-full bg-[#e4ece2] px-2 py-0.5 text-[9px] font-medium text-[#52735c]">{row.categoryName}</span>}</p>
                 </div>
                 <div className="text-right"><p className="font-mono-data text-[12px] text-[#a36354]">− {money(row.amount)}</p>{row.movement && <div className="mt-1 flex justify-end gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100"><button aria-label="Editar compra" onClick={() => editMovement(row.movement!)} className="rounded p-1 text-[#7c897e] hover:bg-[#eee9df]"><FilePenLine size={12}/></button><button aria-label="Excluir compra" onClick={() => removeMovement(row.movement!)} className="rounded p-1 text-[#ad6a5a] hover:bg-[#f4e8e1]"><Trash2 size={12}/></button></div>}</div>
@@ -315,6 +360,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
       <footer className="mt-12 flex flex-col justify-between gap-2 border-t border-[#ded8ca] pt-4 text-[10px] text-[#919489] sm:flex-row"><span>Um jeito mais gentil de acompanhar o que importa.</span><span className="font-mono-data tracking-wide">CONTROLE DO CARTÃO · 01</span></footer>
     </div>
     {dialog && <Dialog kind={dialog.kind} initial={dialog.initial} month={month} categories={categories} busy={isMutating} onClose={() => setDialog(null)} onSave={submitDialog}/>}
+    {scopeAsk && <ScopeDialog subject="compra recorrente" action={scopeAsk.action} month={monthOf(scopeAsk.movement.date)} onChoose={chooseScope} onClose={() => setScopeAsk(null)}/>}
     {showCategories && <CategoriesDialog categories={categories} busy={createCategory.isPending || updateCategory.isPending} onClose={() => setShowCategories(false)} onCreate={(name) => createCategory.mutate({ data: { name } })} onRename={(id, name) => updateCategory.mutate({ categoryId: id, data: { name } })} onDelete={removeCategory}/>}
     {toast && <div role="status" data-testid="status-toast" className={`fixed bottom-5 left-4 right-4 z-[60] mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-full px-4 py-3 text-xs font-semibold text-white shadow-lg sm:left-auto sm:right-5 sm:mx-0 ${toast.error ? 'bg-[#a85e50]' : 'bg-[#28513f]'}`}><Check size={14} className="shrink-0"/><span className="min-w-0">{toast.text}</span></div>}
   </main>;
