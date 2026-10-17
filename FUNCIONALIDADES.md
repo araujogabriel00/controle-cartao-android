@@ -9,6 +9,8 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 > O app aceita **vários cartões**, e cada um tem o próprio limite, meses, categorias e lançamentos. As categorias, os lançamentos, a visão geral e o histórico mostram sempre o **cartão selecionado** no carrossel. Os detalhes estão na seção [10. Múltiplos cartões](#10-múltiplos-cartões) e na spec [`specs/multiplos-cartoes.md`](specs/multiplos-cartoes.md).
 >
 > Uma **compra parcelada** vira um lançamento comum em cada mês em que cai, e os meses futuros abrem só como prévia das parcelas. Os detalhes estão na seção [11. Parcelamento](#11-parcelamento) e na spec [`specs/parcelamento.md`](specs/parcelamento.md).
+>
+> As **entradas** (salário, pró-labore, bônus) ficam numa aba própria, separada dos cartões, e não entram em nenhum cálculo deles. Os detalhes estão na seção [12. Entradas](#12-entradas) e na spec [`specs/entradas.md`](specs/entradas.md).
 
 ## Sumário
 
@@ -23,6 +25,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 9. [Histórico mensal](#9-histórico-mensal)
 10. [Múltiplos cartões](#10-múltiplos-cartões)
 11. [Parcelamento](#11-parcelamento)
+12. [Entradas](#12-entradas)
 
 ---
 
@@ -777,4 +780,75 @@ Funcionalidade: Parcelamento
   Cenário: Parcela não se altera sozinha
     Quando eu clico em "Excluir lançamento" numa parcela
     Então o sistema pede confirmação para remover a compra parcelada e todas as suas parcelas
+```
+
+---
+
+## 12. Entradas
+
+Resumo das entradas de dinheiro. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/entradas.md`](specs/entradas.md).
+
+```gherkin
+# language: pt
+
+Funcionalidade: Entradas
+  Como pessoa que recebe salário, pró-labore e bônus
+  Quero registrar minhas entradas separadas dos cartões
+  Para saber quanto entra em cada mês
+
+  Cenário: Abrir a aba de entradas
+    Dado que estou no painel de um cartão
+    Quando eu toco na aba "Entradas"
+    Então vejo a tela de entradas do mês corrente
+    E o painel do cartão não mostra nenhuma entrada
+
+  Cenário: Mês sem entradas
+    Dado que não há entradas
+    Quando eu abro a aba "Entradas"
+    Então vejo "Nenhuma entrada neste mês." e o total R$ 0,00
+
+  Cenário: Registrar uma entrada avulsa
+    Quando eu toco em "Nova entrada"
+    E escolho o tipo "Bônus", o valor "1500" e uma data do mês
+    E toco em "Adicionar"
+    Então a lista do mês tem "Bônus" com R$ 1.500,00 e o total do mês é R$ 1.500,00
+    E o mês seguinte não tem essa entrada
+
+  Cenário: Registrar um salário que se repete todo mês
+    Quando eu registro "Salário" de R$ 5.000,00 ligando "Repetir todo mês"
+    Então o mês e os seguintes mostram "Salário" com o selo "Mensal"
+    E os meses anteriores não têm essa entrada
+
+  @regra
+  Cenário: Repetição com mês final e dia 31
+    Dado que registro uma entrada no dia 31 repetindo até um mês final
+    Então os meses depois do final não têm a entrada
+    E nos meses sem dia 31 a data é o último dia do mês
+
+  Cenário: Editar só um mês de uma entrada recorrente
+    Dado que o "Salário" de R$ 5.000,00 se repete todo mês
+    Quando eu edito o mês seguinte, escolho "Só este mês" e mudo o valor para "5500"
+    Então só esse mês mostra R$ 5.500,00
+
+  Cenário: Reajuste de salário daqui em diante
+    Dado que o "Salário" de R$ 5.000,00 se repete todo mês
+    Quando eu edito um mês futuro, escolho "Este e os próximos" e mudo o valor para "5800"
+    Então os meses anteriores continuam com R$ 5.000,00
+    E esse mês e os seguintes mostram R$ 5.800,00
+
+  Cenário: Pular um mês e encerrar uma entrada recorrente
+    Quando eu excluo uma ocorrência escolhendo "Só este mês"
+    Então só esse mês perde a entrada
+    Quando eu excluo outra escolhendo "Este e os próximos"
+    Então esse mês e os seguintes perdem a entrada
+
+  @regra
+  Cenário: Entradas não mexem nos cartões
+    Quando eu registro um salário
+    Então o comprometido e o disponível dos cartões continuam iguais
+
+  @regra
+  Cenário: Limite de navegação
+    Quando eu abro um mês fora do intervalo (antes da entrada mais antiga ou mais de 12 meses à frente)
+    Então o app volta para "#/entradas"
 ```

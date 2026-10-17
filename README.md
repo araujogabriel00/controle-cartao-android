@@ -8,7 +8,7 @@ As funcionalidades estão descritas em BDD em [`FUNCIONALIDADES.md`](FUNCIONALID
 
 - A interface (`src/pages/dashboard.tsx`, `src/index.css`) é a mesma do app web.
 - O pacote `@workspace/api-client-react`, que no app web chama a API, aqui é um **alias** para `src/data/api.ts`. Esse módulo exporta os mesmos hooks (`useGetCard`, `useCreateMovement`, …), mas lê e grava localmente.
-- `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 4`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
+- `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 5`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
 - As fontes (Fraunces, DM Sans e DM Mono) vêm junto com o app via `@fontsource`, então funcionam offline.
 
 ### Histórico mensal
@@ -23,7 +23,7 @@ Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês 
 - Na virada do mês, o app pergunta, para cada cartão, se quer copiar as categorias do mês anterior (abertas e sem lançamentos) ou começar do zero. Se o mês anterior não tinha categorias, o novo mês começa vazio sem perguntar.
 - Cada mês guarda o limite do cartão da época. Editar o limite muda só o mês corrente daquele cartão.
 - Meses passados continuam editáveis; o que bloqueia alterações é a categoria estar fechada. Meses futuros abrem só como prévia das parcelas previstas, até o último mês com parcela, e não podem ser iniciados.
-- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, e a `version: 4` acrescenta a lista vazia de compras parceladas.
+- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, a `version: 4` acrescenta a lista vazia de compras parceladas, e a `version: 5` acrescenta as listas vazias de entradas.
 
 ### Parcelamento
 
@@ -33,6 +33,14 @@ A especificação completa está em [`specs/parcelamento.md`](specs/parcelamento
 - Cada parcela vira um **lançamento comum** no mês em que cai, na categoria com o mesmo nome. A categoria é criada se não existir, com orçamento igual às parcelas. Por isso as regras de cálculo abaixo valem sem mudança: cada mês compromete só a sua parcela.
 - As parcelas de meses futuros não são gravadas. Elas são calculadas a partir da compra e gravadas quando o mês é iniciado, depois da cópia das categorias.
 - Editar ou excluir uma parcela muda a compra inteira, menos as parcelas que estão em categorias fechadas.
+
+### Entradas
+
+A especificação completa está em [`specs/entradas.md`](specs/entradas.md).
+
+- Salário, pró-labore e bônus ficam na aba **Entradas** (`#/entradas`, `#/entradas/mes/AAAA-MM`), separada dos cartões. As entradas são globais por mês e **não entram em nenhum cálculo dos cartões**.
+- Uma entrada pode se repetir todo mês, com mês final opcional. Os meses são calculados a partir da regra e não ficam gravados. Editar ou excluir uma ocorrência pergunta se vale "Só este mês" ou "Este e os próximos".
+- A navegação vai do mês da entrada mais antiga até 12 meses à frente.
 
 ### Regras de cálculo
 
@@ -109,8 +117,10 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── lib/format.ts       # formatação de valores, datas e meses
 │   ├── lib/card-colors.ts  # paleta de cores dos cartões
 │   ├── components/card-carousel.tsx # carrossel de cartões
+│   ├── components/app-tabs.tsx # abas Cartões | Entradas
 │   ├── pages/dashboard.tsx # painel de um mês
 │   ├── pages/historico.tsx # lista de meses
+│   ├── pages/entradas.tsx  # entradas do mês
 │   └── ...
 ├── specs/                  # especificações das funcionalidades
 ├── capacitor.config.ts     # appId br.pessoal.controlecartao, barras do sistema

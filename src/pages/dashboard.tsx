@@ -19,6 +19,7 @@ import {
   Trash2, WalletCards, X,
 } from 'lucide-react';
 import { CardCarousel, type CarouselCard } from '@/components/card-carousel';
+import { AppTabs } from '@/components/app-tabs';
 import { Progress } from '@/components/progress';
 import { CARD_COLOR_KEYS, CARD_COLORS, type CardColor } from '@/lib/card-colors';
 import {
@@ -255,8 +256,9 @@ export default function Dashboard({ month }: { month: MonthKey }) {
         <div className="hidden items-center gap-2 rounded-full border border-[#ddd7c9] bg-[#f9f6ee] px-3.5 py-2 text-[11px] text-[#64766a] sm:flex"><span className={`h-1.5 w-1.5 rounded-full ${health.isError ? 'bg-[#d78470]' : 'bg-[#6d9d79]'}`}/>{health.isError ? 'Sincronização pausada' : 'Seu caderno está em dia'}</div>
         <div className="flex items-center gap-2"><button data-testid="button-history" onClick={() => navigate('/historico')} className="flex items-center gap-2 rounded-full border border-[#ded8ca] px-3.5 py-2 text-xs font-semibold text-[#546b5d] transition hover:bg-[#ece7dc]"><History size={14}/><span>Histórico</span></button><button data-testid="button-refresh" aria-label="Atualizar" onClick={() => refresh(true, selected?.id)} className="flex items-center gap-2 rounded-full border border-[#ded8ca] px-3.5 py-2 text-xs font-semibold text-[#546b5d] transition hover:bg-[#ece7dc]"><RefreshCw size={14} className={cardsQuery.isFetching ? 'animate-spin' : ''}/><span className="hidden sm:inline">Atualizar</span></button></div>
       </header>
+      <AppTabs/>
 
-      <nav aria-label="Mês" className="enter mt-5 flex items-center justify-between gap-2 rounded-full border border-[#e1dbce] bg-[#fbf8f0] p-1.5">
+      <nav aria-label="Mês" className="enter mt-4 flex items-center justify-between gap-2 rounded-full border border-[#e1dbce] bg-[#fbf8f0] p-1.5">
         <button data-testid="button-previous-month" aria-label="Mês anterior" onClick={() => navigate(monthPath(shiftMonth(month, -1)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#546b5d] transition hover:bg-[#ece7dc]"><ChevronLeft size={17}/></button>
         <div className="min-w-0 text-center"><p data-testid="text-month" className="truncate font-display text-[17px] text-[#234638]">{capitalize(monthLabel(month))}</p>{!isCurrentMonth && <button data-testid="button-current-month" onClick={() => navigate('/')} className="text-[10px] font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4">Voltar para o mês atual</button>}</div>
         <button data-testid="button-next-month" aria-label="Próximo mês" disabled={!canGoNext} onClick={() => navigate(monthPath(shiftMonth(month, 1)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#546b5d] transition hover:bg-[#ece7dc] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"><ChevronRight size={17}/></button>

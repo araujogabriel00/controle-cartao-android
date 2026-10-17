@@ -2,11 +2,12 @@ import { type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { getGetLastPlannedMonthQueryKey, useGetLastPlannedMonth } from '@workspace/api-client-react';
+import { getGetIncomeRangeQueryKey, getGetLastPlannedMonthQueryKey, useGetIncomeRange, useGetLastPlannedMonth } from '@workspace/api-client-react';
 import { currentMonth, isFutureMonth, isMonthKey } from '@/lib/format';
 import NotFound from '@/pages/not-found';
 import Dashboard from '@/pages/dashboard';
 import Historico from '@/pages/historico';
+import Entradas from '@/pages/entradas';
 import {
   Redirect,
   Route,
@@ -31,6 +32,16 @@ function MonthRoute({ month }: { month: string }) {
   return <Dashboard key={month} month={month} />;
 }
 
+// Income months outside [oldest income, now + 12 months] go back to the current
+// one (income RN-09); the current month always lives at "/entradas".
+function IncomeMonthRoute({ month }: { month: string }) {
+  const range = useGetIncomeRange({ query: { queryKey: getGetIncomeRangeQueryKey() } });
+  if (!isMonthKey(month) || month === currentMonth()) return <Redirect to="/entradas" replace />;
+  if (range.isLoading) return null;
+  if (!range.data || month < range.data.first || month > range.data.last) return <Redirect to="/entradas" replace />;
+  return <Entradas key={month} month={month} />;
+}
+
 function Router() {
   return (
     // Keep a shared shell (sidebar, navbar) outside the boundary so it
@@ -40,6 +51,8 @@ function Router() {
         <Route path="/">{() => <Dashboard key={currentMonth()} month={currentMonth()} />}</Route>
         <Route path="/mes/:month">{(params) => <MonthRoute month={params.month} />}</Route>
         <Route path="/historico" component={Historico} />
+        <Route path="/entradas">{() => <Entradas key={currentMonth()} month={currentMonth()} />}</Route>
+        <Route path="/entradas/mes/:month">{(params) => <IncomeMonthRoute month={params.month} />}</Route>
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

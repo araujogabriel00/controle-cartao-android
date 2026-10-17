@@ -4,6 +4,7 @@ import {
   useGetCards, useGetConsolidatedHistory, useGetFutureInstallments, useGetMonthHistory,
 } from '@workspace/api-client-react';
 import { ArrowLeft, CalendarClock, CalendarDays, ChevronRight, CircleHelp, History, WalletCards } from 'lucide-react';
+import { AppTabs } from '@/components/app-tabs';
 import { Progress } from '@/components/progress';
 import { capitalize, currentMonth, money, monthLabel, monthPath } from '@/lib/format';
 
@@ -29,6 +30,7 @@ export default function Historico() {
         <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-[13px] bg-[#28513f] text-[#f4d48b]"><WalletCards size={20}/></div><div><p className="font-display text-[20px] font-semibold leading-none text-[#234638]">controle<span className="text-[#d78470]">.</span></p><p className="mt-1 font-mono-data text-[9px] uppercase tracking-[.19em] text-[#758075]">do cartão</p></div></div>
         <button data-testid="button-back" onClick={() => navigate('/')} className="flex items-center gap-2 rounded-full border border-[#ded8ca] px-3.5 py-2 text-xs font-semibold text-[#546b5d] transition hover:bg-[#ece7dc]"><ArrowLeft size={14}/> Mês atual</button>
       </header>
+      <AppTabs/>
 
       <section className="enter mt-9 sm:mt-12" style={{ animationDelay: '.06s' }}>
         <div className="flex items-center gap-2 text-[#ac8f60]"><History size={14}/><p className="font-mono-data text-[10px] uppercase tracking-[.2em]">Histórico</p></div>
