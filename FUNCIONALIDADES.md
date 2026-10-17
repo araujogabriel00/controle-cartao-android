@@ -14,7 +14,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 >
 > Os **benefícios** (VR, VA etc.) são um saldo mensal numa aba própria, independente dos cartões e das entradas. Os detalhes estão na seção [13. Benefícios](#13-benefícios) e na spec [`specs/beneficios.md`](specs/beneficios.md).
 >
-> As **entradas** (salário, pró-labore, bônus) ficam numa aba própria, separada dos cartões, e não entram em nenhum cálculo deles. Os detalhes estão na seção [12. Entradas](#12-entradas) e na spec [`specs/entradas.md`](specs/entradas.md).
+> As **entradas** (salário, pró-labore, bônus) ficam numa aba própria, separada dos cartões, e não alteram nenhum valor deles. A mesma aba tem as **contas fixas**, os **gastos do dia a dia** e o **saldo do mês** (entradas − saídas − o usado dos cartões). Os detalhes estão nas seções [12. Entradas](#12-entradas) e [14. Contas fixas e gastos do dia a dia](#14-contas-fixas-e-gastos-do-dia-a-dia) e nas specs [`specs/entradas.md`](specs/entradas.md) e [`specs/contas-e-gastos.md`](specs/contas-e-gastos.md).
 
 ## Sumário
 
@@ -31,6 +31,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 11. [Parcelamento](#11-parcelamento)
 12. [Entradas](#12-entradas)
 13. [Benefícios](#13-benefícios)
+14. [Contas fixas e gastos do dia a dia](#14-contas-fixas-e-gastos-do-dia-a-dia)
 
 ---
 
@@ -914,4 +915,124 @@ Funcionalidade: Benefícios
   Cenário: Benefícios não mexem nos cartões nem nas entradas
     Quando eu registro um gasto num benefício
     Então o usado e o disponível dos cartões e o total das entradas continuam iguais
+```
+
+---
+
+## 14. Contas fixas e gastos do dia a dia
+
+Resumo das saídas na aba Entradas. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/contas-e-gastos.md`](specs/contas-e-gastos.md).
+
+```gherkin
+# language: pt
+
+Funcionalidade: Contas fixas e gastos do dia a dia
+  Como pessoa que recebe e gasta dinheiro todo mês
+  Quero registrar minhas contas e gastos e ver quanto sobra das entradas
+  Para saber se o mês fecha no azul
+
+  Cenário: Resumo do mês
+    Dado que outubro de 2026 tem a entrada "Salário" de R$ 5.000,00, as contas fixas "Aluguel" R$ 1.500,00 e "Internet" R$ 100,00, o gasto "Mercado" de R$ 300,00 e R$ 800,00 usados nos cartões
+    Quando eu abro a aba "Entradas"
+    Então o resumo mostra Entradas R$ 5.000,00, Contas fixas R$ 1.600,00, Gastos do dia a dia R$ 300,00 e Cartões R$ 800,00
+    E o Saldo é R$ 2.300,00, em verde
+
+  Cenário: Saldo negativo
+    Dado que as saídas passam das entradas
+    Então o Saldo aparece negativo, em vermelho
+    E vejo "As saídas passaram das entradas."
+
+  Cenário: Mês sem nada cadastrado
+    Dado que não há entradas, contas, gastos nem cartões
+    Então o resumo mostra tudo zerado e o Saldo R$ 0,00
+    E vejo "Nenhuma conta fixa neste mês." e "Nenhum gasto neste mês."
+
+  @regra
+  Cenário: Cartões no saldo
+    Dado que o Nubank tem R$ 500,00 usados e o Inter R$ 300,00
+    Então "Cartões" mostra R$ 800,00
+    Quando eu toco em "Ver cartões"
+    Então vejo a aba "Cartões"
+    Mas em um mês futuro "Cartões" inclui as parcelas previstas e as compras já registradas
+
+  @regra
+  Cenário: O saldo lê os cartões sem alterá-los
+    Quando eu registro uma conta fixa ou um gasto
+    Então o usado e o disponível dos cartões continuam iguais
+    E os benefícios não entram no saldo
+
+  Cenário: Cadastrar uma conta fixa
+    Quando eu toco em "Nova conta fixa"
+    E informo o nome "Aluguel", o valor "1500" e uma data
+    Então a lista do mês tem "Aluguel" no dia da data, com R$ 1.500,00 e o selo "Mensal"
+    E os meses seguintes também têm "Aluguel", e os anteriores não
+
+  @regra
+  Cenário: Conta fixa com mês final e no dia 31
+    Dado que cadastro uma conta fixa até um mês final
+    Então os meses depois dele não têm a conta
+    E uma conta no dia 31 cai no último dia dos meses mais curtos
+
+  @regra
+  Cenário: Validação da conta fixa
+    Quando eu cadastro uma conta fixa com valor "0"
+    Então vejo "Valor deve ser de pelo menos R$ 0,01."
+    Quando eu informo um mês final antes do mês inicial
+    Então vejo "O mês final deve ser igual ou posterior ao mês inicial."
+
+  Cenário: Alterar uma conta só num mês
+    Dado que "Aluguel" é uma conta fixa de R$ 1.500,00
+    Quando eu edito um mês, escolho "Só este mês" e mudo o valor para "1700"
+    Então só esse mês mostra R$ 1.700,00
+
+  Cenário: Reajuste do aluguel daqui em diante
+    Quando eu edito um mês futuro, escolho "Este e os próximos" e mudo o valor para "1800"
+    Então os meses anteriores continuam com R$ 1.500,00
+    E esse mês e os seguintes têm R$ 1.800,00
+
+  Cenário: Pular um mês e encerrar uma conta fixa
+    Quando eu excluo uma ocorrência com "Só este mês"
+    Então só esse mês perde a conta
+    Quando eu excluo outra com "Este e os próximos"
+    Então esse mês e os seguintes perdem a conta
+
+  Cenário: Registrar um gasto do dia a dia
+    Dado que existe a categoria "Mercado"
+    Quando eu toco em "Novo gasto"
+    E informo "Feira", o valor "300", a categoria "Mercado" e uma data do mês
+    Então a lista do mês tem "Feira" em "Mercado" com R$ 300,00
+    E o saldo diminui R$ 300,00
+
+  Cenário: Gasto sem categoria e em outro mês
+    Quando eu registro um gasto sem escolher categoria
+    Então ele aparece como "Sem categoria"
+    Quando eu registro um gasto com data em outro mês
+    Então ele aparece no mês da data e vejo "Gasto registrado em ‹mês›."
+
+  @regra
+  Cenário: Gasto com data longe demais
+    Quando eu registro um gasto com data daqui a 14 meses
+    Então vejo "A data deve ser de até 12 meses à frente."
+
+  Cenário: Editar e excluir um gasto
+    Quando eu edito o valor de um gasto e salvo
+    Então o gasto e o saldo mudam
+    Quando eu excluo o gasto e confirmo
+    Então o gasto some e o saldo volta
+
+  Cenário: Resumo dos gastos por categoria
+    Dado que há R$ 300,00 em "Mercado", R$ 100,00 em "Lazer" e R$ 100,00 sem categoria
+    Então "Por categoria" mostra "Mercado" R$ 300,00 (60%), "Lazer" R$ 100,00 (20%) e "Sem categoria" R$ 100,00 (20%)
+
+  Cenário: Excluir uma categoria usada nos gastos
+    Dado que "Mercado" tem 1 compra no cartão e 2 gastos do dia a dia
+    Quando eu abro "Categorias" e excluo "Mercado"
+    Então vejo a confirmação "3 compras ficarão sem categoria."
+    E depois de confirmar, os 2 gastos aparecem sem categoria e o saldo não muda
+
+  @regra
+  Cenário: Limite de navegação
+    Dado que há uma conta fixa desde julho de 2026
+    Então a navegação vai de julho de 2026 até 12 meses à frente do mês corrente
+    E um mês fora do intervalo volta para "#/entradas"
 ```
