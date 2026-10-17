@@ -42,8 +42,24 @@ export type StoredIncomeException = {
   incomeId: number; month: MonthKey; skip: boolean; amount?: number; description?: string; day?: number;
 };
 
+// A benefit (VR/VA...) is a monthly balance, apart from the cards. `amounts` is
+// the history of its monthly value (ascending by `from`); the first entry
+// starts at firstMonth.
+export type BenefitSplitItem = { categoryId: number; amount: number };
+export type StoredBenefit = {
+  id: number; name: string; firstMonth: MonthKey; lastMonth: MonthKey | null;
+  amounts: { from: MonthKey; amount: number }[];
+  // How the monthly value is divided by category, by `from` ascending (RN-15); [] = never divided.
+  splits: { from: MonthKey; items: BenefitSplitItem[] }[];
+  // A closed category stops receiving spends in the months [from, to) (RN-21, RN-24).
+  closures: { categoryId: number; from: MonthKey; to: MonthKey | null }[];
+};
+export type StoredBenefitSpend = {
+  id: number; benefitId: number; categoryId: number | null; description: string; amount: number; date: string;
+};
+
 type State = {
-  version: 6;
+  version: 7;
   nextId: number;
   selectedCardId: number | null;
   cards: StoredCard[];
@@ -53,13 +69,16 @@ type State = {
   purchases: StoredPurchase[];
   incomes: StoredIncome[];
   incomeExceptions: StoredIncomeException[];
+  benefits: StoredBenefit[];
+  benefitSpends: StoredBenefitSpend[];
 };
 
 // Previous formats, kept only to migrate saved data.
 type OldCategory = { id: number; cardId: number; month: MonthKey; name: string; amount: number; isClosed: boolean };
 type OldMovement = Omit<StoredMovement, 'cardId' | 'categoryId'> & { categoryId: number };
 type OldPurchase = Omit<StoredPurchase, 'categoryId'> & { categoryName: string };
-type StateV5 = Omit<State, 'version' | 'categories' | 'movements' | 'purchases'> & {
+type StateV6 = Omit<State, 'version' | 'benefits' | 'benefitSpends'> & { version: 6 };
+type StateV5 = Omit<State, 'version' | 'categories' | 'movements' | 'purchases' | 'benefits' | 'benefitSpends'> & {
   version: 5; categories: OldCategory[]; movements: OldMovement[]; purchases: OldPurchase[];
 };
 type StateV4 = Omit<StateV5, 'version' | 'incomes' | 'incomeExceptions'> & { version: 4 };
@@ -80,7 +99,7 @@ type StateV1 = {
   categories: Omit<OldCategory, 'cardId' | 'month'>[];
   movements: OldMovement[];
 };
-type Saved = StateV5 | StateV4 | StateV3 | StateV2 | StateV1;
+type Saved = StateV6 | StateV5 | StateV4 | StateV3 | StateV2 | StateV1;
 
 // limitAmount is the limit of the requested month; currentLimitAmount is the card's own.
 export type Card = StoredCard & { currentLimitAmount: number; usedAmount: number; availableAmount: number; percentUsed: number };
@@ -120,15 +139,39 @@ export type Incomes = { month: MonthKey; totalAmount: number; items: IncomeOccur
 export type IncomeRange = { first: MonthKey; last: MonthKey };
 export type IncomeScope = 'month' | 'forward';
 
+export type BenefitSpend = StoredBenefitSpend & { categoryName: string | null };
+// One line of the "by category" list (RN-17); categoryId null is "Sem categoria".
+export type BenefitCategoryRow = {
+  categoryId: number | null; name: string | null;
+  amount: number; carriedAmount: number; spentAmount: number; availableAmount: number; percentUsed: number;
+  closed: boolean; releasedAmount: number;
+};
+export type BenefitItem = {
+  id: number; name: string; firstMonth: MonthKey; lastMonth: MonthKey | null;
+  amount: number; carriedAmount: number; spentAmount: number; availableAmount: number; percentUsed: number;
+  spends: BenefitSpend[];
+  // Spends in every month, for the delete confirmation (RF-06).
+  spendCount: number;
+  // The division in force this month, and its lines (empty without a division, D17).
+  split: BenefitSplitItem[];
+  categories: BenefitCategoryRow[];
+};
+export type Benefits = { month: MonthKey; totalAvailable: number; items: BenefitItem[] };
+export type BenefitRange = { first: MonthKey; last: MonthKey };
+
 export type CardInput = { name: string; limitAmount: number; color?: CardColor };
 export type CategoryInput = { name: string };
 export type MovementInput = { description: string; amount: number; date: string };
 export type IncomeInput = { kind: IncomeKind; description?: string; amount: number; date: string; recurring: boolean; lastMonth?: MonthKey | null };
+export type BenefitInput = { name: string; amount: number; firstMonth: MonthKey; lastMonth?: MonthKey | null; split?: BenefitSplitItem[] };
+// `amount` starts to count in the month the update is made for ("Vale a partir de").
+export type BenefitUpdate = { name: string; amount: number; lastMonth?: MonthKey | null; split?: BenefitSplitItem[] };
+export type BenefitSpendInput = { description: string; amount: number; date: string };
 // `installment` is the one that falls in the month of `date`; on create the
 // purchase starts there, on update `firstInstallment` says where it starts.
 export type PurchaseInput = { description: string; totalAmount: number; installmentCount: number; installment: number; firstInstallment?: number; date: string };
 
-const emptyState = (): State => ({ version: 6, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [] });
+const emptyState = (): State => ({ version: 7, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [], benefits: [], benefitSpends: [] });
 
 // RN-05 (categories): names match ignoring case and surrounding spaces.
 const nameKey = (name: string) => name.trim().toLocaleLowerCase('pt-BR');
@@ -170,7 +213,7 @@ const migrateV4 = (old: StateV4): StateV5 => ({ ...old, version: 5, incomes: [],
 
 // RN-14: one global category per distinct name; budgets and open/closed are
 // dropped; every old movement becomes a purchase on its category's card.
-function migrateV5(old: StateV5): State {
+function migrateV5(old: StateV5): StateV6 {
   const byName = new Map<string, StoredCategory>();
   const categories: StoredCategory[] = [];
   let nextId = old.nextId;
@@ -199,12 +242,16 @@ function migrateV5(old: StateV5): State {
   return { ...old, version: 6, nextId, categories, movements, purchases };
 }
 
+// Benefits didn't exist before v7.
+const migrateV6 = (old: StateV6): State => ({ ...old, version: 7, benefits: [], benefitSpends: [] });
+
 function migrate(old: Saved): State {
   if (old.version === 1) return migrate(migrateV1(old));
   if (old.version === 2) return migrate(migrateV2(old));
   if (old.version === 3) return migrate(migrateV3(old));
   if (old.version === 4) return migrate(migrateV4(old));
-  return migrateV5(old);
+  if (old.version === 5) return migrate(migrateV5(old));
+  return migrateV6(old);
 }
 
 let statePromise: Promise<State> | null = null;
@@ -222,9 +269,12 @@ function load(): Promise<State> {
     if (!value) return emptyState();
     try {
       const parsed = JSON.parse(value) as State | Saved;
-      if (parsed?.version === 6) return parsed;
+      if (parsed?.version === 7) {
+        for (const b of parsed.benefits) { b.splits ??= []; b.closures ??= []; }
+        return parsed;
+      }
       const version: number | undefined = parsed?.version;
-      if (version !== 5 && version !== 4 && version !== 3 && version !== 2 && version !== 1) return emptyState();
+      if (version !== 6 && version !== 5 && version !== 4 && version !== 3 && version !== 2 && version !== 1) return emptyState();
       const migrated = migrate(parsed as Saved);
       // Saved right away so the data stays in this month even if the next
       // change only happens in a later month.
@@ -547,7 +597,8 @@ export async function getCategories(): Promise<Category[]> {
   return state.categories
     .map((c) => ({
       ...c,
-      movementCount: state.movements.filter((m) => m.categoryId === c.id && !isLinked(state, m)).length + state.purchases.filter((p) => p.categoryId === c.id).length,
+      movementCount: state.movements.filter((m) => m.categoryId === c.id && !isLinked(state, m)).length + state.purchases.filter((p) => p.categoryId === c.id).length
+        + state.benefitSpends.filter((x) => x.categoryId === c.id).length,
     }))
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 }
@@ -692,6 +743,11 @@ export function deleteCategory(categoryId: number) {
     state.categories = state.categories.filter((c) => c.id !== categoryId);
     for (const m of state.movements) if (m.categoryId === categoryId) m.categoryId = null;
     for (const p of state.purchases) if (p.categoryId === categoryId) p.categoryId = null;
+    for (const x of state.benefitSpends) if (x.categoryId === categoryId) x.categoryId = null;
+    for (const b of state.benefits) {
+      for (const entry of b.splits) entry.items = entry.items.filter((i) => i.categoryId !== categoryId);
+      b.closures = b.closures.filter((c) => c.categoryId !== categoryId);
+    }
   });
 }
 
@@ -900,5 +956,306 @@ export function deleteIncome(incomeId: number, month: MonthKey, scope: IncomeSco
     }
     income.lastMonth = shiftMonth(month, -1);
     dropExceptionsFrom(state, incomeId, month);
+  });
+}
+
+// --- benefits -----------------------------------------------------------------
+
+const findBenefit = (state: State, benefitId: number) => {
+  const benefit = state.benefits.find((b) => b.id === benefitId);
+  if (!benefit) throw new Error('Benefício não encontrado.');
+  return benefit;
+};
+
+// RN-01: from the first month to the last one (or with no end).
+const benefitActiveIn = (benefit: StoredBenefit, month: MonthKey) =>
+  month >= benefit.firstMonth && (!benefit.lastMonth || month <= benefit.lastMonth);
+
+// RN-02: the latest history entry that started on or before the month.
+function benefitAmountIn(benefit: StoredBenefit, month: MonthKey) {
+  let amount = 0;
+  for (const entry of benefit.amounts) if (entry.from <= month) amount = entry.amount;
+  return amount;
+}
+
+// RN-04: credits of the active months before `month`, minus what was spent before it.
+function benefitCarriedIn(state: State, benefit: StoredBenefit, month: MonthKey) {
+  let credits = 0;
+  for (let m = benefit.firstMonth; m < month && (!benefit.lastMonth || m <= benefit.lastMonth); m = shiftMonth(m, 1)) credits += benefitAmountIn(benefit, m);
+  const spent = sum(state.benefitSpends.filter((x) => x.benefitId === benefit.id && monthOf(x.date) < month).map((x) => x.amount));
+  return cents(credits - spent);
+}
+
+// RN-15: the entry with the greatest `from` on or before the month.
+function benefitSplitAt(benefit: StoredBenefit, month: MonthKey) {
+  let items: BenefitSplitItem[] = [];
+  for (const entry of benefit.splits) if (entry.from <= month) items = entry.items;
+  return items;
+}
+
+const closureAt = (benefit: StoredBenefit, categoryId: number, month: MonthKey) =>
+  benefit.closures.find((c) => c.categoryId === categoryId && c.from <= month && (c.to === null || month < c.to));
+
+// After its closing month, a closed category's share goes to "Sem categoria" (RN-22).
+const isFrozen = (benefit: StoredBenefit, categoryId: number, month: MonthKey) => {
+  const closure = closureAt(benefit, categoryId, month);
+  return Boolean(closure && month > closure.from);
+};
+
+type Line = { credit: number; carried: number; spent: number; available: number; released: number; closed: boolean };
+
+// RN-17 / RN-22: walks the months from the first one to `month`, so resets on closing are applied.
+function categoryLine(state: State, benefit: StoredBenefit, categoryId: number, month: MonthKey): Line {
+  const spends = state.benefitSpends.filter((x) => x.benefitId === benefit.id && x.categoryId === categoryId);
+  let balance = 0;
+  for (let m = benefit.firstMonth; m <= month; m = shiftMonth(m, 1)) {
+    const closure = closureAt(benefit, categoryId, m);
+    const frozen = Boolean(closure && m > closure.from);
+    const credit = frozen || !benefitActiveIn(benefit, m) ? 0 : benefitSplitAt(benefit, m).find((i) => i.categoryId === categoryId)?.amount ?? 0;
+    const carried = frozen ? 0 : balance;
+    const spent = sum(spends.filter((x) => monthOf(x.date) === m).map((x) => x.amount));
+    const total = cents(carried + credit - spent);
+    const closing = Boolean(closure && m === closure.from);
+    if (m === month) return { credit, carried, spent, available: closing || frozen ? 0 : total, released: closing ? total : 0, closed: Boolean(closure) };
+    balance = closing || frozen ? 0 : total;
+  }
+  return { credit: 0, carried: 0, spent: 0, available: 0, released: 0, closed: false };
+}
+
+// RN-17: what the value has beyond the division, plus what closed categories released.
+function otherLine(state: State, benefit: StoredBenefit, month: MonthKey): Line {
+  const spends = state.benefitSpends.filter((x) => x.benefitId === benefit.id && x.categoryId === null);
+  let balance = 0;
+  for (let m = benefit.firstMonth; m <= month; m = shiftMonth(m, 1)) {
+    const kept = benefitSplitAt(benefit, m).filter((i) => !isFrozen(benefit, i.categoryId, m));
+    const released = sum(benefit.closures.filter((c) => c.from === m).map((c) => categoryLine(state, benefit, c.categoryId, m).released));
+    const credit = benefitActiveIn(benefit, m) ? cents(benefitAmountIn(benefit, m) - sum(kept.map((i) => i.amount)) + released) : 0;
+    const spent = sum(spends.filter((x) => monthOf(x.date) === m).map((x) => x.amount));
+    const total = cents(balance + credit - spent);
+    if (m === month) return { credit, carried: balance, spent, available: total, released: 0, closed: false };
+    balance = total;
+  }
+  return { credit: 0, carried: 0, spent: 0, available: 0, released: 0, closed: false };
+}
+
+// RN-18: lines only exist once the benefit has been divided; closed categories stay listed.
+function benefitCategoryRows(state: State, benefit: StoredBenefit, month: MonthKey): BenefitCategoryRow[] {
+  if (!benefit.splits.some((e) => e.from <= month && e.items.length)) return [];
+  const current = new Set(benefitSplitAt(benefit, month).map((i) => i.categoryId));
+  const ids = new Set<number>([
+    ...benefit.splits.filter((e) => e.from <= month).flatMap((e) => e.items.map((i) => i.categoryId)),
+    ...state.benefitSpends.filter((x) => x.benefitId === benefit.id && x.categoryId !== null && monthOf(x.date) <= month).map((x) => x.categoryId as number),
+    ...benefit.closures.filter((c) => c.from <= month).map((c) => c.categoryId),
+  ]);
+  const toRow = (categoryId: number | null, line: Line): BenefitCategoryRow => ({
+    categoryId, name: categoryNameOf(state, categoryId),
+    amount: line.credit, carriedAmount: line.carried, spentAmount: line.spent, availableAmount: line.available,
+    percentUsed: percent(line.spent, line.carried + line.credit), closed: line.closed, releasedAmount: line.released,
+  });
+  const rows = [...ids]
+    .map((id) => ({ id, line: categoryLine(state, benefit, id, month) }))
+    .filter(({ id, line }) => line.closed || current.has(id) || line.credit || line.carried || line.spent)
+    .map(({ id, line }) => toRow(id, line));
+  const other = otherLine(state, benefit, month);
+  const open = rows.filter((r) => !r.closed).sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'pt-BR'));
+  const closed = rows.filter((r) => r.closed).sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'pt-BR'));
+  const showOther = other.credit || other.carried || other.spent;
+  return [...open, ...(showOther ? [toRow(null, other)] : []), ...closed];
+}
+
+function benefitItemOf(state: State, benefit: StoredBenefit, month: MonthKey): BenefitItem {
+  const amount = benefitAmountIn(benefit, month);
+  const carriedAmount = benefitCarriedIn(state, benefit, month);
+  const spends = state.benefitSpends
+    .filter((x) => x.benefitId === benefit.id && monthOf(x.date) === month)
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
+    .map((x) => ({ ...x, categoryName: categoryNameOf(state, x.categoryId) }));
+  const spentAmount = sum(spends.map((x) => x.amount));
+  return {
+    id: benefit.id, name: benefit.name, firstMonth: benefit.firstMonth, lastMonth: benefit.lastMonth,
+    amount, carriedAmount, spentAmount,
+    availableAmount: cents(carriedAmount + amount - spentAmount),
+    percentUsed: percent(spentAmount, carriedAmount + amount),
+    spends,
+    spendCount: state.benefitSpends.filter((x) => x.benefitId === benefit.id).length,
+    split: benefitSplitAt(benefit, month),
+    categories: benefitCategoryRows(state, benefit, month),
+  };
+}
+
+// RN-06
+function requireBenefitName(state: State, value: unknown, exceptId?: number) {
+  const name = requireText(value, 'Nome do benefício', 120);
+  if (state.benefits.some((b) => b.id !== exceptId && nameKey(b.name) === nameKey(name))) throw new Error('Já existe um benefício com esse nome.');
+  return name;
+}
+
+function requireLastMonth(value: unknown, firstMonth: MonthKey): MonthKey | null {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value !== 'string' || !isMonthKey(value)) throw new Error('Mês inválido.');
+  if (value < firstMonth) throw new Error('O mês final deve ser igual ou posterior ao mês inicial.');
+  return value;
+}
+
+// RN-15: each category once, existing, with a value.
+function requireSplit(state: State, value: unknown): BenefitSplitItem[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<number>();
+  return value.map((item: BenefitSplitItem) => {
+    const categoryId = requireCategory(state, item?.categoryId);
+    if (categoryId === null) throw new Error('Categoria não encontrada.');
+    if (seen.has(categoryId)) throw new Error('Cada categoria só pode aparecer uma vez na divisão.');
+    seen.add(categoryId);
+    return { categoryId, amount: requireAmount(item.amount, 'Valor da divisão') };
+  });
+}
+
+// RN-16: wherever the value or the division changes, the division must fit the value.
+function requireSplitFits(benefit: StoredBenefit) {
+  const months = new Set([...benefit.amounts.map((e) => e.from), ...benefit.splits.map((e) => e.from)]);
+  for (const month of months) {
+    if (sum(benefitSplitAt(benefit, month).map((i) => i.amount)) > benefitAmountIn(benefit, month)) throw new Error('A divisão passa do valor mensal do benefício.');
+  }
+}
+
+// RN-23: no spend in a category in a month it is closed for this benefit.
+function requireCategoryOpen(state: State, benefit: StoredBenefit, categoryId: number | null, date: string) {
+  if (categoryId !== null && closureAt(benefit, categoryId, monthOf(date))) throw new Error(`A categoria ${categoryNameOf(state, categoryId)} está fechada neste benefício.`);
+}
+
+// RN-07
+function requireBenefitSpend(state: State, benefit: StoredBenefit, categoryId: number | null, input: BenefitSpendInput) {
+  const date = requireDate(input.date);
+  if (!benefitActiveIn(benefit, monthOf(date))) throw new Error('A data deve estar dentro do período do benefício.');
+  requireCategoryOpen(state, benefit, categoryId, date);
+  return {
+    categoryId: requireCategory(state, categoryId),
+    description: requireText(input.description, 'Descrição', 200),
+    amount: requireAmount(input.amount, 'Valor'),
+    date,
+  };
+}
+
+export async function getBenefits(month: MonthKey): Promise<Benefits> {
+  const state = await load();
+  const items = state.benefits
+    .filter((b) => benefitActiveIn(b, month))
+    .map((b) => benefitItemOf(state, b, month))
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  return { month, totalAvailable: sum(items.map((i) => i.availableAmount)), items };
+}
+
+// RN-12: from the oldest benefit (never later than now) to a year ahead; with
+// no benefit at all only the current month opens.
+export async function getBenefitRange(): Promise<BenefitRange> {
+  const state = await load();
+  const now = currentMonth();
+  if (!state.benefits.length) return { first: now, last: now };
+  return { first: state.benefits.reduce((min, b) => (b.firstMonth < min ? b.firstMonth : min), now), last: shiftMonth(now, 12) };
+}
+
+export function createBenefit(input: BenefitInput) {
+  return mutate((state) => {
+    const name = requireBenefitName(state, input.name);
+    const amount = requireAmount(input.amount, 'Valor');
+    if (!isMonthKey(input.firstMonth)) throw new Error('Mês inválido.');
+    const benefit: StoredBenefit = {
+      id: state.nextId++, name, firstMonth: input.firstMonth, lastMonth: requireLastMonth(input.lastMonth, input.firstMonth),
+      amounts: [{ from: input.firstMonth, amount }], splits: [], closures: [],
+    };
+    const items = requireSplit(state, input.split);
+    if (items.length) benefit.splits.push({ from: input.firstMonth, items });
+    requireSplitFits(benefit);
+    state.benefits.push(benefit);
+    return benefit;
+  });
+}
+
+// RN-08 / RN-09: the new amount counts from `month` on; the history before it stays.
+export function updateBenefit(benefitId: number, month: MonthKey, input: BenefitUpdate) {
+  return mutate((state) => {
+    const benefit = findBenefit(state, benefitId);
+    const name = requireBenefitName(state, input.name, benefit.id);
+    const amount = requireAmount(input.amount, 'Valor');
+    if (!isMonthKey(month) || month < benefit.firstMonth) throw new Error('O valor não pode valer antes do mês inicial do benefício.');
+    const lastMonth = requireLastMonth(input.lastMonth, benefit.firstMonth);
+    if (lastMonth && state.benefitSpends.some((x) => x.benefitId === benefit.id && monthOf(x.date) > lastMonth)) throw new Error('Há gastos depois do mês final.');
+    if (benefitAmountIn(benefit, month) !== amount) benefit.amounts = [...benefit.amounts.filter((e) => e.from < month), { from: month, amount }];
+    // RN-19: the division is compared with the one in force, like the value.
+    if (input.split !== undefined) {
+      const items = requireSplit(state, input.split);
+      const current = benefitSplitAt(benefit, month);
+      const same = items.length === current.length && items.every((i) => current.some((c) => c.categoryId === i.categoryId && c.amount === i.amount));
+      if (!same) benefit.splits = [...benefit.splits.filter((e) => e.from < month), { from: month, items }];
+    }
+    requireSplitFits(benefit);
+    benefit.name = name;
+    benefit.lastMonth = lastMonth;
+    return benefit;
+  });
+}
+
+// RN-10
+export function deleteBenefit(benefitId: number) {
+  return mutate((state) => {
+    findBenefit(state, benefitId);
+    state.benefits = state.benefits.filter((b) => b.id !== benefitId);
+    state.benefitSpends = state.benefitSpends.filter((x) => x.benefitId !== benefitId);
+  });
+}
+
+export function createBenefitSpend(benefitId: number, categoryId: number | null, input: BenefitSpendInput) {
+  return mutate((state) => {
+    const benefit = findBenefit(state, benefitId);
+    const spend: StoredBenefitSpend = { id: state.nextId++, benefitId, ...requireBenefitSpend(state, benefit, categoryId, input) };
+    state.benefitSpends.push(spend);
+    return spend;
+  });
+}
+
+export function updateBenefitSpend(spendId: number, categoryId: number | null, input: BenefitSpendInput) {
+  return mutate((state) => {
+    const spend = state.benefitSpends.find((x) => x.id === spendId);
+    if (!spend) throw new Error('Gasto não encontrado.');
+    const benefit = findBenefit(state, spend.benefitId);
+    requireCategoryOpen(state, benefit, spend.categoryId, spend.date);
+    Object.assign(spend, requireBenefitSpend(state, benefit, categoryId, input));
+    return spend;
+  });
+}
+
+export function deleteBenefitSpend(spendId: number) {
+  return mutate((state) => {
+    const spend = state.benefitSpends.find((x) => x.id === spendId);
+    if (!spend) throw new Error('Gasto não encontrado.');
+    requireCategoryOpen(state, findBenefit(state, spend.benefitId), spend.categoryId, spend.date);
+    state.benefitSpends = state.benefitSpends.filter((x) => x.id !== spendId);
+  });
+}
+
+// RN-21: closes the category for this benefit from `month` on, releasing what it has left.
+export function closeBenefitCategory(benefitId: number, categoryId: number, month: MonthKey) {
+  return mutate((state) => {
+    const benefit = findBenefit(state, benefitId);
+    findCategory(state, categoryId);
+    if (!isMonthKey(month) || !benefitActiveIn(benefit, month)) throw new Error('A data deve estar dentro do período do benefício.');
+    if (closureAt(benefit, categoryId, month)) throw new Error('A categoria já está fechada.');
+    const later = benefit.closures.find((c) => c.categoryId === categoryId && c.from > month);
+    if (later) throw new Error(`A categoria já tem fechamento a partir de ${monthLabel(later.from)}.`);
+    if (state.benefitSpends.some((x) => x.benefitId === benefitId && x.categoryId === categoryId && monthOf(x.date) > month)) {
+      throw new Error(`Há gastos desta categoria depois de ${monthLabel(month)}. Exclua-os antes de fechar.`);
+    }
+    benefit.closures.push({ categoryId, from: month, to: null });
+  });
+}
+
+// RN-24: reopening in the closing month undoes it; later, the closure ends at `month`.
+export function reopenBenefitCategory(benefitId: number, categoryId: number, month: MonthKey) {
+  return mutate((state) => {
+    const benefit = findBenefit(state, benefitId);
+    const closure = isMonthKey(month) ? closureAt(benefit, categoryId, month) : undefined;
+    if (!closure) throw new Error('A categoria não está fechada neste mês.');
+    if (closure.from === month) benefit.closures = benefit.closures.filter((c) => c !== closure);
+    else closure.to = month;
   });
 }

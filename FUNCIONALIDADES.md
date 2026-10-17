@@ -12,6 +12,8 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 >
 > Uma **compra parcelada** vira uma compra comum em cada mês em que cai, e os meses futuros mostram as parcelas previstas junto com as compras já registradas. Os detalhes estão na seção [11. Parcelamento](#11-parcelamento) e na spec [`specs/parcelamento.md`](specs/parcelamento.md).
 >
+> Os **benefícios** (VR, VA etc.) são um saldo mensal numa aba própria, independente dos cartões e das entradas. Os detalhes estão na seção [13. Benefícios](#13-benefícios) e na spec [`specs/beneficios.md`](specs/beneficios.md).
+>
 > As **entradas** (salário, pró-labore, bônus) ficam numa aba própria, separada dos cartões, e não entram em nenhum cálculo deles. Os detalhes estão na seção [12. Entradas](#12-entradas) e na spec [`specs/entradas.md`](specs/entradas.md).
 
 ## Sumário
@@ -28,6 +30,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 10. [Múltiplos cartões](#10-múltiplos-cartões)
 11. [Parcelamento](#11-parcelamento)
 12. [Entradas](#12-entradas)
+13. [Benefícios](#13-benefícios)
 
 ---
 
@@ -155,6 +158,7 @@ Funcionalidade: Categorias das compras
     Então vejo a mensagem "Categoria removida."
     E as 2 compras continuam, agora "Sem categoria"
     E o valor usado dos cartões não muda
+    Mas se a categoria também tiver gastos de benefício, eles entram na contagem e ficam sem categoria (seção 13)
 
   Cenário: Excluir uma categoria sem uso
     Dado que existe a categoria "Viagem" sem compras
@@ -729,4 +733,185 @@ Funcionalidade: Entradas
   Cenário: Limite de navegação
     Quando eu abro um mês fora do intervalo (antes da entrada mais antiga ou mais de 12 meses à frente)
     Então o app volta para "#/entradas"
+```
+
+---
+
+## 13. Benefícios
+
+Resumo dos benefícios. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/beneficios.md`](specs/beneficios.md).
+
+```gherkin
+# language: pt
+
+Funcionalidade: Benefícios
+  Como pessoa que recebe vale-refeição, vale-alimentação ou algo parecido
+  Quero acompanhar o saldo de cada benefício, mês a mês
+  Para saber quanto ainda posso gastar com ele
+
+  Cenário: Abrir a aba de benefícios
+    Dado que estou no painel de um cartão
+    Então a barra de abas mostra "Entradas", "Cartões" e "Benefícios", nessa ordem
+    Quando eu toco em "Benefícios"
+    Então vejo a tela de benefícios do mês corrente
+    E o painel do cartão não mostra nenhum benefício
+
+  Cenário: Nenhum benefício cadastrado
+    Dado que não há benefícios
+    Quando eu abro a aba "Benefícios"
+    Então vejo "Nenhum benefício ainda." e o botão "Novo benefício"
+
+  Cenário: Criar um benefício
+    Quando eu toco em "Novo benefício"
+    E preencho o nome "VR", o valor mensal "800" e mantenho o mês inicial
+    E toco em "Adicionar"
+    Então vejo o cartão "VR" com o selo "Mensal"
+    E ele mostra crédito R$ 800,00, sobra anterior R$ 0,00, gasto R$ 0,00 e disponível R$ 800,00
+    E vejo "Sem gastos neste mês."
+
+  @regra
+  Cenário: Validação do benefício
+    Quando eu tento criar um benefício chamado " vr " quando já existe "VR"
+    Então vejo "Já existe um benefício com esse nome."
+    Quando eu informo um mês final antes do mês inicial
+    Então vejo "O mês final deve ser igual ou posterior ao mês inicial."
+
+  Cenário: Registrar um gasto
+    Dado que existe o benefício "VR" e a categoria "Mercado"
+    Quando eu toco em "Registrar gasto" no cartão "VR"
+    E informo a descrição "Almoço", o valor "300", a categoria "Mercado" e uma data do mês
+    Então o cartão "VR" lista "Almoço" em "Mercado" com R$ 300,00
+    E mostra gasto R$ 300,00 e disponível R$ 500,00
+
+  @regra
+  Cenário: Gasto fora do período do benefício
+    Dado que "VR" começa neste mês
+    Quando eu registro um gasto com data de um mês anterior
+    Então vejo "A data deve estar dentro do período do benefício."
+
+  @regra
+  Cenário: A sobra acumula para o mês seguinte
+    Dado que "VR" teve gasto de R$ 300,00 neste mês
+    Quando eu abro o mês seguinte
+    Então "VR" mostra sobra anterior R$ 500,00, crédito R$ 800,00, gasto R$ 0,00 e disponível R$ 1.300,00
+
+  @regra
+  Cenário: Gastar mais do que o saldo
+    Quando eu registro um gasto maior que o disponível
+    Então o disponível fica negativo
+    E o mês seguinte começa com essa sobra negativa
+
+  Cenário: Disponível em todos os benefícios
+    Dado que "VR" tem R$ 500,00 disponíveis e "VA" tem R$ 200,00
+    Então a faixa "Disponível em todos os benefícios" mostra R$ 700,00
+
+  Cenário: Reajuste do valor mensal daqui em diante
+    Dado que "VR" vale R$ 800,00 desde o mês inicial
+    Quando eu edito "VR" com "Vale a partir de" um mês futuro e valor "900"
+    Então os meses anteriores continuam com crédito R$ 800,00
+    E esse mês e os seguintes têm crédito R$ 900,00
+
+  @regra
+  Cenário: Mês final do benefício
+    Quando eu edito "VR" com um mês final
+    Então os meses depois dele não mostram "VR"
+    Mas se já houver gasto depois do mês final, vejo "Há gastos depois do mês final."
+
+  Cenário: Editar e excluir um gasto
+    Dado que "VR" tem o gasto "Almoço"
+    Quando eu edito o valor e salvo
+    Então o gasto e o disponível mudam
+    Quando eu excluo o gasto e confirmo
+    Então o gasto some e o disponível volta ao crédito
+
+  Cenário: Excluir um benefício
+    Dado que "VR" tem 3 gastos
+    Quando eu excluo "VR"
+    Então o sistema pede confirmação para "Remover o benefício “VR” e seus 3 gastos? Esta ação não pode ser desfeita."
+    E depois de confirmar, "VR" e os gastos dele somem de todos os meses
+
+  Cenário: Dividir o benefício por categoria
+    Dado que "VR" vale R$ 800,00 e existem as categorias "Mercado" e "Lazer"
+    Quando eu edito "VR", divido R$ 500,00 em "Mercado" e R$ 200,00 em "Lazer" e salvo
+    Então o cartão "VR" lista, em "Por categoria", "Mercado" R$ 500,00, "Lazer" R$ 200,00 e "Sem categoria" R$ 100,00
+    E o disponível do benefício continua R$ 800,00
+    E o diálogo mostra "Sem categoria: R$ 100,00" enquanto eu divido
+
+  @regra
+  Cenário: Divisão maior que o valor do benefício
+    Quando eu divido R$ 900,00 num benefício de R$ 800,00
+    Então o diálogo avisa que a divisão passa do valor
+    E ao salvar vejo "A divisão passa do valor mensal do benefício."
+
+  @regra
+  Cenário: Cada categoria tem a sua sobra
+    Dado que "VR" está dividido em "Mercado" R$ 500,00 e "Lazer" R$ 200,00, e gastei R$ 120,00 em "Mercado"
+    Então "Mercado" mostra disponível R$ 380,00 e o disponível do benefício é R$ 680,00
+    Quando eu abro o mês seguinte
+    Então "Mercado" mostra sobra anterior R$ 380,00 e disponível R$ 880,00
+    E a soma das linhas é sempre o disponível do benefício
+
+  Cenário: Gasto numa categoria fora da divisão
+    Quando eu registro um gasto numa categoria que não está na divisão
+    Então a linha dela aparece negativa e o disponível do benefício diminui
+
+  Cenário: Reajustar a divisão daqui em diante
+    Quando eu edito "VR" com "Vale a partir de" um mês e outra divisão
+    Então os meses anteriores mantêm a divisão antiga
+    E esse mês e os seguintes usam a nova
+
+  Cenário: Fechar uma categoria libera a sobra
+    Dado que "Mercado" tem R$ 380,00 sobrando em "VR"
+    Quando eu toco em "Fechar" na linha "Mercado"
+    Então o sistema pede confirmação para "Fechar “Mercado” em VR? R$ 380,00 que sobram vão para “Sem categoria”."
+    E depois de confirmar, "Mercado" mostra o selo "Fechada", disponível R$ 0,00 e "Liberado R$ 380,00"
+    E o valor liberado soma ao "Sem categoria", sem mudar o disponível do benefício
+
+  Cenário: A categoria fechada nos meses seguintes
+    Dado que "Mercado" foi fechada
+    Quando eu abro o mês seguinte
+    Então "Mercado" aparece "Fechada" com tudo zerado
+    E a parte dela na divisão passa para "Sem categoria"
+
+  @regra
+  Cenário: Categoria fechada não recebe gastos
+    Dado que "Mercado" está fechada em "VR"
+    Quando eu registro, edito ou excluo um gasto de "Mercado" num mês fechado
+    Então vejo "A categoria Mercado está fechada neste benefício."
+
+  @regra
+  Cenário: Fechar com gastos em meses seguintes
+    Dado que "Mercado" tem gasto num mês depois do mês aberto
+    Quando eu toco em "Fechar" e confirmo
+    Então vejo "Há gastos desta categoria depois de ‹mês›. Exclua-os antes de fechar."
+
+  Cenário: Reabrir uma categoria
+    Dado que "Mercado" foi fechada
+    Quando eu abro um mês seguinte e toco em "Reabrir"
+    Então os meses antes dele continuam fechados
+    E dele em diante "Mercado" volta a receber a parte dela, com sobra zero
+    Mas se eu reabrir no mês em que fechei, o fechamento é desfeito e a sobra volta
+
+  Cenário: Excluir uma categoria dividida
+    Dado que "Lazer" está na divisão de "VR", com gastos
+    Quando eu excluo a categoria "Lazer"
+    Então a parte dela volta para "Sem categoria", os gastos ficam sem categoria e o disponível não muda
+
+  Cenário: Benefício sem divisão
+    Dado que "VR" não tem divisão
+    Então o cartão "VR" não mostra a lista "Por categoria"
+
+  Cenário: Categorias na aba Benefícios
+    Quando eu toco em "Categorias" na aba "Benefícios"
+    Então vejo o mesmo diálogo de categorias da aba Cartões
+
+  @regra
+  Cenário: Limite de navegação
+    Quando eu abro um mês fora do intervalo (antes do benefício mais antigo ou mais de 12 meses à frente)
+    Então o app volta para "#/beneficios"
+
+  @regra
+  Cenário: Benefícios não mexem nos cartões nem nas entradas
+    Quando eu registro um gasto num benefício
+    Então o usado e o disponível dos cartões e o total das entradas continuam iguais
 ```

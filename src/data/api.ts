@@ -11,6 +11,7 @@ export type {
   FutureInstallments, MonthPreview, PlannedInstallment, StoredPurchase,
   CardInput, CategoryInput, MovementInput, PurchaseInput,
   IncomeInput, IncomeKind, IncomeOccurrence, IncomeRange, IncomeScope, Incomes, StoredIncome,
+  Benefits, BenefitItem, BenefitSpend, BenefitRange, BenefitInput, BenefitUpdate, BenefitSpendInput, BenefitSplitItem, BenefitCategoryRow, StoredBenefit, StoredBenefitSpend,
 } from './store';
 export { INCOME_KINDS } from './store';
 
@@ -39,6 +40,8 @@ export const getGetMonthPreviewQueryKey = (cardId: number, month: store.MonthKey
 export const getGetLastFutureMonthQueryKey = () => ['installments', 'last'] as const;
 export const getGetIncomesQueryKey = (month?: store.MonthKey) => key('incomes', month);
 export const getGetIncomeRangeQueryKey = () => ['income-range'] as const;
+export const getGetBenefitsQueryKey = (month?: store.MonthKey) => key('benefits', month);
+export const getGetBenefitRangeQueryKey = () => ['benefit-range'] as const;
 
 function useLocalQuery<T>(queryKey: QueryKey, queryFn: () => Promise<T>, options?: QueryOpts<T>) {
   return useQuery<T, Error, T, QueryKey>({ queryKey, queryFn, ...options?.query });
@@ -140,3 +143,33 @@ export const useUpdateIncome = (options?: MutationOpts<store.StoredIncome, { inc
 
 export const useDeleteIncome = (options?: MutationOpts<void, { incomeId: number; month: store.MonthKey; scope: store.IncomeScope }>) =>
   useMutation({ mutationFn: ({ incomeId, month, scope }) => store.deleteIncome(incomeId, month, scope), ...options?.mutation });
+
+export const useGetBenefits = (month: store.MonthKey, options?: QueryOpts<store.Benefits>) =>
+  useLocalQuery(getGetBenefitsQueryKey(month), () => store.getBenefits(month), options);
+
+export const useGetBenefitRange = (options?: QueryOpts<store.BenefitRange>) =>
+  useLocalQuery(getGetBenefitRangeQueryKey(), store.getBenefitRange, options);
+
+export const useCreateBenefit = (options?: MutationOpts<store.StoredBenefit, { data: store.BenefitInput }>) =>
+  useMutation({ mutationFn: ({ data }) => store.createBenefit(data), ...options?.mutation });
+
+export const useUpdateBenefit = (options?: MutationOpts<store.StoredBenefit, { benefitId: number; month: store.MonthKey; data: store.BenefitUpdate }>) =>
+  useMutation({ mutationFn: ({ benefitId, month, data }) => store.updateBenefit(benefitId, month, data), ...options?.mutation });
+
+export const useDeleteBenefit = (options?: MutationOpts<void, { benefitId: number }>) =>
+  useMutation({ mutationFn: ({ benefitId }) => store.deleteBenefit(benefitId), ...options?.mutation });
+
+export const useCreateBenefitSpend = (options?: MutationOpts<store.StoredBenefitSpend, { benefitId: number; categoryId: number | null; data: store.BenefitSpendInput }>) =>
+  useMutation({ mutationFn: ({ benefitId, categoryId, data }) => store.createBenefitSpend(benefitId, categoryId, data), ...options?.mutation });
+
+export const useUpdateBenefitSpend = (options?: MutationOpts<store.StoredBenefitSpend, { spendId: number; categoryId: number | null; data: store.BenefitSpendInput }>) =>
+  useMutation({ mutationFn: ({ spendId, categoryId, data }) => store.updateBenefitSpend(spendId, categoryId, data), ...options?.mutation });
+
+export const useDeleteBenefitSpend = (options?: MutationOpts<void, { spendId: number }>) =>
+  useMutation({ mutationFn: ({ spendId }) => store.deleteBenefitSpend(spendId), ...options?.mutation });
+
+export const useCloseBenefitCategory = (options?: MutationOpts<void, { benefitId: number; categoryId: number; month: store.MonthKey }>) =>
+  useMutation({ mutationFn: ({ benefitId, categoryId, month }) => store.closeBenefitCategory(benefitId, categoryId, month), ...options?.mutation });
+
+export const useReopenBenefitCategory = (options?: MutationOpts<void, { benefitId: number; categoryId: number; month: store.MonthKey }>) =>
+  useMutation({ mutationFn: ({ benefitId, categoryId, month }) => store.reopenBenefitCategory(benefitId, categoryId, month), ...options?.mutation });

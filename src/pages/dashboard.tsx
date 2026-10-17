@@ -17,11 +17,13 @@ import {
 } from 'lucide-react';
 import { CardCarousel, type CarouselCard } from '@/components/card-carousel';
 import { AppTabs } from '@/components/app-tabs';
+import { CategoriesDialog } from '@/components/categories-dialog';
 import { Progress } from '@/components/progress';
+import { dialogOverlay, dialogPanel } from '@/lib/dialog-styles';
 import { CARD_COLOR_KEYS, CARD_COLORS, type CardColor } from '@/lib/card-colors';
 import {
   capitalize, currentMonth, dateLabel, defaultDateFor, firstDayOf, isFutureMonth,
-  money, monthLabel, monthName, monthOf, monthPath, shiftMonth, type MonthKey,
+  money, monthLabel, monthName, monthOf, monthPath, plural, shiftMonth, type MonthKey,
 } from '@/lib/format';
 
 type DialogKind = 'card' | 'movement';
@@ -45,12 +47,8 @@ function splitPreview(total: number, count: number, installment: number, date: s
   return { base, first, lastLabel: `${monthName(last)}/${last.slice(0, 4)}` };
 }
 
-const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 const filterKey = (categoryId: number | null) => (categoryId === null ? 'none' : String(categoryId));
 const sortRows = (a: Row, b: Row) => b.date.localeCompare(a.date) || a.key.localeCompare(b.key);
-
-const overlay = 'fixed inset-0 z-50 bg-[#18352c]/45 pb-[var(--safe-area-inset-bottom,env(safe-area-inset-bottom))] pt-[var(--safe-area-inset-top,env(safe-area-inset-top))] backdrop-blur-[3px]';
-const panel = 'enter m-auto w-full max-w-[440px] rounded-[24px] border border-[#e6dfd1] bg-[#fbf8f0] p-6 shadow-[0_30px_80px_-30px_rgba(22,50,40,.4)] sm:p-8';
 
 function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
   kind: DialogKind; initial: DialogRecord; month: MonthKey; categories: Category[]; busy: boolean;
@@ -79,10 +77,10 @@ function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
   };
   // Scrolls (instead of clipping) when the keyboard shrinks the viewport, and stays clear of the system bars.
   const closeOnBackdrop = (event: MouseEvent<HTMLDivElement>) => { if (event.target === event.currentTarget) onClose(); };
-  return <div className={overlay} onMouseDown={closeOnBackdrop}>
+  return <div className={dialogOverlay} onMouseDown={closeOnBackdrop}>
     <div className="h-full overflow-y-auto overscroll-contain" onMouseDown={closeOnBackdrop}>
     <div className="flex min-h-full p-4" onMouseDown={closeOnBackdrop}>
-    <form onSubmit={submit} className={panel}>
+    <form onSubmit={submit} className={dialogPanel}>
       <div className="mb-5 flex items-start justify-between sm:mb-7"><div><span className="font-mono-data text-[10px] uppercase tracking-[.18em] text-[#8a8e78]">{kind === 'card' ? 'Visão principal' : 'Registro confirmado'}</span><h2 className="mt-2 font-display text-[30px] leading-tight text-[#234638]">{title}</h2></div><button type="button" aria-label="Fechar" onClick={onClose} className="rounded-full p-2 text-[#718076] transition hover:bg-[#eee9df]"><X size={18}/></button></div>
       {kind === 'movement' ? <>
         <label className="field-label">O que foi?</label><input data-testid="input-movement-description" required maxLength={200} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex.: mercado da semana" className="field-input mb-4"/>
@@ -110,38 +108,6 @@ function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
       {kind === 'card' && <><span id="card-color-label" className="field-label">Cor do cartão</span><div role="group" aria-labelledby="card-color-label" className="mb-6 flex flex-wrap gap-2.5">{CARD_COLOR_KEYS.map((key) => <button key={key} type="button" data-testid={`button-card-color-${key}`} aria-label={CARD_COLORS[key].label} aria-pressed={color === key} onClick={() => setColor(key)} className={`grid h-9 w-9 place-items-center rounded-full ring-offset-2 ring-offset-[#fbf8f0] transition ${color === key ? 'ring-2 ring-[#294438]' : 'hover:scale-105'}`} style={{ background: CARD_COLORS[key].background }}>{color === key && <Check size={15} className="text-white"/>}</button>)}</div></>}
       <div className="flex gap-3"><button type="button" onClick={onClose} className="flex-1 rounded-full border border-[#dcd5c8] px-4 py-3 text-sm font-semibold text-[#546b5d] transition hover:bg-[#f1ede3]">Cancelar</button><button disabled={busy} type="submit" className="flex-1 rounded-full bg-[#28513f] px-4 py-3 text-sm font-semibold text-[#fffaf0] transition hover:bg-[#1f4333] disabled:opacity-60">{busy ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Adicionar'}</button></div>
     </form>
-    </div>
-    </div>
-  </div>;
-}
-
-// RF-07: the global category list, shared by every card.
-function CategoriesDialog({ categories, busy, onClose, onCreate, onRename, onDelete }: {
-  categories: Category[]; busy: boolean; onClose: () => void;
-  onCreate: (name: string) => void; onRename: (id: number, name: string) => void; onDelete: (category: Category) => void;
-}) {
-  const [name, setName] = useState('');
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editingName, setEditingName] = useState('');
-  const closeOnBackdrop = (event: MouseEvent<HTMLDivElement>) => { if (event.target === event.currentTarget) onClose(); };
-  const create = (event: FormEvent) => { event.preventDefault(); onCreate(name); setName(''); };
-  const rename = (event: FormEvent) => { event.preventDefault(); if (editingId !== null) onRename(editingId, editingName); setEditingId(null); };
-  return <div className={overlay} onMouseDown={closeOnBackdrop}>
-    <div className="h-full overflow-y-auto overscroll-contain" onMouseDown={closeOnBackdrop}>
-    <div className="flex min-h-full p-4" onMouseDown={closeOnBackdrop}>
-    <div role="dialog" aria-modal="true" aria-labelledby="categories-title" className={panel}>
-      <div className="mb-5 flex items-start justify-between"><div><span className="font-mono-data text-[10px] uppercase tracking-[.18em] text-[#8a8e78]">Para todos os cartões</span><h2 id="categories-title" className="mt-2 font-display text-[30px] leading-tight text-[#234638]">Categorias</h2></div><button type="button" aria-label="Fechar" onClick={onClose} className="rounded-full p-2 text-[#718076] transition hover:bg-[#eee9df]"><X size={18}/></button></div>
-      <form onSubmit={create} className="flex gap-2"><input data-testid="input-category-name" required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder="Nova categoria" aria-label="Nome da nova categoria" className="field-input"/><button data-testid="button-add-category" disabled={busy} type="submit" className="shrink-0 rounded-full bg-[#28513f] px-4 text-sm font-semibold text-[#fffaf0] transition hover:bg-[#1f4333] disabled:opacity-60">Criar</button></form>
-      {categories.length ? <ul data-testid="list-categories" className="mt-5 divide-y divide-[#ece6da]">
-        {categories.map((item) => <li key={item.id} data-testid={`row-category-${item.id}`} className="flex items-center gap-2 py-2.5">
-          {editingId === item.id ? <form onSubmit={rename} className="flex min-w-0 flex-1 gap-2"><input autoFocus required maxLength={120} value={editingName} onChange={(e) => setEditingName(e.target.value)} aria-label={`Novo nome de ${item.name}`} className="field-input py-2"/><button type="submit" aria-label="Salvar nome" className="rounded-full p-2 text-[#315944] hover:bg-[#eee9df]"><Check size={15}/></button><button type="button" aria-label="Cancelar" onClick={() => setEditingId(null)} className="rounded-full p-2 text-[#718076] hover:bg-[#eee9df]"><X size={15}/></button></form>
-          : <><span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-semibold text-[#345443]">{item.name}</span><span className="text-[10px] text-[#899186]">{plural(item.movementCount, 'compra', 'compras')}</span></span>
-            <button aria-label={`Renomear ${item.name}`} onClick={() => { setEditingId(item.id); setEditingName(item.name); }} className="rounded-full p-2 text-[#718076] transition hover:bg-[#eee9df]"><FilePenLine size={14}/></button>
-            <button aria-label={`Excluir ${item.name}`} onClick={() => onDelete(item)} className="rounded-full p-2 text-[#a36354] transition hover:bg-[#f5e9e1]"><Trash2 size={14}/></button></>}
-        </li>)}
-      </ul> : <p className="mt-5 rounded-2xl border border-dashed border-[#d9d2c4] bg-[#f8f5ed] px-4 py-6 text-center text-xs leading-5 text-[#7d887c]">Nenhuma categoria ainda. Crie uma para separar seus gastos.</p>}
-      <button onClick={onClose} className="mt-6 w-full rounded-full border border-[#dcd5c8] px-4 py-3 text-sm font-semibold text-[#546b5d] transition hover:bg-[#f1ede3]">Fechar</button>
-    </div>
     </div>
     </div>
   </div>;

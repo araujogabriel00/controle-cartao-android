@@ -48,3 +48,6 @@ export const defaultDateFor = (month: MonthKey) => monthOf(today()) === month ? 
 
 // The current month always lives at "/".
 export const monthPath = (month: MonthKey) => month === currentMonth() ? '/' : `/mes/${month}`;
+
+// "1 compra", "2 compras"
+export const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
