@@ -2,12 +2,13 @@ import { type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { getGetIncomeRangeQueryKey, getGetLastFutureMonthQueryKey, useGetIncomeRange, useGetLastFutureMonth } from '@workspace/api-client-react';
+import { getGetBenefitRangeQueryKey, getGetIncomeRangeQueryKey, getGetLastFutureMonthQueryKey, useGetBenefitRange, useGetIncomeRange, useGetLastFutureMonth } from '@workspace/api-client-react';
 import { currentMonth, isFutureMonth, isMonthKey } from '@/lib/format';
 import NotFound from '@/pages/not-found';
 import Dashboard from '@/pages/dashboard';
 import Historico from '@/pages/historico';
 import Entradas from '@/pages/entradas';
+import Beneficios from '@/pages/beneficios';
 import {
   Redirect,
   Route,
@@ -42,6 +43,16 @@ function IncomeMonthRoute({ month }: { month: string }) {
   return <Entradas key={month} month={month} />;
 }
 
+// Same rule for benefits (benefits RN-12): outside [oldest benefit, now + 12
+// months] goes back to the current month, which lives at "/beneficios".
+function BenefitMonthRoute({ month }: { month: string }) {
+  const range = useGetBenefitRange({ query: { queryKey: getGetBenefitRangeQueryKey() } });
+  if (!isMonthKey(month) || month === currentMonth()) return <Redirect to="/beneficios" replace />;
+  if (range.isLoading) return null;
+  if (!range.data || month < range.data.first || month > range.data.last) return <Redirect to="/beneficios" replace />;
+  return <Beneficios key={month} month={month} />;
+}
+
 function Router() {
   return (
     // Keep a shared shell (sidebar, navbar) outside the boundary so it
@@ -53,6 +64,8 @@ function Router() {
         <Route path="/historico" component={Historico} />
         <Route path="/entradas">{() => <Entradas key={currentMonth()} month={currentMonth()} />}</Route>
         <Route path="/entradas/mes/:month">{(params) => <IncomeMonthRoute month={params.month} />}</Route>
+        <Route path="/beneficios">{() => <Beneficios key={currentMonth()} month={currentMonth()} />}</Route>
+        <Route path="/beneficios/mes/:month">{(params) => <BenefitMonthRoute month={params.month} />}</Route>
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

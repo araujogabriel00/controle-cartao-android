@@ -8,7 +8,7 @@ As funcionalidades estão descritas em BDD em [`FUNCIONALIDADES.md`](FUNCIONALID
 
 - A interface (`src/pages/dashboard.tsx`, `src/index.css`) é a mesma do app web.
 - O pacote `@workspace/api-client-react`, que no app web chama a API, aqui é um **alias** para `src/data/api.ts`. Esse módulo exporta os mesmos hooks (`useGetCard`, `useCreateMovement`, …), mas lê e grava localmente.
-- `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 6`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
+- `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 7`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
 - As fontes (Fraunces, DM Sans e DM Mono) vêm junto com o app via `@fontsource`, então funcionam offline.
 
 ### Compras e categorias
@@ -29,7 +29,7 @@ Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês 
 - Na virada do mês, o mês novo começa sozinho, com o limite atual do cartão, sem perguntar nada.
 - Cada mês guarda o limite do cartão da época. Editar o limite muda só o mês corrente daquele cartão.
 - Meses passados continuam editáveis. Um mês futuro abre até o último mês que tenha parcela prevista ou compra registrada: mostra as parcelas previstas e as compras já registradas, e aceita "Registrar compra", mas não é iniciado até chegar.
-- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, a `version: 4` acrescenta a lista vazia de compras parceladas, a `version: 5` acrescenta as listas vazias de entradas, e a `version: 6` troca as categorias-envelope por categorias globais (os lançamentos viram compras no cartão em que estavam; orçamentos e o estado aberto/fechado são descartados).
+- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, a `version: 4` acrescenta a lista vazia de compras parceladas, a `version: 5` acrescenta as listas vazias de entradas, a `version: 6` troca as categorias-envelope por categorias globais (os lançamentos viram compras no cartão em que estavam; orçamentos e o estado aberto/fechado são descartados), e a `version: 7` acrescenta as listas vazias de benefícios.
 
 ### Parcelamento
 
@@ -47,6 +47,18 @@ A especificação completa está em [`specs/entradas.md`](specs/entradas.md).
 - Salário, pró-labore e bônus ficam na aba **Entradas** (`#/entradas`, `#/entradas/mes/AAAA-MM`), separada dos cartões. As entradas são globais por mês e **não entram em nenhum cálculo dos cartões**.
 - Uma entrada pode se repetir todo mês, com mês final opcional. Os meses são calculados a partir da regra e não ficam gravados. Editar ou excluir uma ocorrência pergunta se vale "Só este mês" ou "Este e os próximos".
 - A navegação vai do mês da entrada mais antiga até 12 meses à frente.
+
+### Benefícios
+
+A especificação completa está em [`specs/beneficios.md`](specs/beneficios.md).
+
+- Um benefício (VR, VA…) é um **saldo mensal** com nome, valor mensal, mês inicial e mês final opcional. Fica na aba **Benefícios** (`#/beneficios`, `#/beneficios/mes/AAAA-MM`), **independente dos cartões e das entradas**: um gasto de benefício não usa o limite de cartão.
+- **Disponível** do mês = sobra anterior + crédito do mês − gasto do mês. A sobra acumula de um mês para o outro e pode ficar negativa.
+- O valor mensal tem histórico: alterar o valor "a partir de um mês" vale daquele mês em diante, sem mexer nos anteriores. O mês inicial não muda depois de criado.
+- Os gastos são avulsos (descrição, valor, data) com categoria global opcional, e só aceitam datas dentro do período do benefício.
+- Um benefício pode ser **dividido por categoria**, como eram os envelopes: cada categoria reserva uma parte do valor mensal e tem a sua própria sobra, e o que não é dividido aparece como "Sem categoria". A divisão (livre, nunca acima do valor) repete todo mês e tem histórico, como o valor. Sem divisão, o benefício é um saldo só.
+- Dá para **fechar** uma categoria dentro do benefício: a sobra dela é liberada para "Sem categoria", a linha congela e não recebe mais gastos. Também dá para reabrir (a categoria volta com sobra zero).
+- A navegação vai do mês do benefício mais antigo até 12 meses à frente.
 
 ### Regras de cálculo
 
@@ -120,10 +132,12 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── lib/format.ts       # formatação de valores, datas e meses
 │   ├── lib/card-colors.ts  # paleta de cores dos cartões
 │   ├── components/card-carousel.tsx # carrossel de cartões
-│   ├── components/app-tabs.tsx # abas Cartões | Entradas
+│   ├── components/app-tabs.tsx # abas Entradas | Cartões | Benefícios
+│   ├── components/categories-dialog.tsx # diálogo das categorias globais
 │   ├── pages/dashboard.tsx # painel de um mês
 │   ├── pages/historico.tsx # lista de meses
 │   ├── pages/entradas.tsx  # entradas do mês
+│   ├── pages/beneficios.tsx # benefícios do mês
 │   └── ...
 ├── specs/                  # especificações das funcionalidades
 ├── capacitor.config.ts     # appId br.pessoal.controlecartao, barras do sistema
