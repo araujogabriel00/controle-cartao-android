@@ -271,10 +271,15 @@ export default function Entradas({ month }: { month: MonthKey }) {
           {([['Entradas', cash?.incomeAmount, 'income', 'text-[#315944]'], ['Contas fixas', cash?.billsAmount, 'bills', 'text-[#a55f50]'], ['Gastos do dia a dia', cash?.dailyAmount, 'daily', 'text-[#a55f50]'], ['Cartões', cash?.cardsAmount, 'cards', 'text-[#a55f50]']] as const).map(([label, value, id, tone]) =>
             <div key={id} className="min-w-0 rounded-2xl bg-[#f2eee4] p-3"><span className="text-[10px] text-[#7c877a]">{label}</span><p data-testid={`text-cash-${id}`} className={`mt-1 font-mono-data text-[13px] [overflow-wrap:anywhere] sm:text-[15px] ${tone}`}>{money(value)}</p>{id === 'cards' && <button data-testid="link-cards" onClick={() => navigate('/')} className="mt-1 text-[10px] font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4">Ver cartões</button>}</div>)}
         </div>
+        {/* D12: what came from the months before, the month on its own, and their sum. */}
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:mt-3 sm:gap-3">
+          {([['Saldo anterior', cash?.previousAmount, 'previous'], ['Resultado do mês', cash?.resultAmount, 'result']] as const).map(([label, value, id]) =>
+            <div key={id} className="min-w-0 rounded-2xl bg-[#f2eee4] p-3"><span className="text-[10px] text-[#7c877a]">{label}</span><p data-testid={`text-cash-${id}`} className={`mt-1 font-mono-data text-[13px] [overflow-wrap:anywhere] sm:text-[15px] ${(value ?? 0) < 0 ? 'text-[#a55f50]' : 'text-[#315944]'}`}>{money(value)}</p></div>)}
+        </div>
         <div className={`mt-3 rounded-2xl p-4 ${negative ? 'bg-[#f5e9e1]' : 'bg-[#e4ece2]'}`}>
           <span className={`text-[10px] ${negative ? 'text-[#927b70]' : 'text-[#5f7a66]'}`}>Saldo</span>
           <p data-testid="text-cash-balance" className={`mt-1 font-mono-data text-[26px] [overflow-wrap:anywhere] ${negative ? 'text-[#a55f50]' : 'text-[#315944]'}`}>{money(cash?.balanceAmount)}</p>
-          {negative && <p data-testid="text-cash-warning" className="mt-1 text-[11px] text-[#8c5a4c]">As saídas passaram das entradas.</p>}
+          {negative && <p data-testid="text-cash-warning" className="mt-1 text-[11px] text-[#8c5a4c]">As saídas passaram das entradas e do saldo anterior.</p>}
         </div>
       </section>
 

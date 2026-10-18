@@ -20,7 +20,7 @@ A aba Entradas só mostra o dinheiro que entra. A pessoa não tem onde registrar
 
 1. Registrar **contas fixas**: despesas mensais que se repetem (aluguel, internet, plano de saúde).
 2. Registrar **gastos do dia a dia**: despesas avulsas, com categoria opcional.
-3. Mostrar, por mês, o **saldo**: entradas − contas fixas − gastos do dia a dia − o que foi usado nos cartões.
+3. Mostrar, por mês, o **saldo**: entradas − contas fixas − gastos do dia a dia − o que foi usado nos cartões, **somado ao que sobrou (ou faltou) dos meses anteriores**.
 4. Manter tudo na aba Entradas, separada de Cartões e Benefícios.
 
 ## 2. Glossário
@@ -32,7 +32,9 @@ A aba Entradas só mostra o dinheiro que entra. A pessoa não tem onde registrar
 | **Exceção** | Ajuste de uma ocorrência só: pular o mês ou mudar nome, valor ou dia daquele mês (como em [`entradas.md`](entradas.md#2-glossário)). |
 | **Gasto do dia a dia** | Despesa avulsa: descrição, valor, data e categoria opcional. |
 | **Cartões** | O total usado em todos os cartões no mês ([`compras-e-categorias.md`](compras-e-categorias.md#2-glossário)). |
-| **Saldo do mês** | Entradas − contas fixas − gastos do dia a dia − cartões. Pode ser negativo. |
+| **Resultado do mês** | Entradas − contas fixas − gastos do dia a dia − cartões, só daquele mês. Pode ser negativo. |
+| **Saldo anterior** | A soma dos resultados de todos os meses antes do mês visto, a partir do primeiro mês com algo cadastrado. |
+| **Saldo do mês** | Saldo anterior + resultado do mês. É o que sobra (ou falta) até o fim do mês, e passa para o mês seguinte. |
 
 ## 3. Decisões de produto
 
@@ -43,10 +45,15 @@ A aba Entradas só mostra o dinheiro que entra. A pessoa não tem onde registrar
 | D3 | **Contas fixas não têm "paga / a pagar".** Todas contam no saldo do mês. | Escolha do usuário. Mantém o escopo pequeno. |
 | D4 | **Gastos do dia a dia usam as categorias globais**, com categoria opcional, e têm um resumo por categoria no mês. | Escolha do usuário. A mesma lista serve às compras dos cartões e aos benefícios. |
 | D5 | **O usado dos cartões também abate do saldo**, numa linha "Cartões". Benefícios continuam fora do saldo. | Escolha do usuário. A fatura do cartão sai do mesmo dinheiro que entra. Benefícios (VR/VA) são um saldo à parte. |
-| D6 | **O saldo é de cada mês e não acumula** para o mês seguinte. | Mantém o escopo pequeno. A sobra acumulada pode virar uma spec futura. |
+| D6 | **O saldo acumula para os meses seguintes:** o saldo de um mês é o saldo anterior + o resultado do mês, e passa adiante. | Escolha do usuário (revisão de 18/10/2026; antes o saldo era isolado em cada mês). |
 | D7 | **A tela das entradas só lê os cartões.** Criar, editar ou excluir entradas, contas e gastos não altera nenhum valor de cartão, compra ou benefício. | Preserva a independência combinada antes. |
 | D8 | **Gasto do dia a dia aceita data até 12 meses à frente** do mês corrente. | É o limite de navegação da tela (`entradas.md`, D9), e um gasto fora dele não apareceria. |
 | D9 | **Migração v7 → v8 automática**, só acrescenta listas vazias. | Ninguém perde dados. |
+| D10 | **A falta também passa adiante.** Um mês no vermelho reduz o saldo dos meses seguintes, sem zerar. | Escolha do usuário. O saldo segue a conta de verdade. |
+| D11 | **A conta começa no primeiro mês com entrada, conta fixa ou gasto cadastrado.** Os meses antes dele não acumulam, e os cartões não definem o início. | Escolha do usuário. Evita arrastar para o saldo o histórico antigo dos cartões. |
+| D12 | **O resumo mostra a parte que veio dos meses anteriores e a do mês:** "Saldo anterior", "Resultado do mês" e "Saldo" (a soma dos dois). | Escolha do usuário. Dá para ver quanto do saldo é do mês e quanto veio de antes. |
+| D13 | **Os meses futuros projetam o saldo:** usam as entradas e contas fixas previstas, os gastos já lançados e o usado previsto dos cartões até lá. | Mostra para onde o saldo está indo. |
+| D14 | **Nada novo é gravado.** O saldo anterior é calculado a cada leitura. | Mudar qualquer coisa de um mês passado ajusta os saldos dos meses seguintes sem passo extra. |
 
 ## 4. Requisitos
 
@@ -54,8 +61,8 @@ A aba Entradas só mostra o dinheiro que entra. A pessoa não tem onde registrar
 
 | ID | Requisito |
 | -- | --------- |
-| RF-01 | A tela Entradas mostra, abaixo da navegação de mês, a faixa **"Resumo do mês"** com cinco valores: **Entradas**, **Contas fixas**, **Gastos do dia a dia**, **Cartões** e **Saldo**. |
-| RF-02 | O **Saldo** negativo aparece em vermelho, com o aviso "As saídas passaram das entradas." Saldo zero ou positivo aparece em verde. |
+| RF-01 | A tela Entradas mostra, abaixo da navegação de mês, a faixa **"Resumo do mês"** com sete valores: **Entradas**, **Contas fixas**, **Gastos do dia a dia**, **Cartões**, **Resultado do mês**, **Saldo anterior** e **Saldo** (D12). |
+| RF-02 | O **Saldo** negativo aparece em vermelho, com o aviso "As saídas passaram das entradas e do saldo anterior." Saldo zero ou positivo aparece em verde. O **Saldo anterior** e o **Resultado do mês** também ficam em vermelho quando negativos. |
 | RF-03 | Abaixo do resumo, as seções, em ordem: **Entradas** (como hoje), **Contas fixas** e **Gastos do dia a dia**. Cada uma com o seu botão: "Nova entrada", "Nova conta fixa" e "Novo gasto". |
 | RF-04 | O valor **Cartões** mostra o total usado nos cartões no mês e tem o link "Ver cartões", que leva à aba Cartões. |
 | RF-05 | O diálogo **"Nova conta fixa"** tem nome, valor, data (o dia e o mês inicial saem dela) e "Até (mês)" opcional. A lista do mês mostra nome, dia, valor e o selo "Mensal". |
@@ -74,7 +81,11 @@ A aba Entradas só mostra o dinheiro que entra. A pessoa não tem onde registrar
 | RN-03 | **Contas fixas do mês:** soma das ocorrências do mês após aplicar as exceções. |
 | RN-04 | **Gastos do dia a dia do mês:** soma dos gastos com data no mês. |
 | RN-05 | **Cartões (D5):** o usado de todos os cartões no mês, como em `compras-e-categorias.md`, RN-01 e RN-03, inclusive as parcelas previstas e as compras futuras de um mês futuro. |
-| RN-06 | **Saldo (D5, D6):** Entradas − Contas fixas − Gastos do dia a dia − Cartões, em centavos. Pode ser negativo. |
+| RN-06 | **Resultado do mês (D5):** Entradas − Contas fixas − Gastos do dia a dia − Cartões, em centavos, só do mês. Pode ser negativo. |
+| RN-15 | **Saldo anterior (D6, D10, D11):** a soma dos resultados (RN-06) de cada mês desde o primeiro mês até o mês anterior ao visto. É 0 no primeiro mês e nos meses antes dele. |
+| RN-16 | **Primeiro mês (D11):** o mais antigo entre o mês inicial das entradas, o mês inicial das contas fixas e o mês dos gastos do dia a dia. Os cartões não definem o primeiro mês. Sem nenhum dos três, o saldo anterior é sempre 0. |
+| RN-17 | **Saldo (D6, D10):** Saldo anterior + Resultado do mês. Pode ser negativo, e o negativo também passa para o mês seguinte. |
+| RN-18 | **Meses futuros (D13) e passados (D14):** o saldo anterior de qualquer mês usa os resultados dos meses antes dele, passados e futuros. Não há valor gravado, então alterar uma entrada, conta, gasto ou compra de um mês muda os saldos dos meses seguintes. |
 | RN-07 | **Validação da conta fixa:** nome obrigatório, até 120 caracteres; valor ≥ R$ 0,01 ("Valor deve ser de pelo menos R$ 0,01."); data válida; "Até (mês)" não pode ser anterior ao mês inicial ("O mês final deve ser igual ou posterior ao mês inicial."). |
 | RN-08 | **Validação do gasto:** descrição obrigatória, até 200 caracteres; valor ≥ R$ 0,01; data válida e até o último dia do mês corrente + 12 meses ("A data deve ser de até 12 meses à frente."); categoria, se informada, precisa existir ("Categoria não encontrada."). |
 | RN-09 | **Editar conta fixa:** "só este mês" grava a exceção do mês; "este e os próximos" funciona como em `entradas.md`, RN-06: no mês inicial atualiza no lugar, senão a original termina no mês anterior e nasce uma nova a partir do mês editado. As exceções de meses ≥ o mês editado da original são apagadas. |
@@ -101,17 +112,59 @@ Funcionalidade: Contas fixas e gastos do dia a dia
     Dado o exemplo-base de outubro de 2026
     Quando eu abro a aba "Entradas"
     Então o resumo mostra Entradas R$ 5.000,00, Contas fixas R$ 1.600,00, Gastos do dia a dia R$ 300,00, Cartões R$ 800,00
+    E o Resultado do mês é R$ 2.300,00 e o Saldo anterior é R$ 0,00, porque outubro é o primeiro mês
     E o Saldo é R$ 2.300,00, em verde
 
   # --- RF-02 ---------------------------------------------------------------------
   Cenário: Saldo negativo
-    Dado que as saídas somam R$ 5.600,00 contra R$ 5.000,00 de entradas
-    Então o Saldo é -R$ 600,00, em vermelho
-    E vejo "As saídas passaram das entradas."
+    Dado que o saldo anterior é R$ 0,00 e as saídas do mês somam R$ 5.600,00 contra R$ 5.000,00 de entradas
+    Então o Resultado do mês e o Saldo são -R$ 600,00, em vermelho
+    E vejo "As saídas passaram das entradas e do saldo anterior."
+
+  # --- D6 / RF-01 / RN-15 / RN-17 ------------------------------------------------
+  Cenário: A sobra passa para o mês seguinte
+    Dado o exemplo-base de outubro de 2026, com Resultado do mês de R$ 2.300,00
+    E que novembro de 2026 tem a entrada "Salário" de R$ 5.000,00 e as contas fixas de R$ 1.600,00 repetidas, e nada mais
+    Quando eu abro novembro de 2026
+    Então o Saldo anterior é R$ 2.300,00
+    E o Resultado do mês é R$ 3.400,00
+    E o Saldo é R$ 5.700,00
+
+  # --- D10 / RN-17 ---------------------------------------------------------------
+  Cenário: A falta também passa para o mês seguinte
+    Dado que outubro de 2026 termina com Saldo de -R$ 600,00
+    E que novembro tem Resultado do mês de R$ 3.400,00
+    Quando eu abro novembro de 2026
+    Então o Saldo anterior é -R$ 600,00, em vermelho
+    E o Saldo é R$ 2.800,00, em verde
+
+  # --- D11 / RN-16 ---------------------------------------------------------------
+  Cenário: A conta começa no primeiro mês cadastrado
+    Dado que a conta fixa mais antiga começa em julho de 2026 e não há entrada nem gasto antes
+    Então o Saldo anterior de julho é R$ 0,00
+    E o Saldo anterior de agosto é o Resultado de julho
+    E um mês antes de julho tem Saldo anterior R$ 0,00 e não acumula nada
+
+  Cenário: Compras antigas nos cartões não puxam o início
+    Dado que o Nubank tem compras em maio de 2026 e a primeira entrada é de julho de 2026
+    Então o Saldo anterior de julho é R$ 0,00, sem os gastos de maio
+
+  # --- D13 / RN-18 ---------------------------------------------------------------
+  Cenário: Os meses futuros projetam o saldo
+    Dado o exemplo-base de outubro de 2026, com Saldo de R$ 2.300,00, e o mesmo salário e as mesmas contas fixas nos meses seguintes
+    Quando eu abro dezembro de 2026
+    Então o Saldo anterior soma o Resultado de outubro e o de novembro
+    E o Resultado do mês de dezembro inclui o usado previsto dos cartões
+
+  # --- D14 / RN-18 ---------------------------------------------------------------
+  Cenário: Alterar o passado muda os saldos seguintes
+    Dado que outubro tem o gasto "Feira" de R$ 300,00
+    Quando eu excluo "Feira" e confirmo
+    Então o Saldo de outubro e o Saldo anterior de novembro aumentam R$ 300,00
 
   Cenário: Mês sem nada cadastrado
     Dado que não há entradas, contas, gastos nem cartões
-    Então o resumo mostra tudo zerado e o Saldo R$ 0,00
+    Então o resumo mostra tudo zerado, com Saldo anterior, Resultado do mês e Saldo R$ 0,00
     E vejo "Nenhuma conta fixa neste mês." e "Nenhum gasto neste mês."
 
   # --- RF-04 / RN-05 / D7 --------------------------------------------------------
@@ -241,7 +294,7 @@ Funcionalidade: Contas fixas e gastos do dia a dia
 | Requisito | Cenário(s) |
 | --------- | ---------- |
 | RF-01, RN-06 | Resumo do mês; Mês sem nada cadastrado |
-| RF-02 | Saldo negativo |
+| RF-02 | Saldo negativo; A falta também passa para o mês seguinte |
 | RF-03 | Resumo do mês; Cadastrar uma conta fixa; Registrar um gasto do dia a dia |
 | RF-04, RN-05 | Cartões no saldo; Mês futuro inclui parcelas previstas |
 | RF-05 | Cadastrar uma conta fixa |
@@ -268,6 +321,11 @@ Funcionalidade: Contas fixas e gastos do dia a dia
 | D5 | Cartões no saldo; Benefícios continuam de fora |
 | D6 | Resumo do mês |
 | D8 | Gasto com data longe demais |
+| RN-15, D6 | A sobra passa para o mês seguinte; A conta começa no primeiro mês cadastrado |
+| RN-16, D11 | A conta começa no primeiro mês cadastrado; Compras antigas nos cartões não puxam o início |
+| RN-17, D10 | A sobra passa para o mês seguinte; A falta também passa para o mês seguinte |
+| RN-18, D13, D14 | Os meses futuros projetam o saldo; Alterar o passado muda os saldos seguintes |
+| D12 | Resumo do mês; A sobra passa para o mês seguinte |
 
 ## 6. Modelo de dados e migração
 
@@ -301,7 +359,7 @@ Em `src/data/store.ts`:
 
 | Função | Efeito |
 | ------ | ------ |
-| `getMonthCash(month)` | Devolve o resumo do mês: `incomeAmount`, `billsAmount`, `dailyAmount`, `cardsAmount` e `balanceAmount` (RN-03 a RN-06). |
+| `getMonthCash(month)` | Devolve o resumo do mês: `incomeAmount`, `billsAmount`, `dailyAmount`, `cardsAmount`, `resultAmount` (RN-06), `previousAmount` (RN-15, RN-16) e `balanceAmount` (RN-17). O saldo anterior é calculado a cada leitura (RN-18), sem nada gravado. |
 | `getBills(month)` | `{ month, totalAmount, items }`, com as ocorrências ordenadas por dia: `billId`, `name`, `amount`, `date`, `lastMonth` (RN-01, RN-02). |
 | `createBill(input)`, `updateBill(billId, month, scope, input)`, `deleteBill(billId, month, scope)` | RN-07, RN-09, RN-10. `scope` é `'month'` ou `'forward'`. |
 | `getDailyExpenses(month)` | `{ month, totalAmount, items, summary }`: `items` do mais recente ao mais antigo, com `categoryName`; `summary` por categoria, em ordem decrescente, com `percent` (RF-07, RF-08). |
@@ -313,7 +371,7 @@ Em `src/data/api.ts`: `useGetMonthCash`, `useGetBills`, `useGetDailyExpenses` e 
 
 ## 8. Interface
 
-- **Tela Entradas** (`src/pages/entradas.tsx`), de cima para baixo: abas, navegação de mês, título, a faixa "Resumo do mês" (cinco valores, com o saldo em destaque), a seção **Entradas** (como hoje), a seção **Contas fixas** (lista com selo "Mensal", editar e excluir) e a seção **Gastos do dia a dia** (lista com editar e excluir, e o resumo "Por categoria"). O botão "Categorias" fica no topo.
+- **Tela Entradas** (`src/pages/entradas.tsx`), de cima para baixo: abas, navegação de mês, título, a faixa "Resumo do mês" (sete valores: os quatro de entradas e saídas, e abaixo o "Saldo anterior", o "Resultado do mês" e o "Saldo" em destaque), a seção **Entradas** (como hoje), a seção **Contas fixas** (lista com selo "Mensal", editar e excluir) e a seção **Gastos do dia a dia** (lista com editar e excluir, e o resumo "Por categoria"). O botão "Categorias" fica no topo.
 - **Diálogos:** "Nova conta fixa" e "Novo gasto", no mesmo estilo dos diálogos de Entradas; a pergunta de escopo (`ScopeDialog`) é reaproveitada, com o texto trocado conforme a conta ou a entrada.
 - **Reuso:** `IncomeDialog`/`ScopeDialog` de `entradas.tsx`; `CategoriesDialog`; `Progress`; `AppTabs`; o padrão de ocorrências, exceções e divisão do `store.ts` (`occurrenceOf`, `updateIncome`, `deleteIncome`); `getConsolidated` para o usado dos cartões.
 - **Rotas:** inalteradas (`#/entradas`, `#/entradas/mes/AAAA-MM`).
@@ -321,7 +379,7 @@ Em `src/data/api.ts`: `useGetMonthCash`, `useGetBills`, `useGetDailyExpenses` e 
 ## 9. Fora de escopo
 
 - Marcar conta como paga, vencimentos e lembretes (D3).
-- Saldo que acumula de um mês para o outro (D6).
+- Mudar o ponto de partida do saldo à mão, ou lançar um saldo inicial (o início é o primeiro mês cadastrado, D11).
 - Conta fixa avulsa (que não se repete): é um gasto do dia a dia.
 - Gastos parcelados ou recorrentes fora das contas fixas.
 - Metas e orçamento por categoria.
@@ -338,6 +396,13 @@ Em `src/data/api.ts`: `useGetMonthCash`, `useGetBills`, `useGetDailyExpenses` e 
 - [x] `npm run typecheck` e `npm run build` passam.
 - [x] `FUNCIONALIDADES.md` e `README.md` atualizados, e a spec `entradas.md` tem a nota "Substituída em parte por `contas-e-gastos.md`".
 
+*Revisão (saldo acumulado):*
+
+- [ ] RF-01 e RF-02 funcionam com os sete valores do resumo. *Verificados no navegador: os sete valores, o vermelho do Saldo, do Saldo anterior e do Resultado do mês quando negativos e o aviso "As saídas passaram das entradas e do saldo anterior.".*
+- [ ] Os cenários de saldo acumulado da seção 5 passam no navegador. *Conferidos no navegador: outubro (anterior R$ 0,00), novembro e dezembro com a sobra passando adiante, voltar a outubro e a falta passando adiante. Os demais (primeiro mês, compras antigas nos cartões, alterar o passado) foram conferidos só na camada de dados.*
+- [x] RN-15 a RN-18 exercitadas em `src/data/store.ts`, incluindo sobra e falta que passam adiante, o primeiro mês, meses futuros com o usado previsto dos cartões, alterar o passado e a virada de ano.
+- [x] `FUNCIONALIDADES.md` e `README.md` descrevem o saldo acumulado.
+
 ## 11. Tarefas
 
 1. `store.ts`: tipos, `State` v8, `emptyState`, `migrateV7` e encadeamento na leitura.
@@ -349,10 +414,17 @@ Em `src/data/api.ts`: `useGetMonthCash`, `useGetBills`, `useGetDailyExpenses` e 
 7. Atualizar `FUNCIONALIDADES.md` (seção nova e ajustes na seção 12), `README.md` (versão 8, regras de cálculo, estrutura) e a nota em `specs/entradas.md`.
 8. Rodar o roteiro de verificação; mudar o Status para `Implementada` e marcar só o que foi verificado.
 
+*Revisão (saldo acumulado), em ordem:*
+
+9. `store.ts`: `getMonthCash` com `resultAmount`, `previousAmount` (RN-15, RN-16) e `balanceAmount` (RN-17).
+10. `entradas.tsx`: o resumo com os sete valores, as cores e o novo aviso (RF-01, RF-02).
+11. Atualizar `FUNCIONALIDADES.md` (seção 14) e `README.md` (regras de cálculo).
+12. Rodar o roteiro e marcar só o que foi verificado.
+
 ## 12. Roteiro de verificação
 
 1. `npm run typecheck` e `npm run build`.
-2. Script de teste de `store.ts` (esbuild com `localStorage` simulado): recorrência da conta fixa com exceções e "daqui em diante", dia 31 e virada de ano, saldo com cartões (mês corrente e futuro), exclusão de categoria usada em compra, gasto e benefício, intervalo de navegação e a migração v7 → v8.
+2. Script de teste de `store.ts` (esbuild com `localStorage` simulado): saldo acumulado (sobra e falta passando adiante, primeiro mês, meses futuros e virada de ano), recorrência da conta fixa com exceções e "daqui em diante", dia 31 e virada de ano, saldo com cartões (mês corrente e futuro), exclusão de categoria usada em compra, gasto e benefício, intervalo de navegação e a migração v7 → v8.
 3. `npm run dev` e percorrer os cenários da seção 5.
 4. No console do navegador, gravar um JSON `version: 7` em `controle-cartao:v1`, recarregar e conferir a migração.
 5. Conferir que Cartões, Histórico e Benefícios continuam iguais.

@@ -172,7 +172,11 @@ export type Bills = { month: MonthKey; totalAmount: number; items: BillOccurrenc
 export type DailyExpense = StoredDailyExpense & { categoryName: string | null };
 export type DailyExpenses = { month: MonthKey; totalAmount: number; items: DailyExpense[]; summary: CategorySummary[] };
 // RN-06: what comes in, what goes out and what is left in the month.
-export type MonthCash = { month: MonthKey; incomeAmount: number; billsAmount: number; dailyAmount: number; cardsAmount: number; balanceAmount: number };
+// resultAmount is the month on its own; previousAmount is what came from the months before it; balanceAmount adds the two.
+export type MonthCash = {
+  month: MonthKey; incomeAmount: number; billsAmount: number; dailyAmount: number; cardsAmount: number;
+  resultAmount: number; previousAmount: number; balanceAmount: number;
+};
 
 export type BenefitSpend = StoredBenefitSpend & { categoryName: string | null };
 // One line of the "by category" list (RN-17); categoryId null is "Sem categoria".
@@ -1530,15 +1534,31 @@ export function deleteDailyExpense(expenseId: number) {
 
 // --- month cash -----------------------------------------------------------------
 
-// RN-03 to RN-06: what comes in minus bills, daily expenses and what the cards used.
-// It only reads the cards (D7).
-export async function getMonthCash(month: MonthKey): Promise<MonthCash> {
-  const state = await load();
+// RN-03 to RN-06: the month on its own: what comes in minus bills, daily expenses and what the
+// cards used. It only reads the cards (D7).
+function cashOf(state: State, month: MonthKey) {
   const incomeAmount = sum(state.incomes.map((i) => occurrenceOf(state, i, month)).filter((o): o is IncomeOccurrence => o !== null).map((o) => o.amount));
   const billsAmount = sum(billsOf(state, month).map((b) => b.amount));
   const dailyAmount = sum(state.dailyExpenses.filter((x) => monthOf(x.date) === month).map((x) => x.amount));
   const cardsAmount = consolidatedOf(state, month).usedAmount;
-  return { month, incomeAmount, billsAmount, dailyAmount, cardsAmount, balanceAmount: cents(incomeAmount - billsAmount - dailyAmount - cardsAmount) };
+  return { incomeAmount, billsAmount, dailyAmount, cardsAmount, resultAmount: cents(incomeAmount - billsAmount - dailyAmount - cardsAmount) };
+}
+
+// RN-16: the balance starts at the oldest income, bill or daily expense. The cards don't set it.
+function cashStart(state: State): MonthKey | null {
+  const firsts = [...state.incomes.map((i) => i.firstMonth), ...state.bills.map((b) => b.firstMonth), ...state.dailyExpenses.map((x) => monthOf(x.date))];
+  return firsts.length ? firsts.reduce((min, m) => (m < min ? m : min)) : null;
+}
+
+// RN-15 / RN-17 / RN-18: the balance carries forward, the shortfall too. Nothing is stored: the
+// previous balance is the sum of the results of every month before this one, past or future.
+export async function getMonthCash(month: MonthKey): Promise<MonthCash> {
+  const state = await load();
+  const current = cashOf(state, month);
+  const first = cashStart(state);
+  let previousAmount = 0;
+  if (first) for (let m = first; m < month; m = shiftMonth(m, 1)) previousAmount = cents(previousAmount + cashOf(state, m).resultAmount);
+  return { month, ...current, previousAmount, balanceAmount: cents(previousAmount + current.resultAmount) };
 }
 
 // --- recurring purchases ------------------------------------------------------

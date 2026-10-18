@@ -14,7 +14,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 >
 > Os **benefícios** (VR, VA etc.) são um saldo mensal numa aba própria, independente dos cartões e das entradas. Os detalhes estão na seção [13. Benefícios](#13-benefícios) e na spec [`specs/beneficios.md`](specs/beneficios.md).
 >
-> As **entradas** (salário, pró-labore, bônus) ficam numa aba própria, separada dos cartões, e não alteram nenhum valor deles. A mesma aba tem as **contas fixas**, os **gastos do dia a dia** e o **saldo do mês** (entradas − saídas − o usado dos cartões). Os detalhes estão nas seções [12. Entradas](#12-entradas) e [14. Contas fixas e gastos do dia a dia](#14-contas-fixas-e-gastos-do-dia-a-dia) e nas specs [`specs/entradas.md`](specs/entradas.md) e [`specs/contas-e-gastos.md`](specs/contas-e-gastos.md).
+> As **entradas** (salário, pró-labore, bônus) ficam numa aba própria, separada dos cartões, e não alteram nenhum valor deles. A mesma aba tem as **contas fixas**, os **gastos do dia a dia** e o **saldo do mês** (entradas − saídas − o usado dos cartões), que **acumula** para os meses seguintes. Os detalhes estão nas seções [12. Entradas](#12-entradas) e [14. Contas fixas e gastos do dia a dia](#14-contas-fixas-e-gastos-do-dia-a-dia) e nas specs [`specs/entradas.md`](specs/entradas.md) e [`specs/contas-e-gastos.md`](specs/contas-e-gastos.md).
 
 ## Sumário
 
@@ -936,16 +936,44 @@ Funcionalidade: Contas fixas e gastos do dia a dia
     Dado que outubro de 2026 tem a entrada "Salário" de R$ 5.000,00, as contas fixas "Aluguel" R$ 1.500,00 e "Internet" R$ 100,00, o gasto "Mercado" de R$ 300,00 e R$ 800,00 usados nos cartões
     Quando eu abro a aba "Entradas"
     Então o resumo mostra Entradas R$ 5.000,00, Contas fixas R$ 1.600,00, Gastos do dia a dia R$ 300,00 e Cartões R$ 800,00
+    E o Resultado do mês é R$ 2.300,00 e o Saldo anterior é R$ 0,00, porque outubro é o primeiro mês
     E o Saldo é R$ 2.300,00, em verde
 
   Cenário: Saldo negativo
-    Dado que as saídas passam das entradas
-    Então o Saldo aparece negativo, em vermelho
-    E vejo "As saídas passaram das entradas."
+    Dado que o saldo anterior é R$ 0,00 e as saídas passam das entradas
+    Então o Resultado do mês e o Saldo aparecem negativos, em vermelho
+    E vejo "As saídas passaram das entradas e do saldo anterior."
+
+  Cenário: A sobra passa para o mês seguinte
+    Dado que outubro tem Resultado do mês de R$ 2.300,00 e novembro tem Resultado do mês de R$ 3.400,00
+    Quando eu abro novembro de 2026
+    Então o Saldo anterior é R$ 2.300,00 e o Resultado do mês é R$ 3.400,00
+    E o Saldo é R$ 5.700,00
+    E dezembro, com o mesmo resultado, tem Saldo anterior R$ 5.700,00 e Saldo R$ 9.100,00
+
+  Cenário: A falta também passa para o mês seguinte
+    Dado que outubro termina com Saldo de -R$ 600,00 e novembro tem Resultado do mês de R$ 3.400,00
+    Quando eu abro novembro de 2026
+    Então o Saldo anterior é -R$ 600,00, em vermelho
+    E o Saldo é R$ 2.800,00
+
+  @regra
+  Cenário: A conta começa no primeiro mês cadastrado
+    Dado que a primeira entrada, conta fixa ou gasto é de julho de 2026
+    Então o Saldo anterior de julho e dos meses antes dele é R$ 0,00
+    E o de agosto é o Resultado de julho
+    E compras antigas nos cartões não puxam o início
+
+  @regra
+  Cenário: Os meses futuros projetam o saldo e o passado ajusta os seguintes
+    Dado que os meses seguintes repetem o salário e as contas fixas
+    Então o Saldo anterior de um mês futuro soma os resultados dos meses até lá, com o usado previsto dos cartões
+    Quando eu excluo um gasto de outubro
+    Então o Saldo de outubro e os Saldos anteriores dos meses seguintes aumentam o valor do gasto
 
   Cenário: Mês sem nada cadastrado
     Dado que não há entradas, contas, gastos nem cartões
-    Então o resumo mostra tudo zerado e o Saldo R$ 0,00
+    Então o resumo mostra tudo zerado, com Saldo anterior, Resultado do mês e Saldo R$ 0,00
     E vejo "Nenhuma conta fixa neste mês." e "Nenhum gasto neste mês."
 
   @regra
