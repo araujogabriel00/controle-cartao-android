@@ -21,6 +21,8 @@ A especificação completa está em [`specs/compras-e-categorias.md`](specs/comp
 
 ### Histórico mensal
 
+- O acesso ao Histórico fica na **face de cada cartão** (botão ao lado de editar e remover), e a aba Cartões não tem botão "Atualizar" ([`specs/historico-no-cartao.md`](specs/historico-no-cartao.md)).
+
 Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês do calendário**: a data da compra define o mês dela. As especificações completas estão em [`specs/historico-mensal.md`](specs/historico-mensal.md) e [`specs/multiplos-cartoes.md`](specs/multiplos-cartoes.md).
 
 - O app aceita vários cartões, cada um com nome, cor, meses e compras próprios. A troca é feita num carrossel horizontal no estilo das carteiras digitais, e o app lembra o último cartão usado.
