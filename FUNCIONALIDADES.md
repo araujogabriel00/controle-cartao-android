@@ -39,6 +39,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 17. [Cartão sem limite](#17-cartão-sem-limite)
 18. [Histórico no card do cartão](#18-histórico-no-card-do-cartão)
 19. [Botão Lançar](#19-botão-lançar)
+20. [Telas de entradas, contas fixas, gastos e cartões](#20-telas-de-entradas-contas-fixas-gastos-e-cartões)
 
 ---
 
@@ -662,7 +663,7 @@ Funcionalidade: Parcelamento
 
 ## 12. Entradas
 
-Resumo das entradas de dinheiro. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/entradas.md`](specs/entradas.md).
+As listas de entradas, contas fixas e gastos do dia a dia ficam em telas próprias, abertas pelo resumo da aba ([seção 20](#20-telas-de-entradas-contas-fixas-gastos-e-cartões)); criar é pelo "+" do rodapé. Resumo das entradas de dinheiro. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/entradas.md`](specs/entradas.md).
 
 ```gherkin
 # language: pt
@@ -680,11 +681,11 @@ Funcionalidade: Entradas
 
   Cenário: Mês sem entradas
     Dado que não há entradas
-    Quando eu abro a aba "Entradas"
+    Quando eu abro a tela "Entradas" pelo resumo da aba
     Então vejo "Nenhuma entrada neste mês." e o total R$ 0,00
 
   Cenário: Registrar uma entrada avulsa
-    Quando eu toco em "Nova entrada"
+    Quando eu toco no "+" do rodapé e em "Entrada"
     E escolho o tipo "Bônus", o valor "1500" e uma data do mês
     E toco em "Adicionar"
     Então a lista do mês tem "Bônus" com R$ 1.500,00 e o total do mês é R$ 1.500,00
@@ -972,8 +973,8 @@ Funcionalidade: Contas fixas e gastos do dia a dia
   Cenário: Cartões no saldo
     Dado que o Nubank tem fatura de R$ 500,00 e o Inter de R$ 300,00
     Então "Cartões" mostra R$ 800,00
-    Quando eu toco em "Ver cartões"
-    Então vejo a aba "Cartões"
+    Quando eu toco no bloco "Cartões"
+    Então abre a tela "Cartões" com o total e uma linha por cartão (seção 20)
     Mas em um mês futuro "Cartões" inclui as parcelas previstas e as compras já registradas
 
   @regra
@@ -983,7 +984,7 @@ Funcionalidade: Contas fixas e gastos do dia a dia
     E os benefícios não entram no saldo
 
   Cenário: Cadastrar uma conta fixa
-    Quando eu toco em "Nova conta fixa"
+    Quando eu toco no "+" do rodapé e em "Conta fixa"
     E informo o nome "Aluguel", o valor "1500" e uma data
     Então a lista do mês tem "Aluguel" no dia da data, com R$ 1.500,00 e o selo "Mensal"
     E os meses seguintes também têm "Aluguel", e os anteriores não
@@ -1019,7 +1020,7 @@ Funcionalidade: Contas fixas e gastos do dia a dia
 
   Cenário: Registrar um gasto do dia a dia
     Dado que existe a categoria "Mercado"
-    Quando eu toco em "Novo gasto"
+    Quando eu toco no "+" do rodapé e em "Gasto do dia a dia"
     E informo "Feira", o valor "300", a categoria "Mercado" e uma data do mês
     Então a lista do mês tem "Feira" em "Mercado" com R$ 300,00
     E o saldo diminui R$ 300,00
@@ -1356,4 +1357,54 @@ Funcionalidade: Botão Lançar no menu de rodapé
   Cenário: Sem cartão ou sem benefício
     Quando eu toco no botão "+"
     Então "Compra no cartão" e "Gasto de benefício" ficam desabilitadas, com "Cadastre um cartão primeiro" e "Cadastre um benefício primeiro"
+```
+
+---
+
+## 20. Telas de entradas, contas fixas, gastos e cartões
+
+Resumo. A especificação completa está em [`specs/telas-de-entradas.md`](specs/telas-de-entradas.md).
+
+```gherkin
+# language: pt
+
+Funcionalidade: Telas próprias de entradas, contas fixas e gastos do dia a dia
+  Contexto:
+    Dado que outubro tem a entrada "Salário" de R$ 5.000,00, a conta fixa "Aluguel" de R$ 1.500,00 e o gasto "Mercado" de R$ 300,00
+
+  Cenário: A aba Entradas só tem o resumo
+    Quando eu abro a aba "Entradas"
+    Então vejo o "Resumo do mês" com o saldo
+    E não vejo as listas nem botões de criar
+
+  Cenário: Abrir a tela de cada bloco
+    Quando eu toco no bloco "Entradas", "Contas fixas", "Gastos do dia a dia" ou "Cartões" do resumo
+    Então abre a tela dele no mês aberto, com "Voltar", o total do mês e a lista
+    E a de gastos traz o resumo "Por categoria"
+    E a de cartões lista cada cartão com a fatura e o nº de compras, sem botões de criar
+    Mas os saldos não abrem tela
+
+  Cenário: Abrir um cartão pela tela de cartões
+    Dado que estou na tela "Cartões" de novembro de 2026
+    Quando eu toco em "Inter"
+    Então vejo a aba "Cartões" de novembro de 2026 com o "Inter" selecionado
+
+  Cenário: Editar na tela
+    Dado que estou na tela "Contas fixas"
+    Quando eu toco em "Editar Aluguel"
+    Então o app pergunta "Só este mês" ou "Este e os próximos" e a lista se atualiza ao salvar
+
+  Cenário: Criar pelo rodapé estando na tela
+    Dado que estou na tela "Contas fixas"
+    Quando eu toco no "+" do rodapé, em "Conta fixa" e salvo "Internet" de R$ 100,00
+    Então a lista mostra "Internet" e o total sobe R$ 100,00
+
+  Cenário: Voltar mantém o mês
+    Dado que estou na tela "Contas fixas" de novembro de 2026
+    Quando eu toco em "Voltar"
+    Então vejo o resumo da aba "Entradas" de novembro de 2026
+
+  Cenário: Mês fora do alcance
+    Quando eu abro uma tela com um mês depois do último que a aba abre
+    Então vejo a mesma tela no mês mais próximo que ela abre
 ```

@@ -64,7 +64,7 @@ A especificação completa está em [`specs/compra-recorrente.md`](specs/compra-
 
 ### Contas fixas, gastos do dia a dia e saldo
 
-A especificação completa está em [`specs/contas-e-gastos.md`](specs/contas-e-gastos.md). Tudo fica na aba **Entradas** (`#/entradas`).
+A especificação completa está em [`specs/contas-e-gastos.md`](specs/contas-e-gastos.md). O resumo e o saldo ficam na aba **Entradas** (`#/entradas`); as listas de entradas, contas fixas e gastos do dia a dia têm **telas próprias** (`#/entradas/lista/entradas`, `.../contas-fixas`, `.../gastos`, `.../cartoes` (faturas por cartão), com `/mes/AAAA-MM` no fim para outro mês), abertas ao tocar no bloco do resumo ([`specs/telas-de-entradas.md`](specs/telas-de-entradas.md)). Criar é pelo "+" do rodapé.
 
 - **Conta fixa** (aluguel, internet…): despesa mensal com nome, valor, dia e mês final opcional. Como as entradas recorrentes, os meses são calculados e editar ou excluir pergunta "Só este mês" ou "Este e os próximos".
 - **Gasto do dia a dia**: despesa avulsa (descrição, valor, data) com categoria global opcional e um resumo por categoria no mês. Aceita datas até 12 meses à frente.
@@ -160,7 +160,9 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── components/month-nav.tsx # seletor de mês, acima das abas
 │   ├── pages/dashboard.tsx # painel de um mês
 │   ├── pages/historico.tsx # lista de meses
-│   ├── pages/entradas.tsx  # entradas do mês
+│   ├── pages/entradas.tsx  # resumo do mês e saldo
+│   ├── pages/entradas-lista.tsx # listas de entradas, contas fixas e gastos
+│   ├── components/entry-dialogs.tsx # formulários de entrada, conta fixa e gasto
 │   ├── pages/beneficios.tsx # benefícios do mês
 │   ├── pages/categorias.tsx # criar, renomear e excluir categorias
 │   └── ...
