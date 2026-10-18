@@ -172,8 +172,7 @@ export default function Beneficios({ month }: { month: MonthKey }) {
         <button data-testid="button-next-month" aria-label="Próximo mês" disabled={!canGoNext} onClick={() => navigate(benefitPath(shiftMonth(month, 1)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#546b5d] transition hover:bg-[#ece7dc] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"><ChevronRight size={17}/></button>
       </nav>
 
-      <section className="enter mt-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end" style={{ animationDelay: '.06s' }}>
-        <div><p className="font-mono-data text-[10px] uppercase tracking-[.2em] text-[#9a8d71]">Saldo que se renova</p><h1 className="mt-2 font-display text-[42px] leading-[1.05] tracking-[-.03em] text-[#234638] sm:text-[54px]">Seus <em className="font-medium text-[#d78470]">benefícios.</em></h1></div>
+      <section className="enter mt-6 flex flex-wrap justify-end gap-2" style={{ animationDelay: '.06s' }}>
         <div className="flex flex-wrap gap-2"><button data-testid="button-categories" onClick={() => navigate('/categorias')} className="flex items-center gap-1.5 rounded-full border border-[#d9d2c4] bg-[#faf7ef] px-4 py-3 text-xs font-semibold text-[#496754] transition hover:bg-[#eee9dd]"><Tag size={14}/> Categorias</button><button data-testid="button-new-benefit" onClick={() => setBenefitDialog({})} className="flex items-center gap-2 rounded-full bg-[#28513f] px-5 py-3.5 text-[13px] font-semibold text-[#fffaf0] shadow-[0_8px_18px_-10px_rgba(38,80,61,.7)] transition hover:-translate-y-0.5 hover:bg-[#1f4333]"><Plus size={16}/> Novo benefício</button></div>
       </section>
 

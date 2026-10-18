@@ -277,8 +277,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
       </nav>
       {isFuture && <p data-testid="text-preview-banner" className="enter mt-3 flex items-start gap-2 rounded-2xl border border-[#e6d7b8] bg-[#f8efd9] px-4 py-3 text-[11px] leading-5 text-[#7a6a45]"><CalendarDays size={14} className="mt-0.5 shrink-0"/><span><b className="font-semibold">{capitalize(monthName(month))} ainda não começou:</b> aparecem as parcelas e cobranças previstas e as compras já registradas.</span></p>}
 
-      <section className="enter mt-9 flex flex-col justify-between gap-5 sm:mt-12 sm:flex-row sm:items-end" style={{ animationDelay: '.06s' }}>
-        <div><p className="font-mono-data text-[10px] uppercase tracking-[.2em] text-[#9a8d71]">Seu dinheiro, com intenção</p><h1 className="mt-2 font-display text-[42px] leading-[1.05] tracking-[-.03em] text-[#234638] sm:text-[54px]">Tudo no seu <em className="font-medium text-[#d78470]">lugar.</em></h1><p className="mt-3 max-w-lg text-sm leading-6 text-[#6e7a6f]">Registre cada compra, veja quanto do limite já foi usado e acompanhe seu mês sem surpresas.</p></div>
+      <section className="enter mt-6 flex flex-wrap justify-end gap-2" style={{ animationDelay: '.06s' }}>
         <button data-testid="button-new-movement" onClick={() => setDialog({ kind: 'movement', initial: {} })} disabled={!card} className="flex w-fit items-center gap-2 rounded-full bg-[#28513f] px-5 py-3.5 text-[13px] font-semibold text-[#fffaf0] shadow-[0_8px_18px_-10px_rgba(38,80,61,.7)] transition hover:-translate-y-0.5 hover:bg-[#1f4333] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16}/> Registrar compra</button>
       </section>
 
