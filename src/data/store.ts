@@ -6,8 +6,8 @@ const STORAGE_KEY = 'controle-cartao:v1';
 
 export type { MonthKey } from '@/lib/format';
 export type { CardColor } from '@/lib/card-colors';
-export type StoredCard = { id: number; name: string; limitAmount: number; color: CardColor };
-export type StoredMonth = { cardId: number; month: MonthKey; limitAmount: number };
+export type StoredCard = { id: number; name: string; color: CardColor };
+export type StoredMonth = { cardId: number; month: MonthKey };
 // Global (purchases and categories D2): no card, month or budget.
 export type StoredCategory = { id: number; name: string };
 // A purchase on a card; its month is monthOf(date). Installments carry the
@@ -76,7 +76,7 @@ export type StoredBenefitSpend = {
 };
 
 type State = {
-  version: 9;
+  version: 10;
   nextId: number;
   selectedCardId: number | null;
   cards: StoredCard[];
@@ -99,7 +99,11 @@ type State = {
 type OldCategory = { id: number; cardId: number; month: MonthKey; name: string; amount: number; isClosed: boolean };
 type OldMovement = Omit<StoredMovement, 'cardId' | 'categoryId'> & { categoryId: number };
 type OldPurchase = Omit<StoredPurchase, 'categoryId'> & { categoryName: string };
-type StateV8 = Omit<State, 'version' | 'recurrings' | 'recurringExceptions'> & { version: 8 };
+// Until v9 the card and its months carried a limit (cartao-sem-limite D2).
+type StateV9 = Omit<State, 'version' | 'cards' | 'months'> & {
+  version: 9; cards: (StoredCard & { limitAmount: number })[]; months: (StoredMonth & { limitAmount: number })[];
+};
+type StateV8 = Omit<StateV9, 'version' | 'recurrings' | 'recurringExceptions'> & { version: 8 };
 type StateV7 = Omit<StateV8, 'version' | 'bills' | 'billExceptions' | 'dailyExpenses'> & { version: 7 };
 type StateV6 = Omit<StateV7, 'version' | 'benefits' | 'benefitSpends'> & { version: 6 };
 type StateV5 = Omit<StateV6, 'version' | 'categories' | 'movements' | 'purchases'> & {
@@ -107,12 +111,12 @@ type StateV5 = Omit<StateV6, 'version' | 'categories' | 'movements' | 'purchases
 };
 type StateV4 = Omit<StateV5, 'version' | 'incomes' | 'incomeExceptions'> & { version: 4 };
 type StateV3 = Omit<StateV4, 'version' | 'purchases'> & { version: 3 };
-type CardV2 = Omit<StoredCard, 'color'>;
+type CardV2 = Omit<StoredCard, 'color'> & { limitAmount: number };
 type StateV2 = {
   version: 2;
   nextId: number;
   card: CardV2 | null;
-  months: Omit<StoredMonth, 'cardId'>[];
+  months: (Omit<StoredMonth, 'cardId'> & { limitAmount: number })[];
   categories: Omit<OldCategory, 'cardId'>[];
   movements: OldMovement[];
 };
@@ -123,10 +127,10 @@ type StateV1 = {
   categories: Omit<OldCategory, 'cardId' | 'month'>[];
   movements: OldMovement[];
 };
-type Saved = StateV8 | StateV7 | StateV6 | StateV5 | StateV4 | StateV3 | StateV2 | StateV1;
+type Saved = StateV9 | StateV8 | StateV7 | StateV6 | StateV5 | StateV4 | StateV3 | StateV2 | StateV1;
 
-// limitAmount is the limit of the requested month; currentLimitAmount is the card's own.
-export type Card = StoredCard & { currentLimitAmount: number; usedAmount: number; availableAmount: number; percentUsed: number };
+// invoiceAmount is the card's invoice (sum of the purchases) in the requested month.
+export type Card = StoredCard & { invoiceAmount: number; movementCount: number };
 export type Cards = { selectedCardId: number | null; nextColor: CardColor; cards: Card[] };
 export type Category = StoredCategory & { movementCount: number };
 export type CategorySummary = { categoryId: number | null; name: string | null; amount: number; percent: number };
@@ -146,20 +150,14 @@ export type MonthPreview = { month: MonthKey; amount: number; installments: Plan
 export type FutureInstallments = { month: MonthKey; amount: number; count: number };
 export type MonthSummary = {
   month: MonthKey;
-  limitAmount: number;
-  usedAmount: number;
-  availableAmount: number;
-  percentUsed: number;
+  invoiceAmount: number;
   movementCount: number;
 };
 export type MonthStatus = { needsStart: boolean };
 export type Consolidated = {
   month: MonthKey;
   cardCount: number;
-  limitAmount: number;
-  usedAmount: number;
-  availableAmount: number;
-  percentUsed: number;
+  invoiceAmount: number;
 };
 
 export type IncomeOccurrence = { incomeId: number; kind: IncomeKind; description: string; amount: number; date: string; recurring: boolean; lastMonth: MonthKey | null };
@@ -198,7 +196,7 @@ export type BenefitItem = {
 export type Benefits = { month: MonthKey; totalAvailable: number; items: BenefitItem[] };
 export type BenefitRange = { first: MonthKey; last: MonthKey };
 
-export type CardInput = { name: string; limitAmount: number; color?: CardColor };
+export type CardInput = { name: string; color?: CardColor };
 export type CategoryInput = { name: string };
 export type MovementInput = { description: string; amount: number; date: string };
 // `date` gives the first month and the day of the month; no lastMonth = no end.
@@ -214,7 +212,7 @@ export type BenefitSpendInput = { description: string; amount: number; date: str
 // purchase starts there, on update `firstInstallment` says where it starts.
 export type PurchaseInput = { description: string; totalAmount: number; installmentCount: number; installment: number; firstInstallment?: number; date: string };
 
-const emptyState = (): State => ({ version: 9, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [], benefits: [], benefitSpends: [], bills: [], billExceptions: [], dailyExpenses: [], recurrings: [], recurringExceptions: [] });
+const emptyState = (): State => ({ version: 10, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [], benefits: [], benefitSpends: [], bills: [], billExceptions: [], dailyExpenses: [], recurrings: [], recurringExceptions: [] });
 
 // RN-05 (categories): names match ignoring case and surrounding spaces.
 const nameKey = (name: string) => name.trim().toLocaleLowerCase('pt-BR');
@@ -295,7 +293,14 @@ const migrateV7 = (old: StateV7): StateV8 => ({
 });
 
 // Recurring purchases didn't exist before v9.
-const migrateV8 = (old: StateV8): State => ({ ...old, version: 9, recurrings: [], recurringExceptions: [] });
+const migrateV8 = (old: StateV8): StateV9 => ({ ...old, version: 9, recurrings: [], recurringExceptions: [] });
+
+// RN-07: the limit leaves the cards and their months for good.
+const migrateV9 = (old: StateV9): State => ({
+  ...old, version: 10,
+  cards: old.cards.map(({ id, name, color }) => ({ id, name, color })),
+  months: old.months.map(({ cardId, month }) => ({ cardId, month })),
+});
 
 function migrate(old: Saved): State {
   if (old.version === 1) return migrate(migrateV1(old));
@@ -305,7 +310,8 @@ function migrate(old: Saved): State {
   if (old.version === 5) return migrate(migrateV5(old));
   if (old.version === 6) return migrate(migrateV6(old));
   if (old.version === 7) return migrate(migrateV7(old));
-  return migrateV8(old);
+  if (old.version === 8) return migrate(migrateV8(old));
+  return migrateV9(old);
 }
 
 let statePromise: Promise<State> | null = null;
@@ -323,12 +329,12 @@ function load(): Promise<State> {
     if (!value) return emptyState();
     try {
       const parsed = JSON.parse(value) as State | Saved;
-      if (parsed?.version === 9) {
+      if (parsed?.version === 10) {
         for (const b of parsed.benefits) { b.splits ??= []; b.closures ??= []; }
         return parsed;
       }
       const version: number | undefined = parsed?.version;
-      if (version !== 8 && version !== 7 && version !== 6 && version !== 5 && version !== 4 && version !== 3 && version !== 2 && version !== 1) return emptyState();
+      if (version !== 9 && version !== 8 && version !== 7 && version !== 6 && version !== 5 && version !== 4 && version !== 3 && version !== 2 && version !== 1) return emptyState();
       const migrated = migrate(parsed as Saved);
       // Saved right away so the data stays in this month even if the next
       // change only happens in a later month.
@@ -442,36 +448,20 @@ function usedOf(state: State, cardId: number, month: MonthKey) {
   return sum([...movementsOf(state, cardId, month).map((m) => m.amount), ...planned]);
 }
 
-// A month that was never started (or is still in the future) borrows the card's current limit.
-function monthLimit(state: State, card: StoredCard, month: MonthKey) {
-  return findMonth(state, card.id, month)?.limitAmount ?? card.limitAmount;
-}
-
 function summaryOf(state: State, card: StoredCard, month: MonthKey): MonthSummary {
-  const limitAmount = monthLimit(state, card, month);
-  const usedAmount = usedOf(state, card.id, month);
+  const invoiceAmount = usedOf(state, card.id, month);
   const movementCount = movementsOf(state, card.id, month).length + (isFutureMonth(month) ? plannedOf(state, card.id, month).length : 0);
-  return { month, limitAmount, usedAmount, availableAmount: cents(limitAmount - usedAmount), percentUsed: percent(usedAmount, limitAmount), movementCount };
+  return { month, invoiceAmount, movementCount };
 }
 
 function toCard(state: State, card: StoredCard, month: MonthKey): Card {
-  const { usedAmount, limitAmount, availableAmount, percentUsed } = summaryOf(state, card, month);
-  return { ...card, limitAmount, currentLimitAmount: card.limitAmount, usedAmount, availableAmount, percentUsed };
+  const { invoiceAmount, movementCount } = summaryOf(state, card, month);
+  return { ...card, invoiceAmount, movementCount };
 }
 
 // RN-03: every card counts, even the ones that haven't started this month.
 function consolidatedOf(state: State, month: MonthKey): Consolidated {
-  const summaries = state.cards.map((card) => summaryOf(state, card, month));
-  const limitAmount = sum(summaries.map((s) => s.limitAmount));
-  const usedAmount = sum(summaries.map((s) => s.usedAmount));
-  return {
-    month,
-    cardCount: state.cards.length,
-    limitAmount,
-    usedAmount,
-    availableAmount: cents(limitAmount - usedAmount),
-    percentUsed: percent(usedAmount, limitAmount),
-  };
+  return { month, cardCount: state.cards.length, invoiceAmount: sum(state.cards.map((card) => usedOf(state, card.id, month))) };
 }
 
 // First palette color no card uses yet; green once they are all taken.
@@ -567,10 +557,10 @@ function requireStandalone(state: State, movement: StoredMovement) {
   if (isRecurringCharge(state, movement)) throw new Error('Esta compra é recorrente. Altere a compra recorrente.');
 }
 
-// Starts the card's month with its current limit, if it wasn't started yet.
+// Starts the card's month, if it wasn't started yet.
 function ensureMonth(state: State, card: StoredCard, month: MonthKey) {
   if (findMonth(state, card.id, month)) return false;
-  state.months.push({ cardId: card.id, month, limitAmount: card.limitAmount });
+  state.months.push({ cardId: card.id, month });
   return true;
 }
 
@@ -752,10 +742,6 @@ export async function getMonthStatus(cardId: number): Promise<MonthStatus> {
   return { needsStart: Boolean(cardOf(state, cardId)) && !findMonth(state, cardId, currentMonth()) };
 }
 
-export async function getConsolidated(month: MonthKey): Promise<Consolidated> {
-  return consolidatedOf(await load(), month);
-}
-
 // One entry per month started by any card, newest first.
 export async function getConsolidatedHistory(): Promise<Consolidated[]> {
   const state = await load();
@@ -766,7 +752,7 @@ export async function getConsolidatedHistory(): Promise<Consolidated[]> {
 
 // --- months -----------------------------------------------------------------
 
-// RN-07: the month starts by itself with the card's current limit, and the
+// RN-06: the month starts by itself, and the
 // installments that are due are recorded.
 export function startMonth(cardId: number, month: MonthKey) {
   return mutate((state) => {
@@ -788,11 +774,10 @@ export function selectCard(cardId: number) {
 export function saveCard(input: CardInput, mode: 'create' | 'update', cardId?: number) {
   return mutate((state) => {
     const name = requireText(input.name, 'Nome do cartão', 120);
-    const limitAmount = requireAmount(input.limitAmount, 'Limite total');
     if (mode === 'create') {
       requireUniqueName(state, name);
       const color = input.color === undefined ? nextColorOf(state) : requireColor(input.color);
-      const card: StoredCard = { id: state.nextId++, name, limitAmount, color };
+      const card: StoredCard = { id: state.nextId++, name, color };
       state.cards.push(card);
       state.selectedCardId = card.id;
       ensureMonth(state, card, currentMonth());
@@ -801,11 +786,7 @@ export function saveCard(input: CardInput, mode: 'create' | 'update', cardId?: n
     const card = findCard(state, cardId ?? -1);
     requireUniqueName(state, name, card.id);
     card.name = name;
-    card.limitAmount = limitAmount;
     if (input.color !== undefined) card.color = requireColor(input.color);
-    // Past months and other cards keep the limit they had.
-    const current = findMonth(state, card.id, currentMonth());
-    if (current) current.limitAmount = limitAmount;
     return card;
   });
 }
@@ -1540,7 +1521,7 @@ function cashOf(state: State, month: MonthKey) {
   const incomeAmount = sum(state.incomes.map((i) => occurrenceOf(state, i, month)).filter((o): o is IncomeOccurrence => o !== null).map((o) => o.amount));
   const billsAmount = sum(billsOf(state, month).map((b) => b.amount));
   const dailyAmount = sum(state.dailyExpenses.filter((x) => monthOf(x.date) === month).map((x) => x.amount));
-  const cardsAmount = consolidatedOf(state, month).usedAmount;
+  const cardsAmount = consolidatedOf(state, month).invoiceAmount;
   return { incomeAmount, billsAmount, dailyAmount, cardsAmount, resultAmount: cents(incomeAmount - billsAmount - dailyAmount - cardsAmount) };
 }
 

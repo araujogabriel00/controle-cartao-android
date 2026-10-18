@@ -2,13 +2,13 @@
 
 Especificação das funcionalidades no formato BDD (Gherkin, em português), levantada a partir do comportamento do app em `src/pages/` e das regras em `src/data/store.ts`.
 
-> **Observação:** nesta versão Android não há servidor. Os dados ficam no próprio aparelho e todos os cálculos (valor usado, disponível, percentual e totais) são feitos em `src/data/store.ts`. Os cenários marcados com `@regra` descrevem essas regras de cálculo e validação.
+> **Observação:** nesta versão Android não há servidor. Os dados ficam no próprio aparelho e todos os cálculos (fatura, percentuais e totais) são feitos em `src/data/store.ts`. Os cenários marcados com `@regra` descrevem essas regras de cálculo e validação.
 >
-> Cada compra **consome o limite do cartão pelo valor gasto**, e as categorias servem só para classificar. Os detalhes estão nas seções [2. Categorias](#2-categorias) e [3. Compras](#3-compras) e na spec [`specs/compras-e-categorias.md`](specs/compras-e-categorias.md).
+> O cartão **não tem limite**: cada mês mostra o total da **fatura** (a soma das compras), e as categorias servem só para classificar. Seção [17. Cartão sem limite](#17-cartão-sem-limite) e spec [`specs/cartao-sem-limite.md`](specs/cartao-sem-limite.md). Os detalhes estão nas seções [2. Categorias](#2-categorias) e [3. Compras](#3-compras) e na spec [`specs/compras-e-categorias.md`](specs/compras-e-categorias.md).
 >
 > Todos os valores são calculados **dentro de um mês**: cartão, compras e resumo por categoria mostram só o mês que está aberto no painel. O funcionamento por mês está detalhado na seção [9. Histórico mensal](#9-histórico-mensal) e na spec [`specs/historico-mensal.md`](specs/historico-mensal.md).
 >
-> O app aceita **vários cartões**, e cada um tem o próprio limite, meses e compras. As compras, o resumo por categoria e o histórico mostram sempre o **cartão selecionado** no carrossel. As categorias são globais, as mesmas para todos os cartões. Os detalhes estão na seção [10. Múltiplos cartões](#10-múltiplos-cartões) e na spec [`specs/multiplos-cartoes.md`](specs/multiplos-cartoes.md).
+> O app aceita **vários cartões**, e cada um tem o próprio nome, cor, meses e compras. As compras, o resumo por categoria e o histórico mostram sempre o **cartão selecionado** no carrossel. As categorias são globais, as mesmas para todos os cartões. Os detalhes estão na seção [10. Múltiplos cartões](#10-múltiplos-cartões) e na spec [`specs/multiplos-cartoes.md`](specs/multiplos-cartoes.md).
 >
 > Uma **compra parcelada** vira uma compra comum em cada mês em que cai, e os meses futuros mostram as parcelas previstas junto com as compras já registradas. Uma **compra recorrente** (assinaturas) funciona do mesmo jeito, repetindo todo mês: seção [15. Compra recorrente](#15-compra-recorrente). Os detalhes estão na seção [11. Parcelamento](#11-parcelamento) e na spec [`specs/parcelamento.md`](specs/parcelamento.md).
 >
@@ -16,7 +16,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 >
 > Os **benefícios** (VR, VA etc.) são um saldo mensal numa aba própria, independente dos cartões e das entradas. Os detalhes estão na seção [13. Benefícios](#13-benefícios) e na spec [`specs/beneficios.md`](specs/beneficios.md).
 >
-> As **entradas** (salário, pró-labore, bônus) ficam numa aba própria, separada dos cartões, e não alteram nenhum valor deles. A mesma aba tem as **contas fixas**, os **gastos do dia a dia** e o **saldo do mês** (entradas − saídas − o usado dos cartões), que **acumula** para os meses seguintes. Os detalhes estão nas seções [12. Entradas](#12-entradas) e [14. Contas fixas e gastos do dia a dia](#14-contas-fixas-e-gastos-do-dia-a-dia) e nas specs [`specs/entradas.md`](specs/entradas.md) e [`specs/contas-e-gastos.md`](specs/contas-e-gastos.md).
+> As **entradas** (salário, pró-labore, bônus) ficam numa aba própria, separada dos cartões, e não alteram nenhum valor deles. A mesma aba tem as **contas fixas**, os **gastos do dia a dia** e o **saldo do mês** (entradas − saídas − o total das faturas), que **acumula** para os meses seguintes. Os detalhes estão nas seções [12. Entradas](#12-entradas) e [14. Contas fixas e gastos do dia a dia](#14-contas-fixas-e-gastos-do-dia-a-dia) e nas specs [`specs/entradas.md`](specs/entradas.md) e [`specs/contas-e-gastos.md`](specs/contas-e-gastos.md).
 
 ## Sumário
 
@@ -36,6 +36,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 14. [Contas fixas e gastos do dia a dia](#14-contas-fixas-e-gastos-do-dia-a-dia)
 15. [Compra recorrente](#15-compra-recorrente)
 16. [Mês compartilhado](#16-mês-compartilhado)
+17. [Cartão sem limite](#17-cartão-sem-limite)
 
 ---
 
@@ -47,8 +48,8 @@ O cadastro do primeiro cartão está abaixo. Adicionar outros cartões, trocar e
 # language: pt
 Funcionalidade: Gerenciar o cartão
   Como usuário
-  Quero cadastrar meu cartão com o seu limite
-  Para acompanhar quanto do limite já foi usado
+  Quero cadastrar meu cartão só com nome e cor
+  Para lançar as compras e ver o total da fatura de cada mês
 
   Cenário: Primeiro acesso sem cartão cadastrado
     Dado que não existe nenhum cartão cadastrado
@@ -62,36 +63,33 @@ Funcionalidade: Gerenciar o cartão
     Quando eu clico em "Cadastrar cartão"
     Então o formulário "Seu cartão" abre com a cor verde marcada
     Quando eu preencho o nome do cartão com "Cartão principal"
-    E preencho o limite total com "5000"
     E clico em "Adicionar"
     Então vejo a mensagem "Alterações salvas com cuidado."
     E vejo a face verde do cartão "Cartão principal" no carrossel, selecionada
-    E o limite exibido é "R$ 5.000,00"
-    E o mês atual passa a fazer parte do histórico desse cartão com esse limite
+    E o formulário não pede limite
+    E o mês atual passa a fazer parte do histórico desse cartão
 
   Cenário: Exibir a situação do cartão
-    Dado que o cartão selecionado tem limite de R$ 5.000,00
-    E R$ 1.250,00 já foram usados no mês
+    Dado que o cartão selecionado tem 2 compras somando R$ 1.250,00 em outubro de 2026
     Quando eu vejo a face do cartão no carrossel
-    Então vejo "Disponível para usar" com o valor "R$ 3.750,00"
-    E vejo "Usado no mês" com o valor "R$ 1.250,00"
-    E vejo "Limite utilizado" com "25%"
-    E a barra de progresso do limite está preenchida em 25%
+    Então vejo "Fatura de outubro de 2026" com o valor "R$ 1.250,00"
+    E vejo "2 compras"
+    E não vejo disponível, limite nem barra de progresso
 
   Cenário: Cartão ainda sem gastos
     Dado que o cartão selecionado não tem nenhuma compra no mês
     Quando eu vejo a face do cartão no carrossel
-    Então vejo a mensagem "Seu primeiro gasto ainda está por vir. Tudo começa com um registro."
+    Então vejo a fatura "R$ 0,00" e a mensagem "Nenhuma compra neste mês."
 
   Cenário: Editar o cartão
     Dado que existe um cartão selecionado
     Quando eu clico em "Editar cartão" na face do cartão
-    Então o formulário "Ajustar cartão" abre preenchido com o nome, o limite atual e a cor
-    Quando eu altero o limite para "6000"
+    Então o formulário "Ajustar cartão" abre preenchido com o nome e a cor, sem limite
+    Quando eu altero o nome para "Cartão roxo"
     E clico em "Salvar alterações"
     Então vejo a mensagem "Alterações salvas com cuidado."
-    E o limite exibido é "R$ 6.000,00"
-    E o limite dos meses anteriores e dos outros cartões não muda
+    E a face mostra o nome novo
+    E as compras e as faturas dos meses não mudam
 
   Cenário: Remover o único cartão
     Dado que existe só o cartão "Cartão principal"
@@ -108,12 +106,6 @@ Funcionalidade: Gerenciar o cartão
     Quando eu clico em "Remover cartão"
     E cancelo a confirmação
     Então o cartão continua cadastrado
-
-  @regra
-  Cenário: Percentual acima de 100% não estoura a barra
-    Dado que o valor usado é maior que o limite do cartão
-    Quando eu vejo a face do cartão no carrossel
-    Então a barra de progresso fica limitada a 100%
 ```
 
 ## 2. Categorias
@@ -176,7 +168,7 @@ Funcionalidade: Categorias das compras
     Quando eu confirmo
     Então vejo a mensagem "Categoria removida."
     E as 2 compras continuam, agora "Sem categoria"
-    E o valor usado dos cartões não muda
+    E a fatura dos cartões não muda
     Mas se a categoria também tiver gastos de benefício, eles entram na contagem e ficam sem categoria (seção 13)
 
   Cenário: Excluir uma categoria sem uso
@@ -194,10 +186,10 @@ Resumo das compras no cartão. A especificação completa, com decisões, regras
 Funcionalidade: Registrar e acompanhar compras
   Como usuário
   Quero registrar cada compra direto no cartão
-  Para saber quanto do limite já foi usado e quanto ainda posso gastar
+  Para saber quanto as compras deram na fatura do mês
 
   Contexto:
-    Dado que existe um cartão cadastrado com limite de R$ 1.000,00
+    Dado que existe um cartão cadastrado
     E existem as categorias "Mercado" e "Lazer"
 
   Cenário: Registrar uma compra
@@ -212,20 +204,13 @@ Funcionalidade: Registrar e acompanhar compras
     E "Feira" aparece em "O que já aconteceu" com a categoria "Mercado"
 
   @regra
-  Cenário: A compra consome o limite
+  Cenário: A compra entra na fatura
     Quando eu registro uma compra de R$ 120,00
-    Então o usado do cartão aumenta em R$ 120,00
-    E o disponível do cartão diminui em R$ 120,00
+    Então a fatura do cartão no mês aumenta em R$ 120,00
 
   Cenário: Compra sem categoria
     Quando eu registro uma compra sem escolher categoria
     Então ela aparece na lista e no resumo como "Sem categoria"
-
-  @regra
-  Cenário: Compra acima do limite
-    Dado que o usado do cartão é R$ 900,00
-    Quando eu registro uma compra de R$ 300,00
-    Então o disponível é -R$ 200,00 e a barra fica limitada a 100%
 
   @regra
   Cenário: Compra em outro mês
@@ -272,40 +257,37 @@ Funcionalidade: Registrar e acompanhar compras
     Quando eu clico em "Excluir compra"
     Então o sistema pede confirmação para "Remover a compra “Feira”? Esta ação não pode ser desfeita."
     Quando eu confirmo
-    Então vejo a mensagem "Compra excluída." e o limite volta a ficar disponível
+    Então vejo a mensagem "Compra excluída." e a fatura do mês diminui o valor dela
     Mas se a compra for uma parcela, a exclusão remove a compra parcelada inteira (seção 11)
 ```
 
 ## 4. Visão geral do mês
+
+Não há mais um painel separado: o resumo do mês é a própria **face do cartão** (fatura e número de compras). O painel "O mês em perspectiva" e a faixa "Todos os cartões" saíram com o limite ([seção 17](#17-cartão-sem-limite)).
 
 ```gherkin
 # language: pt
 Funcionalidade: Visão geral do mês
   Como usuário
   Quero ver um resumo do mês
-  Para entender rapidamente como está o limite
+  Para saber quanto as compras deram
 
   Contexto:
-    Dado que existe um cartão cadastrado com limite de R$ 1.000,00
+    Dado que existe um cartão cadastrado
 
   Cenário: Exibir o resumo
-    Dado que outubro de 2026 tem R$ 233,34 em compras
-    Quando eu vejo o painel "O mês em perspectiva" de outubro de 2026
-    Então vejo o título "Outubro de 2026"
-    E vejo "Usado" com "R$ 233,34" e "Disponível" com "R$ 766,66"
-    E vejo a barra de percentual e "limite de R$ 1.000,00"
-    E vejo "3 compras neste mês."
+    Dado que outubro de 2026 tem 3 compras somando R$ 233,34
+    Quando eu vejo a face do cartão em outubro de 2026
+    Então vejo "Fatura de outubro de 2026" com "R$ 233,34" e "3 compras"
 
   Cenário: Resumo de um mês passado
-    Dado que estou vendo o painel de setembro de 2026
-    Então o resumo considera só as compras de setembro
-    E vejo "compras em setembro."
+    Dado que estou vendo setembro de 2026
+    Então a fatura considera só as compras de setembro
 
   @regra
-  Cenário: Cálculo do usado do cartão
+  Cenário: Cálculo da fatura do cartão
     Dado que o mês aberto tem compras que somam R$ 233,34
-    Então "Usado" é R$ 233,34
-    E "Disponível" é o limite do mês menos R$ 233,34
+    Então a fatura é R$ 233,34
 ```
 
 ## 5. Sincronização e atualização
@@ -465,9 +447,8 @@ Funcionalidade: Formatação de valores e datas
     Então a data é exibida como "07 out"
 
   Cenário: Percentuais
-    Dado que o cartão tem 33,333% do limite usado
-    Então o percentual do cartão é exibido como "33,3%"
-    E o percentual das categorias é exibido sem casas decimais
+    Dado que uma categoria tem 33,333% do total do mês
+    Então o percentual da categoria é exibido sem casas decimais
 
   Cenário: Nomes dos meses
     Dado o mês "2026-10"
@@ -483,7 +464,7 @@ Resumo do funcionamento por mês. A especificação completa, com decisões, reg
 Funcionalidade: Histórico mensal do cartão
   Como usuário
   Quero ver o cartão mês a mês
-  Para saber quanto usei do limite e quais compras fiz em cada mês
+  Para saber a fatura e quais compras fiz em cada mês
 
   Contexto:
     Dado que existe um cartão cadastrado
@@ -492,7 +473,7 @@ Funcionalidade: Histórico mensal do cartão
     Dado que tenho dados em setembro e outubro de 2026
     Quando eu clico em "Histórico"
     Então vejo "Outubro de 2026" antes de "Setembro de 2026"
-    E cada mês mostra o usado, o disponível, o limite, o percentual e a quantidade de compras
+    E cada mês mostra a fatura e a quantidade de compras, sem limite nem disponível
 
   Cenário: Abrir um mês do histórico
     Quando eu toco em "Setembro de 2026" no histórico
@@ -509,7 +490,7 @@ Funcionalidade: Histórico mensal do cartão
   Cenário: Virada de mês sem pergunta
     Dado que hoje é 01/11/2026
     Quando eu abro o aplicativo
-    Então novembro começa sozinho, com o limite atual do cartão
+    Então novembro começa sozinho
     E nenhuma pergunta sobre copiar categorias aparece
     E as parcelas devidas de novembro entram como compras (seção 11)
 
@@ -518,13 +499,13 @@ Funcionalidade: Histórico mensal do cartão
     Quando eu abro o aplicativo com "Nubank" selecionado
     Então novembro começa para "Nubank"
     Quando eu deslizo até "Inter"
-    Então novembro começa para "Inter", com o limite dele
+    Então novembro começa para "Inter"
 
   Cenário: Registrar uma compra do mês anterior
     Dado que hoje é 01/11/2026
     Quando eu abro o painel de outubro de 2026
     E registro uma compra com data 31/10/2026
-    Então a compra entra no usado de outubro de 2026
+    Então a compra entra na fatura de outubro de 2026
 
   @regra
   Cenário: Dados de uma versão anterior do app
@@ -542,15 +523,15 @@ Resumo do funcionamento com vários cartões. A especificação completa, com de
 Funcionalidade: Múltiplos cartões
   Como pessoa que usa mais de um cartão de crédito
   Quero controlar cada cartão separadamente e trocar entre eles como numa carteira digital
-  Para saber quanto posso gastar em cada um e no total
+  Para ver a fatura de cada um
 
   Contexto:
-    Dado que tenho o cartão "Nubank", verde, com limite de R$ 5.000,00
+    Dado que tenho o cartão "Nubank", verde
 
   Cenário: Adicionar um segundo cartão
     Quando eu deslizo o carrossel até o slot "Adicionar cartão" e toco nele
     Então o formulário "Seu cartão" abre com a primeira cor ainda não usada (azul) marcada
-    Quando eu cadastro o cartão "Inter" com limite de R$ 3.000,00
+    Quando eu cadastro o cartão "Inter"
     Então o carrossel desliza até "Inter", na cor azul, e ele fica selecionado
     E vejo um pontinho para cada cartão e um "+"
 
@@ -579,20 +560,12 @@ Funcionalidade: Múltiplos cartões
     Então vejo a mensagem de erro "Já existe um cartão com esse nome."
     E o formulário continua aberto
 
-  @regra
-  Cenário: Total de todos os cartões
-    Dado que tenho também o cartão "Inter", com limite de R$ 3.000,00
-    E que outubro de 2026 tem R$ 2.100,00 usados no "Nubank" e R$ 900,00 no "Inter"
-    Quando eu vejo o painel de outubro de 2026
-    Então vejo a faixa "Todos os cartões · Outubro de 2026"
-    E ela mostra usado R$ 3.000,00, disponível R$ 5.000,00 e limite R$ 8.000,00
-    Mas com um só cartão a faixa não aparece
-
   Cenário: Total de todos os cartões no histórico
     Dado que tenho também o cartão "Inter"
     Quando eu abro o Histórico com "Nubank" selecionado
     Então vejo os meses de "Nubank"
-    E cada mês mostra a linha "Todos os cartões" com o usado e o disponível somados
+    E cada mês mostra a linha "Todos os cartões" com o total das faturas
+    Mas com um só cartão essa linha não aparece
 
   Cenário: Remover um de vários cartões
     Dado que tenho também o cartão "Inter", selecionado
@@ -616,7 +589,7 @@ Resumo das compras parceladas. A especificação completa, com decisões, regras
 Funcionalidade: Parcelamento
   Como pessoa que compra parcelado no cartão
   Quero registrar a compra uma vez e ver cada parcela cair no seu mês
-  Para saber quanto do limite já está usado agora e nos próximos meses
+  Para saber quanto as parcelas pesam na fatura agora e nos próximos meses
 
   Contexto:
     Dado que hoje é 12/10/2026
@@ -632,7 +605,7 @@ Funcionalidade: Parcelamento
   @regra
   Cenário: Cada mês usa só a sua parcela
     Quando eu registro "Notebook" de R$ 3.000,00 em 10x
-    Então só R$ 300,00 entram no usado do cartão em outubro
+    Então só R$ 300,00 entram na fatura do cartão em outubro
 
   Cenário: Compra que já estava em andamento
     Quando eu registro "Geladeira" de R$ 1.000,00 em 10x com "Parcela neste mês" igual a 3
@@ -649,7 +622,7 @@ Funcionalidade: Parcelamento
     Quando eu clico em "Próximo mês"
     Então vejo novembro com "Presente", que posso editar e excluir
     E vejo "Fone" "2/3" com o selo "prevista", sem editar nem excluir
-    E o usado de novembro soma a compra e a parcela
+    E a fatura de novembro soma a compra e a parcela
     E o botão "Próximo mês" para no último mês com parcela prevista ou compra registrada
 
   Cenário: Próximos meses no histórico
@@ -747,7 +720,7 @@ Funcionalidade: Entradas
   @regra
   Cenário: Entradas não mexem nos cartões
     Quando eu registro um salário
-    Então o usado e o disponível dos cartões continuam iguais
+    Então a fatura dos cartões continua igual
 
   @regra
   Cenário: Limite de navegação
@@ -933,7 +906,7 @@ Funcionalidade: Benefícios
   @regra
   Cenário: Benefícios não mexem nos cartões nem nas entradas
     Quando eu registro um gasto num benefício
-    Então o usado e o disponível dos cartões e o total das entradas continuam iguais
+    Então a fatura dos cartões e o total das entradas continuam iguais
 ```
 
 ---
@@ -985,7 +958,7 @@ Funcionalidade: Contas fixas e gastos do dia a dia
   @regra
   Cenário: Os meses futuros projetam o saldo e o passado ajusta os seguintes
     Dado que os meses seguintes repetem o salário e as contas fixas
-    Então o Saldo anterior de um mês futuro soma os resultados dos meses até lá, com o usado previsto dos cartões
+    Então o Saldo anterior de um mês futuro soma os resultados dos meses até lá, com a fatura prevista dos cartões
     Quando eu excluo um gasto de outubro
     Então o Saldo de outubro e os Saldos anteriores dos meses seguintes aumentam o valor do gasto
 
@@ -996,7 +969,7 @@ Funcionalidade: Contas fixas e gastos do dia a dia
 
   @regra
   Cenário: Cartões no saldo
-    Dado que o Nubank tem R$ 500,00 usados e o Inter R$ 300,00
+    Dado que o Nubank tem fatura de R$ 500,00 e o Inter de R$ 300,00
     Então "Cartões" mostra R$ 800,00
     Quando eu toco em "Ver cartões"
     Então vejo a aba "Cartões"
@@ -1005,7 +978,7 @@ Funcionalidade: Contas fixas e gastos do dia a dia
   @regra
   Cenário: O saldo lê os cartões sem alterá-los
     Quando eu registro uma conta fixa ou um gasto
-    Então o usado e o disponível dos cartões continuam iguais
+    Então a fatura dos cartões continua igual
     E os benefícios não entram no saldo
 
   Cenário: Cadastrar uma conta fixa
@@ -1096,10 +1069,10 @@ Resumo das assinaturas no cartão. A especificação completa, com decisões, re
 Funcionalidade: Compra recorrente
   Como pessoa com assinaturas no cartão
   Quero registrar a cobrança uma vez e vê-la cair todo mês
-  Para saber quanto do limite já está comprometido nos próximos meses
+  Para saber quanto já está comprometido na fatura dos próximos meses
 
   Contexto:
-    Dado que hoje é 17/10/2026 e o cartão "Nubank" tem limite de R$ 1.000,00
+    Dado que hoje é 17/10/2026 e o cartão "Nubank" existe
 
   Cenário: Registrar uma assinatura
     Quando eu abro "Registrar compra" e ligo "Compra recorrente"
@@ -1109,7 +1082,7 @@ Funcionalidade: Compra recorrente
     Quando eu clico em "Adicionar"
     Então vejo "Compra recorrente registrada."
     E outubro tem "Streaming" de R$ 40,00 com o selo "Mensal"
-    E o usado do Nubank em outubro inclui R$ 40,00
+    E a fatura do Nubank em outubro inclui R$ 40,00
 
   Cenário: Recorrente e parcelada não ficam juntas
     Dado que "Compra parcelada" está ligada
@@ -1121,7 +1094,7 @@ Funcionalidade: Compra recorrente
     Dado que "Streaming" é recorrente sem fim
     Quando eu abro novembro de 2026
     Então vejo "Streaming" de R$ 40,00 com os selos "Mensal" e "prevista", sem editar nem excluir
-    E o usado de novembro inclui R$ 40,00
+    E a fatura de novembro inclui R$ 40,00
     E o botão "Próximo mês" avança até 12 meses à frente do mês corrente
 
   Cenário: Mês final e dia 31
@@ -1131,7 +1104,7 @@ Funcionalidade: Compra recorrente
 
   Cenário: Assinatura que já existia
     Quando eu registro "Nuvem" com data de dois meses atrás
-    Então os meses desde então têm "Nuvem" como compra gravada, e os meses do cartão que não existiam passam a existir com o limite atual
+    Então os meses desde então têm "Nuvem" como compra gravada, e os meses do cartão que não existiam passam a existir
     E os meses seguintes têm a cobrança prevista
 
   @regra
@@ -1162,7 +1135,7 @@ Funcionalidade: Compra recorrente
 
   Cenário: Pular um mês e encerrar uma assinatura
     Quando eu excluo a cobrança de outubro com "Só este mês" e confirmo
-    Então só outubro perde a cobrança, e o usado diminui
+    Então só outubro perde a cobrança, e a fatura diminui
     Quando eu excluo uma cobrança com "Este e os próximos"
     Então esse mês e os seguintes perdem a cobrança, e os anteriores ficam
 
@@ -1259,4 +1232,52 @@ Funcionalidade: Mês compartilhado entre as abas
     Quando eu abro o app
     Então vejo "Cartões" em dezembro de 2026
     Mas se a lembrança não puder ser lida ou for inválida, o app abre no mês corrente, sem mensagem
+```
+
+---
+
+## 17. Cartão sem limite
+
+Resumo da fatura sem limite. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/cartao-sem-limite.md`](specs/cartao-sem-limite.md).
+
+```gherkin
+# language: pt
+
+Funcionalidade: Cartão sem limite
+  Como pessoa que lança as compras do cartão
+  Quero ver o total da fatura de cada mês
+  Para saber quanto as compras deram, sem controlar limite
+
+  Cenário: Cadastrar um cartão só com nome e cor
+    Quando eu clico em "Cadastrar cartão"
+    Então o formulário "Seu cartão" abre com nome e cor, e sem campo de limite
+
+  Cenário: A face do cartão mostra a fatura do mês
+    Dado que o "Nubank" tem as compras de R$ 120,00 e R$ 80,00 em outubro de 2026
+    Então a face mostra "Fatura de outubro de 2026" com R$ 200,00 e "2 compras"
+    E não mostra disponível, limite nem barra de limite utilizado
+
+  Cenário: Mês futuro mostra a fatura prevista
+    Dado que o "Nubank" tem a parcela "2/3" de R$ 33,33 e a cobrança recorrente de R$ 40,00 previstas para novembro
+    Quando eu abro novembro de 2026
+    Então a face mostra "Fatura prevista de novembro de 2026" com R$ 73,33
+
+  Cenário: A aba Cartões sem a faixa e sem o painel do mês
+    Dado que existem 2 cartões
+    Quando eu abro a aba "Cartões"
+    Então não vejo "Todos os cartões" nem "O mês em perspectiva"
+
+  Cenário: Todos os cartões no Histórico
+    Dado que o "Nubank" tem R$ 200,00 e o "Inter" R$ 100,00 em outubro
+    Quando eu abro o Histórico
+    Então outubro mostra "Todos os cartões: fatura R$ 300,00"
+    Mas com um só cartão essa linha não aparece
+
+  @regra
+  Cenário: Migração de dados antigos
+    Dado que o aparelho tem dados salvos na versão 9, com cartões e meses com limite
+    Quando eu abro o app
+    Então os cartões e os meses perdem o limite
+    E as compras, as categorias, as entradas e o resto continuam como estavam
+    E as faturas são as mesmas somas de antes
 ```

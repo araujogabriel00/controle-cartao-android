@@ -7,6 +7,7 @@
 | Escopo | `src/data/store.ts`, `src/data/api.ts`, `src/lib/`, `src/components/card-carousel.tsx`, `src/pages/*`, `FUNCIONALIDADES.md`, `specs/historico-mensal.md`, `README.md` |
 | Depende de | [`historico-mensal.md`](historico-mensal.md) |
 | Substituída em parte por | [`compras-e-categorias.md`](compras-e-categorias.md): o "comprometido" de cada cartão passa a ser o "usado" (soma das compras); categorias deixam de ser por cartão e passam a ser globais. |
+| Substituída em parte por | [`cartao-sem-limite.md`](cartao-sem-limite.md): o cartão não tem mais limite, disponível nem percentual; a face do cartão, o Histórico e a faixa "Todos os cartões" mostram a fatura. |
 
 > Esta spec é a fonte da verdade da funcionalidade. A implementação segue a seção [Tarefas](#11-tarefas) e só termina quando todos os [Critérios de aceite](#10-critérios-de-aceite) forem atendidos. Mudanças de comportamento entram primeiro aqui e só depois no código.
 

@@ -2,9 +2,9 @@ import { type FormEvent, type MouseEvent, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import {
-  getGetCardQueryKey, getGetCardsQueryKey, getGetCategoriesQueryKey, getGetCategorySummaryQueryKey, getGetConsolidatedQueryKey,
+  getGetCardQueryKey, getGetCardsQueryKey, getGetConsolidatedHistoryQueryKey, getGetCategoriesQueryKey, getGetCategorySummaryQueryKey,
   getGetMovementsQueryKey, getGetMonthHistoryQueryKey, getHealthCheckQueryKey, useHealthCheck,
-  useGetCards, useGetConsolidated, useGetCategories, useGetCategorySummary, useGetMovements, useGetMonthStatus,
+  useGetCards, useGetCategories, useGetCategorySummary, useGetMovements, useGetMonthStatus,
   useCreateCard, useUpdateCard, useDeleteCard, useSelectCard,
   useCreateMovement, useUpdateMovement, useDeleteMovement, useStartMonth,
   useCreatePurchase, useUpdatePurchase, useDeletePurchase, useGetLastFutureMonth, useGetMonthPreview,
@@ -31,7 +31,7 @@ import {
 
 type DialogKind = 'card' | 'movement';
 type DialogRecord = {
-  id?: number; categoryId?: number | null; name?: string; amount?: number; limitAmount?: number; color?: CardColor; description?: string; date?: string;
+  id?: number; categoryId?: number | null; name?: string; amount?: number; color?: CardColor; description?: string; date?: string;
   // Installment purchases: `amount` is the purchase total and `installment` the one in this month.
   isPurchase?: boolean; purchaseId?: number; installmentCount?: number; installment?: number; firstInstallment?: number;
   // Recurring purchases: `amount` is the monthly value; `scope` is what an edit applies to (RF-04).
@@ -60,7 +60,7 @@ function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
   onClose: () => void; onSave: (values: DialogRecord) => void;
 }) {
   const [name, setName] = useState(initial.name ?? '');
-  const [amount, setAmount] = useState(String(initial.amount ?? initial.limitAmount ?? ''));
+  const [amount, setAmount] = useState(String(initial.amount ?? ''));
   const [description, setDescription] = useState(initial.description ?? '');
   // D5: the date is free; a future month opens on its first day.
   const [date, setDate] = useState(initial.date?.slice(0, 10) ?? (isFutureMonth(month) ? firstDayOf(month) : defaultDateFor(month)));
@@ -84,7 +84,7 @@ function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
   const split = isPurchase ? splitPreview(Number(amount), Number(installmentCount), Number(installment), date) : null;
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    onSave(kind === 'card' ? { name, limitAmount: Number(amount), color }
+    onSave(kind === 'card' ? { name, color }
       : { description, amount: Number(amount), date, categoryId: categoryId ? Number(categoryId) : null, isPurchase, installmentCount: Number(installmentCount), installment: Number(installment), firstInstallment: editsPurchase ? Number(firstInstallment) : undefined, isRecurring, lastMonth: isRecurring && lastMonth ? lastMonth : null });
   };
   // Scrolls (instead of clipping) when the keyboard shrinks the viewport, and stays clear of the system bars.
@@ -109,8 +109,10 @@ function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
       </> : <>
         <label className="field-label">Nome do cartão</label><input data-testid="input-card-name" required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Cartão principal" className="field-input mb-4"/>
       </>}
-      <label className="field-label">{kind === 'card' ? 'Limite total' : isPurchase ? 'Valor total da compra' : isRecurring ? 'Valor mensal' : 'Valor da compra'}</label>
-      <div className="relative mb-4"><span className="absolute left-4 top-3 text-[#7d887d]">R$</span><input data-testid={kind === 'card' ? 'input-card-limit' : 'input-movement-amount'} required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="field-input pl-12"/></div>
+      {kind === 'movement' && <>
+      <label className="field-label">{isPurchase ? 'Valor total da compra' : isRecurring ? 'Valor mensal' : 'Valor da compra'}</label>
+      <div className="relative mb-4"><span className="absolute left-4 top-3 text-[#7d887d]">R$</span><input data-testid="input-movement-amount" required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="field-input pl-12"/></div>
+      </>}
       {kind === 'movement' && isPurchase && <div className={`mb-4 grid gap-3 ${editsPurchase ? 'grid-cols-3' : 'grid-cols-2'}`}>
         <div className="min-w-0"><label htmlFor="input-installment-count" className="field-label">Nº de parcelas</label><input id="input-installment-count" data-testid="input-installment-count" required type="number" step="1" value={installmentCount} onChange={(e) => setInstallmentCount(e.target.value)} className="field-input"/></div>
         <div className="min-w-0"><label htmlFor="input-installment" className="field-label">Parcela neste mês</label><input id="input-installment" data-testid="input-installment" required type="number" step="1" value={installment} onChange={(e) => setInstallment(e.target.value)} className="field-input"/></div>
@@ -151,7 +153,6 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   // 0 matches no card, so the per-card queries come back empty when there is none.
   const cardId = card?.id ?? 0;
   const monthStatus = useGetMonthStatus(cardId).data;
-  const consolidated = useGetConsolidated(month, { query: { queryKey: getGetConsolidatedQueryKey(month), enabled: cards.length > 1, refetchOnWindowFocus: true } }).data;
   const categoriesQuery = useGetCategories({ query: { queryKey: getGetCategoriesQueryKey(), refetchOnWindowFocus: true } });
   const categories = categoriesQuery.data ?? [];
   const movementsQuery = useGetMovements(cardId, month, { query: { queryKey: getGetMovementsQueryKey(cardId, month), enabled: Boolean(card), refetchOnWindowFocus: true } });
@@ -167,7 +168,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
 
   // Prefix keys: refreshes every card and month, plus the history, the totals and the planned installments.
   const refresh = () => {
-    for (const queryKey of [getGetCardsQueryKey(), getGetCardQueryKey(), getGetConsolidatedQueryKey(), getGetCategoriesQueryKey(), getGetCategorySummaryQueryKey(), getGetMovementsQueryKey(), getGetMonthHistoryQueryKey(), ['installments']]) {
+    for (const queryKey of [getGetCardsQueryKey(), getGetCardQueryKey(), getGetConsolidatedHistoryQueryKey(), getGetCategoriesQueryKey(), getGetCategorySummaryQueryKey(), getGetMovementsQueryKey(), getGetMonthHistoryQueryKey(), ['installments']]) {
       void client.invalidateQueries({ queryKey });
     }
   };
@@ -216,7 +217,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   const submitDialog = (values: DialogRecord) => {
     if (!dialog) return;
     if (dialog.kind === 'card') {
-      const data = { name: values.name ?? '', limitAmount: Number(values.limitAmount), color: values.color };
+      const data = { name: values.name ?? '', color: values.color };
       if (dialog.initial.id) updateCard.mutate({ cardId: dialog.initial.id, data }); else createCard.mutate({ data });
       return;
     }
@@ -281,31 +282,15 @@ export default function Dashboard({ month }: { month: MonthKey }) {
       </section>
 
       {!cards.length ? <section className="enter mt-9 overflow-hidden rounded-[28px] bg-[#28513f] p-7 text-[#fffaf0] sm:p-10">
-        <div className="flex flex-col justify-between gap-8 md:flex-row md:items-center"><div className="max-w-xl"><div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-[#f1d68e]"><CreditCard size={22}/></div><p className="font-mono-data text-[10px] uppercase tracking-[.2em] text-[#d8c991]">Um bom começo</p><h2 className="mt-2 font-display text-3xl sm:text-4xl">Vamos anotar o seu cartão?</h2><p className="mt-3 text-sm leading-6 text-[#d0ded3]">Defina o limite e tenha uma visão mais tranquila do que já foi usado.</p></div><button data-testid="button-create-card" onClick={() => setDialog({ kind: 'card', initial: { color: cardsQuery.data?.nextColor } })} className="flex items-center gap-2 self-start rounded-full bg-[#f0d28b] px-5 py-3 text-sm font-semibold text-[#294438] transition hover:bg-[#f5dfa8]"><Plus size={16}/> Cadastrar cartão</button></div>
+        <div className="flex flex-col justify-between gap-8 md:flex-row md:items-center"><div className="max-w-xl"><div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-[#f1d68e]"><CreditCard size={22}/></div><p className="font-mono-data text-[10px] uppercase tracking-[.2em] text-[#d8c991]">Um bom começo</p><h2 className="mt-2 font-display text-3xl sm:text-4xl">Vamos anotar o seu cartão?</h2><p className="mt-3 text-sm leading-6 text-[#d0ded3]">Lance as compras e veja quanto deu a fatura de cada mês.</p></div><button data-testid="button-create-card" onClick={() => setDialog({ kind: 'card', initial: { color: cardsQuery.data?.nextColor } })} className="flex items-center gap-2 self-start rounded-full bg-[#f0d28b] px-5 py-3 text-sm font-semibold text-[#294438] transition hover:bg-[#f5dfa8]"><Plus size={16}/> Cadastrar cartão</button></div>
       </section> : <>
-      {consolidated && cards.length > 1 && <section data-testid="section-all-cards" aria-label="Todos os cartões" className="enter mt-8 rounded-[22px] border border-[#e1dbce] bg-[#fbf8f0] p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-3"><p className="font-mono-data text-[10px] uppercase tracking-[.17em] text-[#9a8d71]">Todos os cartões · {capitalize(monthLabel(month))}</p><span className="shrink-0 text-[10px] text-[#8c9388]">{consolidated.cardCount} cartões</span></div>
-        {/* Rows on phones (label left, amount right); three tiles from sm up. */}
-        <div className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-3 sm:gap-3">
-          {([['Usado', consolidated.usedAmount, 'bg-[#f5e9e1] text-[#927b70]', 'text-[#a55f50]'], ['Disponível', consolidated.availableAmount, 'bg-[#f2eee4] text-[#7c877a]', 'text-[#315944]'], ['Limite', consolidated.limitAmount, 'bg-[#f2eee4] text-[#7c877a]', 'text-[#315944]']] as const).map(([label, value, box, tone]) =>
-            <div key={label} className={`flex min-w-0 items-baseline justify-between gap-3 rounded-xl px-3 py-2 sm:block sm:rounded-2xl sm:p-3 ${box}`}><span className="text-[10px]">{label}</span><p className={`whitespace-nowrap font-mono-data text-[13px] sm:mt-1 sm:text-[16px] ${tone}`}>{money(value)}</p></div>)}
-        </div>
-        <div className="mt-3 flex items-center gap-3"><div className="flex-1"><Progress value={consolidated.percentUsed} tone={consolidated.percentUsed > 85 ? 'peach' : 'green'}/></div><span className="w-11 text-right font-mono-data text-[9px] text-[#8c9388]">{Number(consolidated.percentUsed).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span></div>
-      </section>}
-      <section className="mt-8 grid gap-5 lg:grid-cols-[1.05fr_.95fr]">
+      <section className="mt-8">
         <div className="enter min-w-0">
-          <CardCarousel cards={cards} selectedId={selectedCardId} onSelect={chooseCard}
+          <CardCarousel cards={cards} month={month} selectedId={selectedCardId} onSelect={chooseCard}
             onAdd={() => setDialog({ kind: 'card', initial: { color: cardsQuery.data?.nextColor } })}
-            onEdit={(item) => setDialog({ kind: 'card', initial: { id: item.id, name: item.name, limitAmount: cardsQuery.data?.cards.find((c) => c.id === item.id)?.currentLimitAmount, color: item.color } })}
+            onEdit={(item) => setDialog({ kind: 'card', initial: { id: item.id, name: item.name, color: item.color } })}
             onDelete={(item) => { if (askDelete(`o cartão “${item.name}” e todos os seus registros`)) deleteCard.mutate({ cardId: item.id }); }}/>
         </div>
-        <article className="enter rounded-[26px] border border-[#e1dbce] bg-[#fbf8f0] p-6 sm:p-8" style={{ animationDelay: '.08s' }}>
-          <div className="flex items-center justify-between"><div><p className="font-mono-data text-[10px] uppercase tracking-[.17em] text-[#9a8d71]">O mês em perspectiva</p><h2 className="mt-2 font-display text-[24px] text-[#234638]">{capitalize(monthLabel(month))}</h2></div><div className="grid h-10 w-10 place-items-center rounded-full bg-[#f0e9d9] text-[#587764]"><LayoutDashboard size={17}/></div></div>
-          <div className="mt-7 grid grid-cols-2 gap-3"><div className="min-w-0 rounded-2xl bg-[#f5e9e1] p-4"><span className="text-[10px] text-[#927b70]">Usado</span><p data-testid="text-month-used" className="mt-2 font-mono-data text-[16px] text-[#a55f50] [overflow-wrap:anywhere] sm:text-[18px]">{money(card?.usedAmount ?? 0)}</p></div><div className="min-w-0 rounded-2xl bg-[#f2eee4] p-4"><span className="text-[10px] text-[#7c877a]">Disponível</span><p data-testid="text-month-available" className="mt-2 font-mono-data text-[16px] text-[#315944] [overflow-wrap:anywhere] sm:text-[18px]">{money(card?.availableAmount ?? 0)}</p></div></div>
-          <div className="mt-4 flex items-center gap-3"><div className="flex-1"><Progress value={card?.percentUsed ?? 0} tone={(card?.percentUsed ?? 0) > 85 ? 'peach' : 'green'}/></div><span className="w-9 text-right font-mono-data text-[9px] text-[#8c9388]">{Number(card?.percentUsed ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%</span></div>
-          <p className="mt-2 text-right text-[10px] text-[#8c9388]">limite de {money(card?.limitAmount ?? 0)}</p>
-          <div className="mt-5 flex items-center gap-2 border-t border-[#e9e3d8] pt-4 text-[11px] text-[#748075]"><Tag size={15} className="text-[#668a6d]"/><span><b className="font-semibold text-[#42624d]">{plural(rows.length, 'compra', 'compras')}</b> {isCurrentMonth ? 'neste mês' : `em ${monthName(month)}`}{isFuture && ' (com as parcelas previstas)'}.</span></div>
-        </article>
       </section>
       </>}
 
