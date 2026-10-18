@@ -19,6 +19,10 @@ A especificação completa está em [`specs/compras-e-categorias.md`](specs/comp
 - A **categoria é opcional** e vem de uma lista **global**, a mesma para todos os cartões. Ela só classifica: não tem orçamento, mês nem estado aberto/fechado. Excluir uma categoria deixa as compras dela "Sem categoria".
 - A tela do cartão mostra a lista de compras do mês, o filtro por categoria e o resumo por categoria. As categorias são gerenciadas num lugar só, a tela "Categorias" (`#/categorias`, em [`specs/tela-de-categorias.md`](specs/tela-de-categorias.md)), aberta pelo botão "Categorias" de cada aba.
 
+### Botão Lançar
+
+- Um **menu de rodapé** (nas abas Entradas, Cartões e Benefícios) tem o ícone de **categorias** (abre `#/categorias`) e o botão **"+"**, só com o ícone, que abre os formulários de entrada, conta fixa, gasto do dia a dia, compra no cartão e gasto de benefício no mês aberto, sem trocar de aba ([`specs/botao-lancar.md`](specs/botao-lancar.md)).
+
 ### Histórico mensal
 
 - O acesso ao Histórico fica na **face de cada cartão** (botão ao lado de editar e remover), e a aba Cartões não tem botão "Atualizar" ([`specs/historico-no-cartao.md`](specs/historico-no-cartao.md)).

@@ -1,13 +1,12 @@
 import { type FormEvent, type MouseEvent, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useLocation } from 'wouter';
 import {
   getGetBenefitRangeQueryKey, getGetBenefitsQueryKey, getGetCategoriesQueryKey,
   useCloseBenefitCategory, useCreateBenefit, useCreateBenefitSpend, useDeleteBenefit, useDeleteBenefitSpend,
   useGetBenefitRange, useGetBenefits, useGetCategories, useReopenBenefitCategory, useUpdateBenefit, useUpdateBenefitSpend,
   type BenefitCategoryRow, type BenefitItem, type BenefitSpend, type Category,
 } from '@workspace/api-client-react';
-import { CalendarDays, Check, ChevronDown, CircleHelp, FilePenLine, Plus, Repeat, Tag, Trash2, Utensils, X } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown, CircleHelp, FilePenLine, Plus, Repeat, Trash2, Utensils, X } from 'lucide-react';
 import { AppTabs } from '@/components/app-tabs';
 import { MonthNav } from '@/components/month-nav';
 import { Progress } from '@/components/progress';
@@ -73,7 +72,7 @@ function BenefitDialog({ month, benefit, categories, busy, onClose, onSave }: {
 type SpendValues = { description: string; amount: number; date: string; categoryId: number | null };
 
 // RF-07: the date stays inside the benefit's active period (RN-07).
-function SpendDialog({ month, benefit, spend, categories, busy, onClose, onSave }: {
+export function SpendDialog({ month, benefit, spend, categories, busy, onClose, onSave }: {
   month: MonthKey; benefit: BenefitItem; spend?: BenefitSpend; categories: Category[]; busy: boolean;
   onClose: () => void; onSave: (values: SpendValues) => void;
 }) {
@@ -109,7 +108,6 @@ function SpendDialog({ month, benefit, spend, categories, busy, onClose, onSave 
 
 export default function Beneficios({ month }: { month: MonthKey }) {
   useRememberMonth(month);
-  const [, navigate] = useLocation();
   const client = useQueryClient();
   const benefitsQuery = useGetBenefits(month, { query: { queryKey: getGetBenefitsQueryKey(month), refetchOnWindowFocus: true } });
   const range = useGetBenefitRange({ query: { queryKey: getGetBenefitRangeQueryKey() } }).data;
@@ -169,7 +167,7 @@ export default function Beneficios({ month }: { month: MonthKey }) {
 
 
       <section className="enter mt-6 flex flex-wrap justify-end gap-2" style={{ animationDelay: '.06s' }}>
-        <div className="flex flex-wrap gap-2"><button data-testid="button-categories" onClick={() => navigate('/categorias')} className="flex items-center gap-1.5 rounded-full border border-[#d9d2c4] bg-[#faf7ef] px-4 py-3 text-xs font-semibold text-[#496754] transition hover:bg-[#eee9dd]"><Tag size={14}/> Categorias</button><button data-testid="button-new-benefit" onClick={() => setBenefitDialog({})} className="flex items-center gap-2 rounded-full bg-[#28513f] px-5 py-3.5 text-[13px] font-semibold text-[#fffaf0] shadow-[0_8px_18px_-10px_rgba(38,80,61,.7)] transition hover:-translate-y-0.5 hover:bg-[#1f4333]"><Plus size={16}/> Novo benefício</button></div>
+        <div className="flex flex-wrap gap-2"><button data-testid="button-new-benefit" onClick={() => setBenefitDialog({})} className="flex items-center gap-2 rounded-full bg-[#28513f] px-5 py-3.5 text-[13px] font-semibold text-[#fffaf0] shadow-[0_8px_18px_-10px_rgba(38,80,61,.7)] transition hover:-translate-y-0.5 hover:bg-[#1f4333]"><Plus size={16}/> Novo benefício</button></div>
       </section>
 
       {items.length > 0 && <section aria-label="Disponível em todos os benefícios" className="enter mt-6 rounded-[22px] border border-[#e1dbce] bg-[#fbf8f0] p-5" style={{ animationDelay: '.08s' }}>
@@ -206,7 +204,7 @@ export default function Beneficios({ month }: { month: MonthKey }) {
               {!row.closed && <div className="mt-2 flex items-center gap-3"><div className="flex-1"><Progress value={row.percentUsed} tone={row.percentUsed > 85 ? 'peach' : 'green'}/></div><span className="w-9 text-right font-mono-data text-[9px] text-[#8c9388]">{Number(row.percentUsed).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%</span></div>}
             </li>)}</ul>
           </div>}
-          <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#ece6da] px-4 py-3 sm:px-5"><p className="text-[10px] text-[#899186]">{plural(benefit.spends.length, 'gasto', 'gastos')} neste mês</p><button data-testid={`button-benefit-spend-${benefit.id}`} onClick={() => setSpendDialog({ benefit })} className="flex items-center gap-1.5 rounded-full border border-[#d9d2c4] bg-[#faf7ef] px-3.5 py-2 text-xs font-semibold text-[#496754] transition hover:bg-[#eee9dd]"><Plus size={13}/> Registrar gasto</button></div>
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#ece6da] px-4 py-3 sm:px-5"><p className="text-[10px] text-[#899186]">{plural(benefit.spends.length, 'gasto', 'gastos')} neste mês</p></div>
           {benefit.spends.length ? <ul className="divide-y divide-[#ece6da] border-t border-[#ece6da]">
             {benefit.spends.map((spend) => <li key={spend.id} data-testid={`row-spend-${spend.id}`} className="flex items-center gap-3 px-4 py-3 sm:px-5">
               <div className="min-w-0 flex-1"><p className="truncate text-[12px] font-semibold text-[#3d5948]">{spend.description}</p><p className="mt-1 flex items-center gap-2 text-[10px] text-[#8b9185]"><span className="flex items-center gap-1"><CalendarDays size={11}/>{dateLabel(spend.date)}</span>{spend.categoryName && <span className="truncate rounded-full bg-[#e4ece2] px-2 py-0.5 text-[9px] font-medium text-[#52735c]">{spend.categoryName}</span>}</p></div>

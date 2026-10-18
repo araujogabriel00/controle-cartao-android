@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { getGetBenefitRangeQueryKey, getGetIncomeRangeQueryKey, getGetLastFutureMonthQueryKey, useGetBenefitRange, useGetIncomeRange, useGetLastFutureMonth } from '@workspace/api-client-react';
 import { areaPath, currentMonth, isFutureMonth, isMonthKey } from '@/lib/format';
 import { readLastMonth } from '@/lib/last-month';
+import { FooterMenu } from '@/components/quick-add';
 import NotFound from '@/pages/not-found';
 import Dashboard from '@/pages/dashboard';
 import Historico from '@/pages/historico';
@@ -110,7 +111,7 @@ function App() {
         {/* Hash routes: the bundle uses a relative base, so nested paths would
             break asset URLs on reload. */}
         <WouterRouter hook={useHashLocation}>
-          <Bootstrap><Router /></Bootstrap>
+          <Bootstrap><Router /><FooterMenu /></Bootstrap>
         </WouterRouter>
       </TooltipProvider>
     </QueryClientProvider>
