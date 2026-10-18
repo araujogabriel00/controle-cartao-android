@@ -290,7 +290,7 @@ Em `src/data/api.ts`: `useGetIncomes`, `useGetIncomeRange`, `useCreateIncome`, `
 
 ## 8. Interface
 
-- **Barra de abas** (RF-01): dois botões "Cartões" e "Entradas" abaixo do cabeçalho; a aba ativa fica destacada. "Cartões" leva a `#/`, "Entradas" a `#/entradas`.
+- **Barra de abas** (RF-01): dois botões "Cartões" e "Entradas" no topo da tela (nas telas de cartões, abaixo da barra de controles); a aba ativa fica destacada. "Cartões" leva a `#/`, "Entradas" a `#/entradas`.
 - **Tela Entradas** (`src/pages/entradas.tsx`): navegação de mês igual à do painel, cartão de total do mês, lista de ocorrências e o botão "Nova entrada".
 - **Rotas:** `#/entradas` (mês corrente) e `#/entradas/mes/AAAA-MM`. Mês inválido ou fora do intervalo da RN-09 volta para `#/entradas`.
 - **Diálogo de entrada:** tipo (seletor), descrição, valor, data, interruptor "Repetir todo mês" e "Até (mês)". Na edição de recorrente, antes do diálogo, uma pergunta com "Só este mês" e "Este e os próximos".

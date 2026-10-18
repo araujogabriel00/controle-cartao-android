@@ -8,7 +8,7 @@ import {
   type BillOccurrence, type Category, type DailyExpense, type IncomeKind, type IncomeOccurrence, type IncomeScope,
 } from '@workspace/api-client-react';
 import {
-  CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, HandCoins, Pencil, Plus, Receipt, Repeat, ShoppingBasket, Tag, Trash2, WalletCards, X,
+  CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, HandCoins, Pencil, Plus, Receipt, Repeat, ShoppingBasket, Tag, Trash2, X,
 } from 'lucide-react';
 import { AppTabs } from '@/components/app-tabs';
 import { CategoriesDialog } from '@/components/categories-dialog';
@@ -249,9 +249,6 @@ export default function Entradas({ month }: { month: MonthKey }) {
 
   return <main className="notebook-grain min-h-safe bg-[#f5f1e7] text-[#294438]">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
-      <header className="enter flex items-center justify-between border-b border-[#ded8ca] pb-5">
-        <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-[13px] bg-[#28513f] text-[#f4d48b]"><WalletCards size={20}/></div><div><p className="font-display text-[20px] font-semibold leading-none text-[#234638]">controle<span className="text-[#d78470]">.</span></p><p className="mt-1 font-mono-data text-[9px] uppercase tracking-[.19em] text-[#758075]">do cartão</p></div></div>
-      </header>
       <AppTabs/>
 
       <nav aria-label="Mês" className="enter mt-4 flex items-center justify-between gap-2 rounded-full border border-[#e1dbce] bg-[#fbf8f0] p-1.5">
