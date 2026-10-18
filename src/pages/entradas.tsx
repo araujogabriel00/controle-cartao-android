@@ -40,7 +40,7 @@ const dialogHeader = (kicker: string, title: string, onClose: () => void) => <di
 // form is never opened for a one-off income with a scope (income D7).
 type IncomeForm = { item?: IncomeOccurrence; scope?: IncomeScope };
 
-function IncomeDialog({ month, item, scope, busy, onClose, onSave }: {
+export function IncomeDialog({ month, item, scope, busy, onClose, onSave }: {
   month: MonthKey; item?: IncomeOccurrence; scope?: IncomeScope; busy: boolean;
   onClose: () => void;
   onSave: (values: { kind: IncomeKind; description: string; amount: number; date: string; recurring: boolean; lastMonth: MonthKey | null }) => void;
@@ -86,7 +86,7 @@ type BillForm = { item?: BillOccurrence; scope?: IncomeScope };
 type BillValues = { name: string; amount: number; date: string; lastMonth: MonthKey | null };
 
 // RF-05: a fixed bill always repeats, so the form has no repeat switch (D2).
-function BillDialog({ month, item, scope, busy, onClose, onSave }: {
+export function BillDialog({ month, item, scope, busy, onClose, onSave }: {
   month: MonthKey; item?: BillOccurrence; scope?: IncomeScope; busy: boolean; onClose: () => void; onSave: (values: BillValues) => void;
 }) {
   const isEdit = Boolean(item);
@@ -120,7 +120,7 @@ function BillDialog({ month, item, scope, busy, onClose, onSave }: {
 type DailyValues = { description: string; amount: number; date: string; categoryId: number | null };
 
 // RF-07: the date is free up to a year ahead (D8); the category is optional.
-function DailyDialog({ month, item, categories, busy, onClose, onSave }: {
+export function DailyDialog({ month, item, categories, busy, onClose, onSave }: {
   month: MonthKey; item?: DailyExpense; categories: Category[]; busy: boolean; onClose: () => void; onSave: (values: DailyValues) => void;
 }) {
   const isEdit = Boolean(item);
@@ -244,9 +244,6 @@ export default function Entradas({ month }: { month: MonthKey }) {
       <AppTabs/>
 
 
-      <section className="enter mt-6 flex flex-wrap justify-end gap-2" style={{ animationDelay: '.06s' }}>
-        <button data-testid="button-categories" onClick={() => navigate('/categorias')} className="flex w-fit items-center gap-1.5 rounded-full border border-[#d9d2c4] bg-[#faf7ef] px-4 py-3 text-xs font-semibold text-[#496754] transition hover:bg-[#eee9dd]"><Tag size={14}/> Categorias</button>
-      </section>
 
       <section data-testid="section-cash" aria-label="Resumo do mês" className="enter mt-6 rounded-[22px] border border-[#e1dbce] bg-[#fbf8f0] p-4 sm:p-5" style={{ animationDelay: '.08s' }}>
         <p className="font-mono-data text-[10px] uppercase tracking-[.17em] text-[#9a8d71]">Resumo do mês · {capitalize(monthLabel(month))}</p>

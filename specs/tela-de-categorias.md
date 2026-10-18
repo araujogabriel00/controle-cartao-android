@@ -6,6 +6,7 @@
 | Criada em | 18/10/2026 |
 | Escopo | `src/pages/categorias.tsx` (novo), `src/App.tsx`, `src/pages/dashboard.tsx`, `src/pages/entradas.tsx`, `src/pages/beneficios.tsx`, `src/components/categories-dialog.tsx` (removido), `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`compras-e-categorias.md`](compras-e-categorias.md) (categorias globais) |
+| Substituída em parte por | [`botao-lancar.md`](botao-lancar.md) (D12): o acesso à tela passa do botão "Categorias" de cada aba para um ícone no menu de rodapé. A tela não muda. |
 | Substitui em parte | O diálogo "Categorias" de [`compras-e-categorias.md`](compras-e-categorias.md) (RF-07, D9), [`beneficios.md`](beneficios.md) (RF-09, D11) e [`contas-e-gastos.md`](contas-e-gastos.md) (RF-09). As regras de criar, renomear e excluir categorias continuam as mesmas; o que muda é **onde** elas são feitas. |
 
 > Esta spec é a fonte da verdade da funcionalidade. A implementação segue a seção [Tarefas](#11-tarefas) e só termina quando todos os [Critérios de aceite](#10-critérios-de-aceite) forem atendidos. Mudanças de comportamento entram primeiro aqui e só depois no código.

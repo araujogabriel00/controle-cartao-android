@@ -38,6 +38,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 16. [Mês compartilhado](#16-mês-compartilhado)
 17. [Cartão sem limite](#17-cartão-sem-limite)
 18. [Histórico no card do cartão](#18-histórico-no-card-do-cartão)
+19. [Botão Lançar](#19-botão-lançar)
 
 ---
 
@@ -57,7 +58,7 @@ Funcionalidade: Gerenciar o cartão
     Quando eu abro o aplicativo
     Então vejo o convite "Vamos anotar o seu cartão?"
     E vejo o botão "Cadastrar cartão"
-    E o botão "Registrar compra" está desabilitado
+    E a aba não tem botão de registrar compra; o "+" do rodapé deixa "Compra no cartão" desabilitada
 
   Cenário: Cadastrar o primeiro cartão
     Dado que não existe nenhum cartão cadastrado
@@ -122,7 +123,7 @@ Funcionalidade: Categorias das compras
 
   Cenário: Chegar nas categorias a partir de qualquer aba
     Dado que estou na aba "Cartões", "Entradas" ou "Benefícios"
-    Quando eu toco no botão "Categorias"
+    Quando eu toco no ícone de categorias do rodapé
     Então abre a tela "Categorias", sem diálogo e sem a barra de abas
     E vejo a lista de categorias, cada uma com a quantidade de compras, em ordem alfabética
     E vejo o campo para criar uma categoria nova
@@ -194,7 +195,7 @@ Funcionalidade: Registrar e acompanhar compras
     E existem as categorias "Mercado" e "Lazer"
 
   Cenário: Registrar uma compra
-    Quando eu clico em "Registrar compra"
+    Quando eu toco no botão "+" do rodapé e em "Compra no cartão"
     Então o formulário "Nova compra" abre com a data de hoje preenchida
     Mas se o painel mostra um mês passado, a data preenchida é o último dia daquele mês
     E se mostra um mês futuro, é o dia 1º dele
@@ -596,7 +597,7 @@ Funcionalidade: Parcelamento
     E que existe a categoria "Eletrônicos"
 
   Cenário: Registrar uma compra parcelada
-    Quando eu clico em "Registrar compra" e ligo "Compra parcelada"
+    Quando eu toco no botão "+" do rodapé, em "Compra no cartão" e ligo "Compra parcelada"
     E registro "Fone" na categoria "Eletrônicos", com valor total de R$ 100,00 em 3 parcelas, em 15/10/2026
     Então antes de salvar vejo "3x de R$ 33,33 · última em dezembro/2026 · 1ª de R$ 33,34"
     E depois de salvar vejo a mensagem "Compra parcelada registrada."
@@ -771,7 +772,7 @@ Funcionalidade: Benefícios
 
   Cenário: Registrar um gasto
     Dado que existe o benefício "VR" e a categoria "Mercado"
-    Quando eu toco em "Registrar gasto" no cartão "VR"
+    Quando eu toco no botão "+" do rodapé, em "Gasto de benefício" e escolho "VR"
     E informo a descrição "Almoço", o valor "300", a categoria "Mercado" e uma data do mês
     Então o cartão "VR" lista "Almoço" em "Mercado" com R$ 300,00
     E mostra gasto R$ 300,00 e disponível R$ 500,00
@@ -895,7 +896,7 @@ Funcionalidade: Benefícios
     Então o cartão "VR" não mostra a lista "Por categoria"
 
   Cenário: Categorias na aba Benefícios
-    Quando eu toco em "Categorias" na aba "Benefícios"
+    Quando eu toco no ícone de categorias do rodapé, na aba "Benefícios"
     Então abre a tela de categorias (seção 2), a mesma das outras abas
 
   @regra
@@ -1075,7 +1076,7 @@ Funcionalidade: Compra recorrente
     Dado que hoje é 17/10/2026 e o cartão "Nubank" existe
 
   Cenário: Registrar uma assinatura
-    Quando eu abro "Registrar compra" e ligo "Compra recorrente"
+    Quando eu abro "Compra no cartão" pelo rodapé e ligo "Compra recorrente"
     Então o título é "Nova compra recorrente" e o valor é "Valor mensal"
     Quando eu informo "Streaming", o valor "40" e a data 15/10/2026
     Então a prévia mostra "Todo mês, dia 15, a partir de outubro de 2026 · sem data final"
@@ -1309,4 +1310,50 @@ Funcionalidade: Histórico no card do cartão
     Quando eu toco em "Ver histórico de Inter"
     Então vejo "Mês a mês" com "Inter — a fatura de cada mês"
     E as mesmas informações de antes: fatura e compras por mês, "Todos os cartões" e "Próximos meses"
+```
+
+---
+
+## 19. Botão Lançar
+
+Resumo. A especificação completa está em [`specs/botao-lancar.md`](specs/botao-lancar.md).
+
+```gherkin
+# language: pt
+
+Funcionalidade: Botão Lançar no menu de rodapé
+
+  Cenário: O rodapé aparece nas três abas
+    Quando eu abro as abas "Entradas", "Cartões" e "Benefícios"
+    Então vejo o menu de rodapé com o ícone de categorias e o botão "+" (nome acessível "Lançar"), sem texto
+    Mas no Histórico e em Categorias ele não aparece
+
+  Cenário: As opções do menu
+    Quando eu toco no botão "+"
+    Então vejo "Entrada", "Conta fixa", "Gasto do dia a dia", "Compra no cartão" e "Gasto de benefício"
+
+  Cenário: Lançar sem trocar de aba
+    Dado que estou na aba "Cartões" em outubro de 2026
+    Quando eu toco no botão "+" e em "Entrada" e salvo "Salário" de R$ 5.000,00
+    Então vejo "Entrada registrada." e continuo na aba "Cartões"
+    E ao abrir "Entradas" vejo o salário em outubro
+
+  Cenário: Compra no cartão selecionado
+    Quando eu toco no botão "+" e em "Compra no cartão" e salvo "Feira" de R$ 120,00
+    Então a fatura do cartão selecionado sobe R$ 120,00
+
+  Cenário: Gasto de benefício
+    Dado que existem os benefícios "VR" e "VA"
+    Quando eu toco no botão "+" e em "Gasto de benefício"
+    Então escolho o benefício e abre o formulário de gasto
+    Se existe só um benefício, o formulário abre direto
+
+  Cenário: A entrada é só o botão do rodapé
+    Quando eu abro a aba "Cartões" ou "Benefícios"
+    Então não há botão "Registrar compra" nem "Registrar gasto"
+    Mas editar e excluir um lançamento continuam na lista
+
+  Cenário: Sem cartão ou sem benefício
+    Quando eu toco no botão "+"
+    Então "Compra no cartão" e "Gasto de benefício" ficam desabilitadas, com "Cadastre um cartão primeiro" e "Cadastre um benefício primeiro"
 ```

@@ -55,7 +55,7 @@ function splitPreview(total: number, count: number, installment: number, date: s
 const filterKey = (categoryId: number | null) => (categoryId === null ? 'none' : String(categoryId));
 const sortRows = (a: Row, b: Row) => b.date.localeCompare(a.date) || a.key.localeCompare(b.key);
 
-function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
+export function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
   kind: DialogKind; initial: DialogRecord; month: MonthKey; categories: Category[]; busy: boolean;
   onClose: () => void; onSave: (values: DialogRecord) => void;
 }) {
@@ -276,9 +276,6 @@ export default function Dashboard({ month }: { month: MonthKey }) {
 
       {isFuture && <p data-testid="text-preview-banner" className="enter mt-3 flex items-start gap-2 rounded-2xl border border-[#e6d7b8] bg-[#f8efd9] px-4 py-3 text-[11px] leading-5 text-[#7a6a45]"><CalendarDays size={14} className="mt-0.5 shrink-0"/><span><b className="font-semibold">{capitalize(monthName(month))} ainda não começou:</b> aparecem as parcelas e cobranças previstas e as compras já registradas.</span></p>}
 
-      <section className="enter mt-6 flex flex-wrap justify-end gap-2" style={{ animationDelay: '.06s' }}>
-        <button data-testid="button-new-movement" onClick={() => setDialog({ kind: 'movement', initial: {} })} disabled={!card} className="flex w-fit items-center gap-2 rounded-full bg-[#28513f] px-5 py-3.5 text-[13px] font-semibold text-[#fffaf0] shadow-[0_8px_18px_-10px_rgba(38,80,61,.7)] transition hover:-translate-y-0.5 hover:bg-[#1f4333] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16}/> Registrar compra</button>
-      </section>
 
       {!cards.length ? <section className="enter mt-9 overflow-hidden rounded-[28px] bg-[#28513f] p-7 text-[#fffaf0] sm:p-10">
         <div className="flex flex-col justify-between gap-8 md:flex-row md:items-center"><div className="max-w-xl"><div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-[#f1d68e]"><CreditCard size={22}/></div><p className="font-mono-data text-[10px] uppercase tracking-[.2em] text-[#d8c991]">Um bom começo</p><h2 className="mt-2 font-display text-3xl sm:text-4xl">Vamos anotar o seu cartão?</h2><p className="mt-3 text-sm leading-6 text-[#d0ded3]">Lance as compras e veja quanto deu a fatura de cada mês.</p></div><button data-testid="button-create-card" onClick={() => setDialog({ kind: 'card', initial: { color: cardsQuery.data?.nextColor } })} className="flex items-center gap-2 self-start rounded-full bg-[#f0d28b] px-5 py-3 text-sm font-semibold text-[#294438] transition hover:bg-[#f5dfa8]"><Plus size={16}/> Cadastrar cartão</button></div>
@@ -317,7 +314,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
         </div>
 
         <aside className="enter min-w-0" style={{ animationDelay: '.18s' }}>
-          <div className="flex flex-wrap items-end justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-2 text-[#ac8f60]"><Tag size={14}/><p className="font-mono-data text-[10px] uppercase tracking-[.2em]">Resumo</p></div><h2 className="mt-2 font-display text-[30px] text-[#234638]">Por categoria</h2></div><button data-testid="button-categories" onClick={() => navigate('/categorias')} className="flex items-center gap-1.5 rounded-full border border-[#d9d2c4] bg-[#faf7ef] px-3.5 py-2.5 text-xs font-semibold text-[#496754] transition hover:bg-[#eee9dd]"><Tag size={14}/> Categorias</button></div>
+          <div className="flex flex-wrap items-end justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-2 text-[#ac8f60]"><Tag size={14}/><p className="font-mono-data text-[10px] uppercase tracking-[.2em]">Resumo</p></div><h2 className="mt-2 font-display text-[30px] text-[#234638]">Por categoria</h2></div></div>
           <div className="mt-5 rounded-[22px] border border-[#e1dbce] bg-[#fbf8f0] p-5">
             {summary.length ? <ul data-testid="list-category-summary" className="space-y-4">
               {summary.map((item) => <li key={filterKey(item.categoryId)} data-testid={`row-summary-${filterKey(item.categoryId)}`}>
