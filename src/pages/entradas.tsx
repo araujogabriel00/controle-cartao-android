@@ -248,8 +248,7 @@ export default function Entradas({ month }: { month: MonthKey }) {
         <button data-testid="button-next-month" aria-label="Próximo mês" disabled={!canGoNext} onClick={() => navigate(incomePath(shiftMonth(month, 1)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#546b5d] transition hover:bg-[#ece7dc] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"><ChevronRight size={17}/></button>
       </nav>
 
-      <section className="enter mt-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end" style={{ animationDelay: '.06s' }}>
-        <div><p className="font-mono-data text-[10px] uppercase tracking-[.2em] text-[#9a8d71]">O que entra e o que sai</p><h1 className="mt-2 font-display text-[42px] leading-[1.05] tracking-[-.03em] text-[#234638] sm:text-[54px]">Suas <em className="font-medium text-[#d78470]">entradas.</em></h1></div>
+      <section className="enter mt-6 flex flex-wrap justify-end gap-2" style={{ animationDelay: '.06s' }}>
         <button data-testid="button-categories" onClick={() => navigate('/categorias')} className="flex w-fit items-center gap-1.5 rounded-full border border-[#d9d2c4] bg-[#faf7ef] px-4 py-3 text-xs font-semibold text-[#496754] transition hover:bg-[#eee9dd]"><Tag size={14}/> Categorias</button>
       </section>
 
