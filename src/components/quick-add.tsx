@@ -10,7 +10,7 @@ import {
 import { CreditCard, HandCoins, Plus, Receipt, ShoppingBasket, Tag, Utensils, X } from 'lucide-react';
 import { dialogOverlay } from '@/lib/dialog-styles';
 import { defaultDateFor, monthInPath, monthLabel, monthOf, type MonthKey } from '@/lib/format';
-import { BillDialog, DailyDialog, IncomeDialog } from '@/pages/entradas';
+import { BillDialog, DailyDialog, IncomeDialog } from '@/components/entry-dialogs';
 import { Dialog as PurchaseDialog } from '@/pages/dashboard';
 import { SpendDialog } from '@/pages/beneficios';
 

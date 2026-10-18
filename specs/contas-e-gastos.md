@@ -8,6 +8,7 @@
 | Depende de | [`entradas.md`](entradas.md) (a tela, a recorrência e a navegação por mês), [`compras-e-categorias.md`](compras-e-categorias.md) (categorias globais e o usado dos cartões) |
 | Substitui em parte | [`entradas.md`](entradas.md): a decisão D3 ("entradas não entram em nenhum cálculo") e a RN-09 (intervalo de navegação). As entradas continuam sem alterar os cartões; o que muda é que a tela das entradas passa a **ler** o usado dos cartões para calcular o saldo. |
 | Substituída em parte por | [`tela-de-categorias.md`](tela-de-categorias.md): o diálogo "Categorias" virou a tela `#/categorias`; as regras das categorias continuam as mesmas. |
+| Substituída em parte por | [`telas-de-entradas.md`](telas-de-entradas.md): as listas de contas fixas e de gastos do dia a dia saem da aba Entradas e vão para telas próprias; as regras não mudam. |
 
 > Esta spec é a fonte da verdade da funcionalidade. A implementação segue a seção [Tarefas](#11-tarefas) e só termina quando todos os [Critérios de aceite](#10-critérios-de-aceite) forem atendidos. Mudanças de comportamento entram primeiro aqui e só depois no código.
 

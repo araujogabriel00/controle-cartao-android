@@ -51,6 +51,9 @@ export const defaultDateFor = (month: MonthKey) => monthOf(today()) === month ? 
 export type Area = 'cards' | 'income' | 'benefits';
 const AREA_ROOT: Record<Area, string> = { cards: '', income: '/entradas', benefits: '/beneficios' };
 export const areaPath = (area: Area, month: MonthKey) => (month === currentMonth() ? AREA_ROOT[area] || '/' : `${AREA_ROOT[area]}/mes/${month}`);
+// Screens of the Entradas lists (specs/telas-de-entradas.md D10); the month goes at the end like the areas.
+export type ListKind = 'entradas' | 'contas-fixas' | 'gastos' | 'cartoes';
+export const listPath = (kind: ListKind, month: MonthKey) => `/entradas/lista/${kind}${month === currentMonth() ? '' : `/mes/${month}`}`;
 export const monthPath = (month: MonthKey) => areaPath('cards', month);
 // RN-01: the open month is the one at the end of the address; without it, the current month.
 export const monthInPath = (path: string): MonthKey => {
