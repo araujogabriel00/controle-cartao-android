@@ -115,7 +115,7 @@ Funcionalidade: Gerenciar o cartão
 
 ## 2. Categorias
 
-Resumo das categorias. A especificação completa está em [`specs/compras-e-categorias.md`](specs/compras-e-categorias.md). As categorias são **globais** (as mesmas para todos os cartões), servem só para classificar compras e não têm orçamento.
+Resumo das categorias. A especificação completa está em [`specs/compras-e-categorias.md`](specs/compras-e-categorias.md) e, para onde elas são gerenciadas, em [`specs/tela-de-categorias.md`](specs/tela-de-categorias.md). As categorias são **globais** (as mesmas para todos os cartões, gastos e benefícios), servem só para classificar e não têm orçamento. Criar, renomear e excluir só se faz na **tela `#/categorias`**.
 
 ```gherkin
 # language: pt
@@ -124,20 +124,29 @@ Funcionalidade: Categorias das compras
   Quero classificar minhas compras em categorias
   Para ver quanto gasto em cada tipo de gasto
 
-  Cenário: Abrir as categorias
-    Quando eu clico em "Categorias" no resumo por categoria
-    Então vejo a lista de categorias, cada uma com a quantidade de compras
+  Cenário: Chegar nas categorias a partir de qualquer aba
+    Dado que estou na aba "Cartões", "Entradas" ou "Benefícios"
+    Quando eu toco no botão "Categorias"
+    Então abre a tela "Categorias", sem diálogo e sem a barra de abas
+    E vejo a lista de categorias, cada uma com a quantidade de compras, em ordem alfabética
     E vejo o campo para criar uma categoria nova
+
+  Cenário: Voltar
+    Dado que cheguei pela aba "Benefícios"
+    Quando eu toco em "Voltar"
+    Então volto para a aba "Benefícios"
+    Mas se abri "#/categorias" direto, "Voltar" leva ao painel dos cartões
 
   Cenário: Nenhuma categoria criada
     Dado que não existe nenhuma categoria
-    Quando eu abro "Categorias"
+    Quando eu abro a tela "Categorias"
     Então vejo "Nenhuma categoria ainda. Crie uma para separar seus gastos."
 
   Cenário: Criar uma categoria
-    Quando eu abro "Categorias", preencho "Transporte" e clico em "Criar"
+    Quando eu abro a tela "Categorias", preencho "Transporte" e clico em "Criar"
     Então vejo a mensagem "Categoria criada."
     E "Transporte" aparece na lista e no seletor de categoria da compra
+    E o campo "Nova categoria" fica vazio
 
   @regra
   Cenário: Nome de categoria repetido
@@ -151,6 +160,11 @@ Funcionalidade: Categorias das compras
     Então vejo a mensagem "Categoria renomeada."
     E as compras dessa categoria passam a mostrar "Uber e ônibus"
     E as parcelas previstas da categoria também
+    E ao voltar, a tela de onde vim já mostra o nome novo
+
+  Cenário: Desistir de renomear
+    Quando eu clico em "Renomear Transporte" e depois em cancelar
+    Então o nome continua "Transporte"
 
   Cenário: Excluir uma categoria
     Dado que existe a categoria "Lazer" com 2 compras
@@ -905,7 +919,7 @@ Funcionalidade: Benefícios
 
   Cenário: Categorias na aba Benefícios
     Quando eu toco em "Categorias" na aba "Benefícios"
-    Então vejo o mesmo diálogo de categorias da aba Cartões
+    Então abre a tela de categorias (seção 2), a mesma das outras abas
 
   @regra
   Cenário: Limite de navegação
@@ -1055,7 +1069,7 @@ Funcionalidade: Contas fixas e gastos do dia a dia
 
   Cenário: Excluir uma categoria usada nos gastos
     Dado que "Mercado" tem 1 compra no cartão e 2 gastos do dia a dia
-    Quando eu abro "Categorias" e excluo "Mercado"
+    Quando eu abro a tela "Categorias" e excluo "Mercado"
     Então vejo a confirmação "3 compras ficarão sem categoria."
     E depois de confirmar, os 2 gastos aparecem sem categoria e o saldo não muda
 

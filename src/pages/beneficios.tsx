@@ -3,13 +3,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import {
   getGetBenefitRangeQueryKey, getGetBenefitsQueryKey, getGetCategoriesQueryKey,
-  useCloseBenefitCategory, useCreateBenefit, useCreateBenefitSpend, useCreateCategory, useDeleteBenefit, useDeleteBenefitSpend, useDeleteCategory,
-  useGetBenefitRange, useGetBenefits, useGetCategories, useReopenBenefitCategory, useUpdateBenefit, useUpdateBenefitSpend, useUpdateCategory,
+  useCloseBenefitCategory, useCreateBenefit, useCreateBenefitSpend, useDeleteBenefit, useDeleteBenefitSpend,
+  useGetBenefitRange, useGetBenefits, useGetCategories, useReopenBenefitCategory, useUpdateBenefit, useUpdateBenefitSpend,
   type BenefitCategoryRow, type BenefitItem, type BenefitSpend, type Category,
 } from '@workspace/api-client-react';
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, FilePenLine, Plus, Repeat, Tag, Trash2, Utensils, X } from 'lucide-react';
 import { AppTabs } from '@/components/app-tabs';
-import { CategoriesDialog } from '@/components/categories-dialog';
 import { Progress } from '@/components/progress';
 import { dialogOverlay, dialogPanel } from '@/lib/dialog-styles';
 import { capitalize, currentMonth, dateLabel, firstDayOf, lastDayOf, money, monthLabel, plural, shiftMonth, today, type MonthKey } from '@/lib/format';
@@ -116,7 +115,6 @@ export default function Beneficios({ month }: { month: MonthKey }) {
   const categories = useGetCategories({ query: { queryKey: getGetCategoriesQueryKey() } }).data ?? [];
   const [benefitDialog, setBenefitDialog] = useState<{ benefit?: BenefitItem } | null>(null);
   const [spendDialog, setSpendDialog] = useState<{ benefit: BenefitItem; spend?: BenefitSpend } | null>(null);
-  const [showCategories, setShowCategories] = useState(false);
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
   const items = benefitsQuery.data?.items ?? [];
 
@@ -138,9 +136,6 @@ export default function Beneficios({ month }: { month: MonthKey }) {
   const deleteSpend = useDeleteBenefitSpend({ mutation: done('Gasto excluído.') });
   const closeCategory = useCloseBenefitCategory({ mutation: done('Categoria fechada.') });
   const reopenCategory = useReopenBenefitCategory({ mutation: done('Categoria reaberta.') });
-  const createCategory = useCreateCategory({ mutation: done('Categoria criada.') });
-  const updateCategory = useUpdateCategory({ mutation: done('Categoria renomeada.') });
-  const deleteCategory = useDeleteCategory({ mutation: done('Categoria removida.') });
 
   const saveBenefit = (values: BenefitValues) => {
     if (benefitDialog?.benefit) updateBenefit.mutate({ benefitId: benefitDialog.benefit.id, month: values.from, data: { name: values.name, amount: values.amount, lastMonth: values.lastMonth, split: values.split } });
@@ -161,10 +156,6 @@ export default function Beneficios({ month }: { month: MonthKey }) {
     const freed = row.availableAmount > 0 ? ` ${money(row.availableAmount)} que sobram vão para “Sem categoria”.` : '';
     if (row.categoryId !== null && window.confirm(`Fechar “${row.name}” em ${benefit.name}?${freed}`)) closeCategory.mutate({ benefitId: benefit.id, categoryId: row.categoryId, month });
   };
-  const removeCategory = (category: Category) => {
-    const effect = category.movementCount ? ` ${category.movementCount === 1 ? '1 compra ficará sem categoria.' : `${category.movementCount} compras ficarão sem categoria.`}` : '';
-    if (window.confirm(`Excluir a categoria “${category.name}”?${effect} Esta ação não pode ser desfeita.`)) deleteCategory.mutate({ categoryId: category.id });
-  };
 
   const canGoPrevious = !range || month > range.first;
   const canGoNext = !range || month < range.last;
@@ -183,7 +174,7 @@ export default function Beneficios({ month }: { month: MonthKey }) {
 
       <section className="enter mt-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end" style={{ animationDelay: '.06s' }}>
         <div><p className="font-mono-data text-[10px] uppercase tracking-[.2em] text-[#9a8d71]">Saldo que se renova</p><h1 className="mt-2 font-display text-[42px] leading-[1.05] tracking-[-.03em] text-[#234638] sm:text-[54px]">Seus <em className="font-medium text-[#d78470]">benefícios.</em></h1></div>
-        <div className="flex flex-wrap gap-2"><button data-testid="button-categories" onClick={() => setShowCategories(true)} className="flex items-center gap-1.5 rounded-full border border-[#d9d2c4] bg-[#faf7ef] px-4 py-3 text-xs font-semibold text-[#496754] transition hover:bg-[#eee9dd]"><Tag size={14}/> Categorias</button><button data-testid="button-new-benefit" onClick={() => setBenefitDialog({})} className="flex items-center gap-2 rounded-full bg-[#28513f] px-5 py-3.5 text-[13px] font-semibold text-[#fffaf0] shadow-[0_8px_18px_-10px_rgba(38,80,61,.7)] transition hover:-translate-y-0.5 hover:bg-[#1f4333]"><Plus size={16}/> Novo benefício</button></div>
+        <div className="flex flex-wrap gap-2"><button data-testid="button-categories" onClick={() => navigate('/categorias')} className="flex items-center gap-1.5 rounded-full border border-[#d9d2c4] bg-[#faf7ef] px-4 py-3 text-xs font-semibold text-[#496754] transition hover:bg-[#eee9dd]"><Tag size={14}/> Categorias</button><button data-testid="button-new-benefit" onClick={() => setBenefitDialog({})} className="flex items-center gap-2 rounded-full bg-[#28513f] px-5 py-3.5 text-[13px] font-semibold text-[#fffaf0] shadow-[0_8px_18px_-10px_rgba(38,80,61,.7)] transition hover:-translate-y-0.5 hover:bg-[#1f4333]"><Plus size={16}/> Novo benefício</button></div>
       </section>
 
       {items.length > 0 && <section aria-label="Disponível em todos os benefícios" className="enter mt-6 rounded-[22px] border border-[#e1dbce] bg-[#fbf8f0] p-5" style={{ animationDelay: '.08s' }}>
@@ -236,7 +227,6 @@ export default function Beneficios({ month }: { month: MonthKey }) {
 
     {benefitDialog && <BenefitDialog key={benefitDialog.benefit?.id ?? 'new'} month={month} benefit={benefitDialog.benefit} categories={categories} busy={busy} onClose={() => setBenefitDialog(null)} onSave={saveBenefit}/>}
     {spendDialog && <SpendDialog key={`${spendDialog.benefit.id}-${spendDialog.spend?.id ?? 'new'}`} month={month} benefit={spendDialog.benefit} spend={spendDialog.spend} categories={categories} busy={busy} onClose={() => setSpendDialog(null)} onSave={saveSpend}/>}
-    {showCategories && <CategoriesDialog categories={categories} busy={createCategory.isPending || updateCategory.isPending} onClose={() => setShowCategories(false)} onCreate={(name) => createCategory.mutate({ data: { name } })} onRename={(id, name) => updateCategory.mutate({ categoryId: id, data: { name } })} onDelete={removeCategory}/>}
     {toast && <div role="status" data-testid="status-toast" className={`fixed bottom-5 left-4 right-4 z-[60] mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-full px-4 py-3 text-xs font-semibold text-white shadow-lg sm:left-auto sm:right-5 sm:mx-0 ${toast.error ? 'bg-[#a85e50]' : 'bg-[#28513f]'}`}><Check size={14} className="shrink-0"/><span className="min-w-0">{toast.text}</span></div>}
   </main>;
 }

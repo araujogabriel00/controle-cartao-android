@@ -9,6 +9,7 @@ import Dashboard from '@/pages/dashboard';
 import Historico from '@/pages/historico';
 import Entradas from '@/pages/entradas';
 import Beneficios from '@/pages/beneficios';
+import Categorias from '@/pages/categorias';
 import {
   Redirect,
   Route,
@@ -66,6 +67,7 @@ function Router() {
         <Route path="/entradas/mes/:month">{(params) => <IncomeMonthRoute month={params.month} />}</Route>
         <Route path="/beneficios">{() => <Beneficios key={currentMonth()} month={currentMonth()} />}</Route>
         <Route path="/beneficios/mes/:month">{(params) => <BenefitMonthRoute month={params.month} />}</Route>
+        <Route path="/categorias" component={Categorias} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

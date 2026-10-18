@@ -3,15 +3,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import {
   INCOME_KINDS, getGetBillsQueryKey, getGetCategoriesQueryKey, getGetDailyExpensesQueryKey, getGetIncomeRangeQueryKey, getGetIncomesQueryKey, getGetMonthCashQueryKey,
-  useCreateBill, useCreateCategory, useCreateDailyExpense, useCreateIncome, useDeleteBill, useDeleteCategory, useDeleteDailyExpense, useDeleteIncome,
-  useGetBills, useGetCategories, useGetDailyExpenses, useGetIncomeRange, useGetIncomes, useGetMonthCash, useUpdateBill, useUpdateCategory, useUpdateDailyExpense, useUpdateIncome,
+  useCreateBill, useCreateDailyExpense, useCreateIncome, useDeleteBill, useDeleteDailyExpense, useDeleteIncome,
+  useGetBills, useGetCategories, useGetDailyExpenses, useGetIncomeRange, useGetIncomes, useGetMonthCash, useUpdateBill, useUpdateDailyExpense, useUpdateIncome,
   type BillOccurrence, type Category, type DailyExpense, type IncomeKind, type IncomeOccurrence, type IncomeScope,
 } from '@workspace/api-client-react';
 import {
   CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, HandCoins, Pencil, Plus, Receipt, Repeat, ShoppingBasket, Tag, Trash2, X,
 } from 'lucide-react';
 import { AppTabs } from '@/components/app-tabs';
-import { CategoriesDialog } from '@/components/categories-dialog';
 import { ScopeDialog } from '@/components/scope-dialog';
 import { Progress } from '@/components/progress';
 import { dialogOverlay, dialogPanel } from '@/lib/dialog-styles';
@@ -171,7 +170,6 @@ export default function Entradas({ month }: { month: MonthKey }) {
   const [billForm, setBillForm] = useState<BillForm | null>(null);
   const [dailyForm, setDailyForm] = useState<{ item?: DailyExpense } | null>(null);
   const [scopeAsk, setScopeAsk] = useState<ScopeAsk | null>(null);
-  const [showCategories, setShowCategories] = useState(false);
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
   const incomeItems = incomes.data?.items ?? [];
   const billItems = bills.data?.items ?? [];
@@ -196,9 +194,6 @@ export default function Entradas({ month }: { month: MonthKey }) {
   const createDaily = useCreateDailyExpense({ mutation: { onSuccess: (expense) => { refresh(); setDailyForm(null); notify(expense.date.slice(0, 7) === month ? 'Gasto registrado.' : `Gasto registrado em ${monthLabel(expense.date.slice(0, 7))}.`); }, onError: failed } });
   const updateDaily = useUpdateDailyExpense({ mutation: closing('Gasto atualizado.') });
   const deleteDaily = useDeleteDailyExpense({ mutation: done('Gasto excluído.') });
-  const createCategory = useCreateCategory({ mutation: done('Categoria criada.') });
-  const updateCategory = useUpdateCategory({ mutation: done('Categoria renomeada.') });
-  const deleteCategory = useDeleteCategory({ mutation: done('Categoria removida.') });
 
   const incomeLabel = (item: IncomeOccurrence) => item.description || KIND_LABELS[item.kind];
   const scopeText = (name: string, scope: IncomeScope) => (scope === 'month' ? `“${name}” só em ${monthLabel(month)}` : `“${name}” de ${monthLabel(month)} em diante`);
@@ -230,10 +225,6 @@ export default function Entradas({ month }: { month: MonthKey }) {
     if (dailyForm?.item) updateDaily.mutate({ expenseId: dailyForm.item.id, categoryId: values.categoryId, data });
     else createDaily.mutate({ categoryId: values.categoryId, data });
   };
-  const removeCategory = (category: Category) => {
-    const effect = category.movementCount ? ` ${category.movementCount === 1 ? '1 compra ficará sem categoria.' : `${category.movementCount} compras ficarão sem categoria.`}` : '';
-    if (window.confirm(`Excluir a categoria “${category.name}”?${effect} Esta ação não pode ser desfeita.`)) deleteCategory.mutate({ categoryId: category.id });
-  };
 
   const canGoPrevious = !range || month > range.first;
   const canGoNext = !range || month < range.last;
@@ -259,7 +250,7 @@ export default function Entradas({ month }: { month: MonthKey }) {
 
       <section className="enter mt-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end" style={{ animationDelay: '.06s' }}>
         <div><p className="font-mono-data text-[10px] uppercase tracking-[.2em] text-[#9a8d71]">O que entra e o que sai</p><h1 className="mt-2 font-display text-[42px] leading-[1.05] tracking-[-.03em] text-[#234638] sm:text-[54px]">Suas <em className="font-medium text-[#d78470]">entradas.</em></h1></div>
-        <button data-testid="button-categories" onClick={() => setShowCategories(true)} className="flex w-fit items-center gap-1.5 rounded-full border border-[#d9d2c4] bg-[#faf7ef] px-4 py-3 text-xs font-semibold text-[#496754] transition hover:bg-[#eee9dd]"><Tag size={14}/> Categorias</button>
+        <button data-testid="button-categories" onClick={() => navigate('/categorias')} className="flex w-fit items-center gap-1.5 rounded-full border border-[#d9d2c4] bg-[#faf7ef] px-4 py-3 text-xs font-semibold text-[#496754] transition hover:bg-[#eee9dd]"><Tag size={14}/> Categorias</button>
       </section>
 
       <section data-testid="section-cash" aria-label="Resumo do mês" className="enter mt-6 rounded-[22px] border border-[#e1dbce] bg-[#fbf8f0] p-4 sm:p-5" style={{ animationDelay: '.08s' }}>
@@ -344,7 +335,6 @@ export default function Entradas({ month }: { month: MonthKey }) {
     {billForm && <BillDialog key={`${billForm.item?.billId ?? 'new'}-${billForm.scope ?? ''}`} month={month} item={billForm.item} scope={billForm.scope} busy={busy} onClose={() => setBillForm(null)} onSave={saveBill}/>}
     {dailyForm && <DailyDialog key={dailyForm.item?.id ?? 'new'} month={month} item={dailyForm.item} categories={categories} busy={busy} onClose={() => setDailyForm(null)} onSave={saveDaily}/>}
     {scopeAsk && <ScopeDialog subject={scopeAsk.kind === 'income' ? 'entrada' : 'conta fixa'} action={scopeAsk.action} month={month} onChoose={chooseScope} onClose={() => setScopeAsk(null)}/>}
-    {showCategories && <CategoriesDialog categories={categories} busy={createCategory.isPending || updateCategory.isPending} onClose={() => setShowCategories(false)} onCreate={(name) => createCategory.mutate({ data: { name } })} onRename={(id, name) => updateCategory.mutate({ categoryId: id, data: { name } })} onDelete={removeCategory}/>}
     {toast && <div role="status" data-testid="status-toast" className={`fixed bottom-5 left-4 right-4 z-[60] mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-full px-4 py-3 text-xs font-semibold text-white shadow-lg sm:left-auto sm:right-5 sm:mx-0 ${toast.error ? 'bg-[#a85e50]' : 'bg-[#28513f]'}`}><Check size={14} className="shrink-0"/><span className="min-w-0">{toast.text}</span></div>}
   </main>;
 }

@@ -5,7 +5,7 @@ import {
   getGetCardQueryKey, getGetCardsQueryKey, getGetCategoriesQueryKey, getGetCategorySummaryQueryKey, getGetConsolidatedQueryKey,
   getGetMovementsQueryKey, getGetMonthHistoryQueryKey, getHealthCheckQueryKey, useHealthCheck,
   useGetCards, useGetConsolidated, useGetCategories, useGetCategorySummary, useGetMovements, useGetMonthStatus,
-  useCreateCard, useUpdateCard, useDeleteCard, useSelectCard, useCreateCategory, useUpdateCategory, useDeleteCategory,
+  useCreateCard, useUpdateCard, useDeleteCard, useSelectCard,
   useCreateMovement, useUpdateMovement, useDeleteMovement, useStartMonth,
   useCreatePurchase, useUpdatePurchase, useDeletePurchase, useGetLastFutureMonth, useGetMonthPreview,
   useCreateRecurring, useUpdateRecurring, useDeleteRecurring,
@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { CardCarousel, type CarouselCard } from '@/components/card-carousel';
 import { AppTabs } from '@/components/app-tabs';
-import { CategoriesDialog } from '@/components/categories-dialog';
 import { ScopeDialog } from '@/components/scope-dialog';
 import { Progress } from '@/components/progress';
 import { dialogOverlay, dialogPanel } from '@/lib/dialog-styles';
@@ -158,7 +157,6 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   const summary = summaryQuery.data ?? [];
   const [filter, setFilter] = useState('all');
   const [dialog, setDialog] = useState<{ kind: DialogKind; initial: DialogRecord } | null>(null);
-  const [showCategories, setShowCategories] = useState(false);
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
   const [showAll, setShowAll] = useState(false);
   // RF-04 / RF-05: editing or deleting a charge of a recurring purchase asks for the scope first.
@@ -184,9 +182,6 @@ export default function Dashboard({ month }: { month: MonthKey }) {
     setFilter('all');
     selectCard.mutate({ cardId: id });
   };
-  const createCategory = useCreateCategory({ mutation: { onSuccess: () => { refresh(); notify('Categoria criada.'); }, onError: failed } });
-  const updateCategory = useUpdateCategory({ mutation: { onSuccess: () => { refresh(); notify('Categoria renomeada.'); }, onError: failed } });
-  const deleteCategory = useDeleteCategory({ mutation: { onSuccess: () => { refresh(); notify('Categoria removida.'); }, onError: failed } });
   const createMovement = useCreateMovement({ mutation: { onSuccess: (movement) => { refresh(); setDialog(null); notify(monthOf(movement.date) === month ? 'Compra registrada.' : `Compra registrada em ${monthLabel(monthOf(movement.date))}.`); }, onError: failed } });
   const updateMovement = useUpdateMovement({ mutation: { onSuccess: () => { refresh(); setDialog(null); notify('Compra atualizada.'); }, onError: failed } });
   const deleteMovement = useDeleteMovement({ mutation: { onSuccess: () => { refresh(); notify('Compra excluída.'); }, onError: failed } });
@@ -262,10 +257,6 @@ export default function Dashboard({ month }: { month: MonthKey }) {
     if (movement.recurring) { setScopeAsk({ action: 'delete', movement }); return; }
     if (movement.purchase) { if (window.confirm(`Remover a compra parcelada “${movement.description}” e todas as suas parcelas? Esta ação não pode ser desfeita.`)) deletePurchase.mutate({ purchaseId: movement.purchase.id }); }
     else if (askDelete(`a compra “${movement.description}”`)) deleteMovement.mutate({ movementId: movement.id });
-  };
-  const removeCategory = (category: Category) => {
-    const effect = category.movementCount ? ` ${category.movementCount === 1 ? '1 compra ficará sem categoria.' : `${category.movementCount} compras ficarão sem categoria.`}` : '';
-    if (window.confirm(`Excluir a categoria “${category.name}”?${effect} Esta ação não pode ser desfeita.`)) deleteCategory.mutate({ categoryId: category.id });
   };
 
   if (loading) return <main className="min-h-safe bg-[#f5f1e7] p-5 sm:p-10"><div className="mx-auto max-w-6xl animate-pulse"><div className="h-5 w-36 rounded bg-[#e5dfd2]"/><div className="mt-8 h-12 w-64 rounded bg-[#e5dfd2]"/><div className="mt-10 grid gap-5 md:grid-cols-2"><div className="h-64 rounded-3xl bg-[#e9e3d7]"/><div className="h-64 rounded-3xl bg-[#e9e3d7]"/></div><div className="mt-6 h-72 rounded-3xl bg-[#e9e3d7]"/></div></main>;
@@ -344,7 +335,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
         </div>
 
         <aside className="enter min-w-0" style={{ animationDelay: '.18s' }}>
-          <div className="flex flex-wrap items-end justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-2 text-[#ac8f60]"><Tag size={14}/><p className="font-mono-data text-[10px] uppercase tracking-[.2em]">Resumo</p></div><h2 className="mt-2 font-display text-[30px] text-[#234638]">Por categoria</h2></div><button data-testid="button-categories" onClick={() => setShowCategories(true)} className="flex items-center gap-1.5 rounded-full border border-[#d9d2c4] bg-[#faf7ef] px-3.5 py-2.5 text-xs font-semibold text-[#496754] transition hover:bg-[#eee9dd]"><Tag size={14}/> Categorias</button></div>
+          <div className="flex flex-wrap items-end justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-2 text-[#ac8f60]"><Tag size={14}/><p className="font-mono-data text-[10px] uppercase tracking-[.2em]">Resumo</p></div><h2 className="mt-2 font-display text-[30px] text-[#234638]">Por categoria</h2></div><button data-testid="button-categories" onClick={() => navigate('/categorias')} className="flex items-center gap-1.5 rounded-full border border-[#d9d2c4] bg-[#faf7ef] px-3.5 py-2.5 text-xs font-semibold text-[#496754] transition hover:bg-[#eee9dd]"><Tag size={14}/> Categorias</button></div>
           <div className="mt-5 rounded-[22px] border border-[#e1dbce] bg-[#fbf8f0] p-5">
             {summary.length ? <ul data-testid="list-category-summary" className="space-y-4">
               {summary.map((item) => <li key={filterKey(item.categoryId)} data-testid={`row-summary-${filterKey(item.categoryId)}`}>
@@ -360,7 +351,6 @@ export default function Dashboard({ month }: { month: MonthKey }) {
     </div>
     {dialog && <Dialog kind={dialog.kind} initial={dialog.initial} month={month} categories={categories} busy={isMutating} onClose={() => setDialog(null)} onSave={submitDialog}/>}
     {scopeAsk && <ScopeDialog subject="compra recorrente" action={scopeAsk.action} month={monthOf(scopeAsk.movement.date)} onChoose={chooseScope} onClose={() => setScopeAsk(null)}/>}
-    {showCategories && <CategoriesDialog categories={categories} busy={createCategory.isPending || updateCategory.isPending} onClose={() => setShowCategories(false)} onCreate={(name) => createCategory.mutate({ data: { name } })} onRename={(id, name) => updateCategory.mutate({ categoryId: id, data: { name } })} onDelete={removeCategory}/>}
     {toast && <div role="status" data-testid="status-toast" className={`fixed bottom-5 left-4 right-4 z-[60] mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-full px-4 py-3 text-xs font-semibold text-white shadow-lg sm:left-auto sm:right-5 sm:mx-0 ${toast.error ? 'bg-[#a85e50]' : 'bg-[#28513f]'}`}><Check size={14} className="shrink-0"/><span className="min-w-0">{toast.text}</span></div>}
   </main>;
 }

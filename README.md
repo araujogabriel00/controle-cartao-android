@@ -17,7 +17,7 @@ A especificação completa está em [`specs/compras-e-categorias.md`](specs/comp
 
 - As compras são registradas **direto no cartão**, sem planejamento prévio, e cada uma **consome o limite pelo valor gasto**. Gastar acima do limite é permitido (o disponível fica negativo).
 - A **categoria é opcional** e vem de uma lista **global**, a mesma para todos os cartões. Ela só classifica: não tem orçamento, mês nem estado aberto/fechado. Excluir uma categoria deixa as compras dela "Sem categoria".
-- A tela do cartão mostra a lista de compras do mês, o filtro por categoria e o resumo por categoria. As categorias são gerenciadas no diálogo "Categorias".
+- A tela do cartão mostra a lista de compras do mês, o filtro por categoria e o resumo por categoria. As categorias são gerenciadas num lugar só, a tela "Categorias" (`#/categorias`, em [`specs/tela-de-categorias.md`](specs/tela-de-categorias.md)), aberta pelo botão "Categorias" de cada aba.
 
 ### Histórico mensal
 
@@ -151,11 +151,11 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── lib/card-colors.ts  # paleta de cores dos cartões
 │   ├── components/card-carousel.tsx # carrossel de cartões
 │   ├── components/app-tabs.tsx # abas Entradas | Cartões | Benefícios
-│   ├── components/categories-dialog.tsx # diálogo das categorias globais
 │   ├── pages/dashboard.tsx # painel de um mês
 │   ├── pages/historico.tsx # lista de meses
 │   ├── pages/entradas.tsx  # entradas do mês
 │   ├── pages/beneficios.tsx # benefícios do mês
+│   ├── pages/categorias.tsx # criar, renomear e excluir categorias
 │   └── ...
 ├── specs/                  # especificações das funcionalidades
 ├── capacitor.config.ts     # appId br.pessoal.controlecartao, barras do sistema
