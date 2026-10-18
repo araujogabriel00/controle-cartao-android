@@ -13,18 +13,20 @@ import {
   type Cards, type Category, type Movement, type PlannedInstallment,
 } from '@workspace/api-client-react';
 import {
-  ArrowDownLeft, ArrowUpRight, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, CreditCard,
+  ArrowDownLeft, ArrowUpRight, CalendarDays, Check, ChevronDown, CircleHelp, CreditCard,
   FilePenLine, History, LayoutDashboard, Plus, RefreshCw, Tag, Trash2, X,
 } from 'lucide-react';
 import { CardCarousel, type CarouselCard } from '@/components/card-carousel';
 import { AppTabs } from '@/components/app-tabs';
+import { MonthNav } from '@/components/month-nav';
 import { ScopeDialog } from '@/components/scope-dialog';
 import { Progress } from '@/components/progress';
 import { dialogOverlay, dialogPanel } from '@/lib/dialog-styles';
+import { useRememberMonth } from '@/lib/last-month';
 import { CARD_COLOR_KEYS, CARD_COLORS, type CardColor } from '@/lib/card-colors';
 import {
   capitalize, currentMonth, dateLabel, defaultDateFor, firstDayOf, isFutureMonth, lastDayOf,
-  money, monthLabel, monthName, monthOf, monthPath, plural, shiftMonth, type MonthKey,
+  money, monthLabel, monthName, monthOf, plural, shiftMonth, type MonthKey,
 } from '@/lib/format';
 
 type DialogKind = 'card' | 'movement';
@@ -133,6 +135,7 @@ function Dialog({ kind, initial, month, categories, busy, onClose, onSave }: {
 }
 
 export default function Dashboard({ month }: { month: MonthKey }) {
+  useRememberMonth(month);
   const client = useQueryClient();
   const [, navigate] = useLocation();
   const isCurrentMonth = month === currentMonth();
@@ -268,13 +271,9 @@ export default function Dashboard({ month }: { month: MonthKey }) {
         <div className="hidden items-center gap-2 rounded-full border border-[#ddd7c9] bg-[#f9f6ee] px-3.5 py-2 text-[11px] text-[#64766a] sm:flex"><span className={`h-1.5 w-1.5 rounded-full ${health.isError ? 'bg-[#d78470]' : 'bg-[#6d9d79]'}`}/>{health.isError ? 'Sincronização pausada' : 'Seu caderno está em dia'}</div>
         <div className="flex items-center gap-2"><button data-testid="button-history" onClick={() => navigate('/historico')} className="flex items-center gap-2 rounded-full border border-[#ded8ca] px-3.5 py-2 text-xs font-semibold text-[#546b5d] transition hover:bg-[#ece7dc]"><History size={14}/><span>Histórico</span></button><button data-testid="button-refresh" aria-label="Atualizar" onClick={refresh} className="flex items-center gap-2 rounded-full border border-[#ded8ca] px-3.5 py-2 text-xs font-semibold text-[#546b5d] transition hover:bg-[#ece7dc]"><RefreshCw size={14} className={cardsQuery.isFetching ? 'animate-spin' : ''}/><span className="hidden sm:inline">Atualizar</span></button></div>
       </header>
+      <MonthNav area="cards" month={month} canGoNext={canGoNext}/>
       <AppTabs/>
 
-      <nav aria-label="Mês" className="enter mt-4 flex items-center justify-between gap-2 rounded-full border border-[#e1dbce] bg-[#fbf8f0] p-1.5">
-        <button data-testid="button-previous-month" aria-label="Mês anterior" onClick={() => navigate(monthPath(shiftMonth(month, -1)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#546b5d] transition hover:bg-[#ece7dc]"><ChevronLeft size={17}/></button>
-        <div className="min-w-0 text-center"><p data-testid="text-month" className="truncate font-display text-[17px] text-[#234638]">{capitalize(monthLabel(month))}</p>{!isCurrentMonth && <button data-testid="button-current-month" onClick={() => navigate('/')} className="text-[10px] font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4">Voltar para o mês atual</button>}</div>
-        <button data-testid="button-next-month" aria-label="Próximo mês" disabled={!canGoNext} onClick={() => navigate(monthPath(shiftMonth(month, 1)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#546b5d] transition hover:bg-[#ece7dc] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"><ChevronRight size={17}/></button>
-      </nav>
       {isFuture && <p data-testid="text-preview-banner" className="enter mt-3 flex items-start gap-2 rounded-2xl border border-[#e6d7b8] bg-[#f8efd9] px-4 py-3 text-[11px] leading-5 text-[#7a6a45]"><CalendarDays size={14} className="mt-0.5 shrink-0"/><span><b className="font-semibold">{capitalize(monthName(month))} ainda não começou:</b> aparecem as parcelas e cobranças previstas e as compras já registradas.</span></p>}
 
       <section className="enter mt-6 flex flex-wrap justify-end gap-2" style={{ animationDelay: '.06s' }}>

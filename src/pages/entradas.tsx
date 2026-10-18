@@ -8,17 +8,17 @@ import {
   type BillOccurrence, type Category, type DailyExpense, type IncomeKind, type IncomeOccurrence, type IncomeScope,
 } from '@workspace/api-client-react';
 import {
-  CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, HandCoins, Pencil, Plus, Receipt, Repeat, ShoppingBasket, Tag, Trash2, X,
+  CalendarDays, Check, ChevronDown, CircleHelp, HandCoins, Pencil, Plus, Receipt, Repeat, ShoppingBasket, Tag, Trash2, X,
 } from 'lucide-react';
 import { AppTabs } from '@/components/app-tabs';
+import { MonthNav } from '@/components/month-nav';
 import { ScopeDialog } from '@/components/scope-dialog';
 import { Progress } from '@/components/progress';
 import { dialogOverlay, dialogPanel } from '@/lib/dialog-styles';
+import { useRememberMonth } from '@/lib/last-month';
 import { capitalize, currentMonth, dateLabel, firstDayOf, lastDayOf, money, monthLabel, shiftMonth, today, type MonthKey } from '@/lib/format';
 
 const KIND_LABELS: Record<IncomeKind, string> = { salario: 'Salário', prolabore: 'Pró-labore', bonus: 'Bônus', outro: 'Outro' };
-
-export const incomePath = (month: MonthKey) => (month === currentMonth() ? '/entradas' : `/entradas/mes/${month}`);
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 const backdrop = (onClose: () => void) => (event: MouseEvent<HTMLDivElement>) => { if (event.target === event.currentTarget) onClose(); };
@@ -158,6 +158,7 @@ const sectionTitle = (icon: React.ReactNode, kicker: string, title: string, tota
 const emptyBox = (testid: string, icon: React.ReactNode, text: string) => <div className="mt-4 rounded-2xl border border-dashed border-[#d9d2c4] bg-[#f8f5ed] px-5 py-7 text-center"><div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[#e8e9df] text-[#63806a]">{icon}</div><h3 data-testid={testid} className="mt-3 font-display text-[18px] text-[#345443]">{text}</h3></div>;
 
 export default function Entradas({ month }: { month: MonthKey }) {
+  useRememberMonth(month);
   const [, navigate] = useLocation();
   const client = useQueryClient();
   const incomes = useGetIncomes(month, { query: { queryKey: getGetIncomesQueryKey(month), refetchOnWindowFocus: true } });
@@ -228,7 +229,6 @@ export default function Entradas({ month }: { month: MonthKey }) {
 
   const canGoPrevious = !range || month > range.first;
   const canGoNext = !range || month < range.last;
-  const isCurrentMonth = month === currentMonth();
   const negative = (cash?.balanceAmount ?? 0) < 0;
   const busy = createIncome.isPending || updateIncome.isPending || createBill.isPending || updateBill.isPending || createDaily.isPending || updateDaily.isPending;
   const loading = incomes.isLoading || bills.isLoading || daily.isLoading;
@@ -240,13 +240,9 @@ export default function Entradas({ month }: { month: MonthKey }) {
 
   return <main className="notebook-grain min-h-safe bg-[#f5f1e7] text-[#294438]">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
+      <MonthNav area="income" month={month} canGoPrevious={canGoPrevious} canGoNext={canGoNext}/>
       <AppTabs/>
 
-      <nav aria-label="Mês" className="enter mt-4 flex items-center justify-between gap-2 rounded-full border border-[#e1dbce] bg-[#fbf8f0] p-1.5">
-        <button data-testid="button-previous-month" aria-label="Mês anterior" disabled={!canGoPrevious} onClick={() => navigate(incomePath(shiftMonth(month, -1)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#546b5d] transition hover:bg-[#ece7dc] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"><ChevronLeft size={17}/></button>
-        <div className="min-w-0 text-center"><p data-testid="text-month" className="truncate font-display text-[17px] text-[#234638]">{capitalize(monthLabel(month))}</p>{!isCurrentMonth && <button data-testid="button-current-month" onClick={() => navigate('/entradas')} className="text-[10px] font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4">Voltar para o mês atual</button>}</div>
-        <button data-testid="button-next-month" aria-label="Próximo mês" disabled={!canGoNext} onClick={() => navigate(incomePath(shiftMonth(month, 1)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#546b5d] transition hover:bg-[#ece7dc] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"><ChevronRight size={17}/></button>
-      </nav>
 
       <section className="enter mt-6 flex flex-wrap justify-end gap-2" style={{ animationDelay: '.06s' }}>
         <button data-testid="button-categories" onClick={() => navigate('/categorias')} className="flex w-fit items-center gap-1.5 rounded-full border border-[#d9d2c4] bg-[#faf7ef] px-4 py-3 text-xs font-semibold text-[#496754] transition hover:bg-[#eee9dd]"><Tag size={14}/> Categorias</button>
