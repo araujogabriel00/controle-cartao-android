@@ -14,7 +14,7 @@ import {
 } from '@workspace/api-client-react';
 import {
   ArrowDownLeft, ArrowUpRight, CalendarDays, Check, ChevronDown, CircleHelp, CreditCard,
-  FilePenLine, History, LayoutDashboard, Plus, RefreshCw, Tag, Trash2, X,
+  FilePenLine, LayoutDashboard, Plus, Tag, Trash2, X,
 } from 'lucide-react';
 import { CardCarousel, type CarouselCard } from '@/components/card-carousel';
 import { AppTabs } from '@/components/app-tabs';
@@ -268,9 +268,8 @@ export default function Dashboard({ month }: { month: MonthKey }) {
 
   return <main className="notebook-grain min-h-safe bg-[#f5f1e7] text-[#294438]">
     <div className="relative z-10 mx-auto max-w-[1320px] px-4 pb-12 pt-5 sm:px-8 lg:px-12">
-      <header className="enter flex items-center justify-end border-b sm:justify-between border-[#ded8ca] pb-5">
-        <div className="hidden items-center gap-2 rounded-full border border-[#ddd7c9] bg-[#f9f6ee] px-3.5 py-2 text-[11px] text-[#64766a] sm:flex"><span className={`h-1.5 w-1.5 rounded-full ${health.isError ? 'bg-[#d78470]' : 'bg-[#6d9d79]'}`}/>{health.isError ? 'Sincronização pausada' : 'Seu caderno está em dia'}</div>
-        <div className="flex items-center gap-2"><button data-testid="button-history" onClick={() => navigate('/historico')} className="flex items-center gap-2 rounded-full border border-[#ded8ca] px-3.5 py-2 text-xs font-semibold text-[#546b5d] transition hover:bg-[#ece7dc]"><History size={14}/><span>Histórico</span></button><button data-testid="button-refresh" aria-label="Atualizar" onClick={refresh} className="flex items-center gap-2 rounded-full border border-[#ded8ca] px-3.5 py-2 text-xs font-semibold text-[#546b5d] transition hover:bg-[#ece7dc]"><RefreshCw size={14} className={cardsQuery.isFetching ? 'animate-spin' : ''}/><span className="hidden sm:inline">Atualizar</span></button></div>
+      <header className="enter hidden items-center justify-between border-b border-[#ded8ca] pb-5 sm:flex">
+        <div className="flex items-center gap-2 rounded-full border border-[#ddd7c9] bg-[#f9f6ee] px-3.5 py-2 text-[11px] text-[#64766a]"><span className={`h-1.5 w-1.5 rounded-full ${health.isError ? 'bg-[#d78470]' : 'bg-[#6d9d79]'}`}/>{health.isError ? 'Sincronização pausada' : 'Seu caderno está em dia'}</div>
       </header>
       <MonthNav area="cards" month={month} canGoNext={canGoNext}/>
       <AppTabs/>
@@ -286,7 +285,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
       </section> : <>
       <section className="mt-8">
         <div className="enter min-w-0">
-          <CardCarousel cards={cards} month={month} selectedId={selectedCardId} onSelect={chooseCard}
+          <CardCarousel cards={cards} month={month} onHistory={() => navigate('/historico')} selectedId={selectedCardId} onSelect={chooseCard}
             onAdd={() => setDialog({ kind: 'card', initial: { color: cardsQuery.data?.nextColor } })}
             onEdit={(item) => setDialog({ kind: 'card', initial: { id: item.id, name: item.name, color: item.color } })}
             onDelete={(item) => { if (askDelete(`o cartão “${item.name}” e todos os seus registros`)) deleteCard.mutate({ cardId: item.id }); }}/>

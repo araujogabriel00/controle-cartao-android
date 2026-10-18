@@ -6,6 +6,7 @@
 | Criada em | 18/10/2026 |
 | Escopo | `src/components/month-nav.tsx` (novo), `src/components/app-tabs.tsx`, `src/lib/format.ts`, `src/lib/last-month.ts` (novo), `src/App.tsx`, `src/pages/dashboard.tsx`, `src/pages/entradas.tsx`, `src/pages/beneficios.tsx`, `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`historico-mensal.md`](historico-mensal.md) (rotas por mês dos cartões), [`entradas.md`](entradas.md) e [`beneficios.md`](beneficios.md) (rotas e intervalo de meses de cada aba) |
+| Substituída em parte por | [`historico-no-cartao.md`](historico-no-cartao.md): os botões "Histórico" e "Atualizar" da linha de controles de Cartões saíram. |
 | Substitui em parte | A navegação de mês das três abas: antes, trocar de aba sempre abria o mês corrente. As regras de cada aba sobre quais meses abrem continuam as mesmas. |
 
 > Esta spec é a fonte da verdade da funcionalidade. A implementação segue a seção [Tarefas](#11-tarefas) e só termina quando todos os [Critérios de aceite](#10-critérios-de-aceite) forem atendidos. Mudanças de comportamento entram primeiro aqui e só depois no código.

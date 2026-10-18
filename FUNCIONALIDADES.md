@@ -37,6 +37,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 15. [Compra recorrente](#15-compra-recorrente)
 16. [Mês compartilhado](#16-mês-compartilhado)
 17. [Cartão sem limite](#17-cartão-sem-limite)
+18. [Histórico no card do cartão](#18-histórico-no-card-do-cartão)
 
 ---
 
@@ -303,10 +304,9 @@ Funcionalidade: Status e atualização dos dados
     Dado que os dados ficam salvos no próprio aparelho, sem servidor
     Então vejo o indicador verde "Seu caderno está em dia"
 
-  Cenário: Atualizar os dados manualmente
-    Quando eu clico em "Atualizar"
-    Então o cartão, as categorias, o histórico e as compras do mês exibido são recarregados
-    E o ícone de atualizar gira enquanto o cartão é recarregado
+  Cenário: Não há botão para atualizar
+    Então a aba "Cartões" não tem botão "Atualizar"
+    E os dados se atualizam sozinhos a cada mudança e ao voltar para a janela
 
   Cenário: Atualizar ao voltar para a janela
     Dado que eu saí da aba do aplicativo
@@ -471,8 +471,8 @@ Funcionalidade: Histórico mensal do cartão
 
   Cenário: Ver o histórico
     Dado que tenho dados em setembro e outubro de 2026
-    Quando eu clico em "Histórico"
-    Então vejo "Outubro de 2026" antes de "Setembro de 2026"
+    Quando eu toco em "Ver histórico" na face do cartão ativo
+    Então vejo o histórico daquele cartão, com "Outubro de 2026" antes de "Setembro de 2026"
     E cada mês mostra a fatura e a quantidade de compras, sem limite nem disponível
 
   Cenário: Abrir um mês do histórico
@@ -1170,7 +1170,7 @@ Funcionalidade: Mês compartilhado entre as abas
   Cenário: O seletor de mês fica acima das abas
     Dado que estou na aba "Entradas", "Cartões" ou "Benefícios"
     Então o seletor de mês aparece acima da barra de abas, e o conteúdo abaixo dela
-    Mas em "Cartões" a linha com "Histórico" e "Atualizar" continua acima do seletor
+    Mas em "Cartões" o aviso "Seu caderno está em dia" continua acima do seletor, só em telas largas
 
   Cenário: Trocar de aba mantém o mês
     Dado que estou na aba "Entradas" em dezembro de 2026
@@ -1280,4 +1280,33 @@ Funcionalidade: Cartão sem limite
     Então os cartões e os meses perdem o limite
     E as compras, as categorias, as entradas e o resto continuam como estavam
     E as faturas são as mesmas somas de antes
+```
+
+---
+
+## 18. Histórico no card do cartão
+
+Resumo. A especificação completa está em [`specs/historico-no-cartao.md`](specs/historico-no-cartao.md).
+
+```gherkin
+# language: pt
+
+Funcionalidade: Histórico no card do cartão
+
+  Cenário: Os botões saem do topo
+    Dado que existe um cartão
+    Quando eu abro a aba "Cartões"
+    Então não há botões "Atualizar" nem "Histórico" no topo
+    E no celular a linha de controles não aparece
+
+  Cenário: O botão fica no card
+    Dado que "Nubank" é o cartão selecionado
+    Então a face do "Nubank" tem o botão "Ver histórico de Nubank", ao lado de editar e remover
+    Mas nos cartões vizinhos o botão não fica disponível até eles serem selecionados
+
+  Cenário: Abrir o histórico do cartão
+    Dado que "Inter" é o cartão selecionado
+    Quando eu toco em "Ver histórico de Inter"
+    Então vejo "Mês a mês" com "Inter — a fatura de cada mês"
+    E as mesmas informações de antes: fatura e compras por mês, "Todos os cartões" e "Próximos meses"
 ```
