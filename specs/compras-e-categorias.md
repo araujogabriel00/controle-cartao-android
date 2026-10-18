@@ -7,6 +7,7 @@
 | Escopo | `src/data/store.ts`, `src/data/api.ts`, `src/pages/dashboard.tsx`, `src/pages/historico.tsx`, `src/index.css`, `FUNCIONALIDADES.md`, `README.md`, `specs/historico-mensal.md`, `specs/multiplos-cartoes.md`, `specs/parcelamento.md` |
 | Depende de | [`historico-mensal.md`](historico-mensal.md), [`multiplos-cartoes.md`](multiplos-cartoes.md), [`parcelamento.md`](parcelamento.md) |
 | Substitui em parte | As regras de categoria-envelope (orçamento, fechar/abrir, categoria por mês, copiar categorias na virada do mês, parcela fixa em categoria fechada) dessas três specs. O restante delas continua valendo. |
+| Substituída em parte por | [`tela-de-categorias.md`](tela-de-categorias.md): o diálogo "Categorias" virou a tela `#/categorias`; as regras das categorias continuam as mesmas. |
 
 > Esta spec é a fonte da verdade da funcionalidade. A implementação segue a seção [Tarefas](#11-tarefas) e só termina quando todos os [Critérios de aceite](#10-critérios-de-aceite) forem atendidos. Mudanças de comportamento entram primeiro aqui e só depois no código.
 >

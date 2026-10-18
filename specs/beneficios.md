@@ -6,6 +6,7 @@
 | Criada em | 17/10/2026 |
 | Escopo | `src/data/store.ts`, `src/data/api.ts`, `src/App.tsx`, `src/pages/beneficios.tsx` (novo), `src/components/categories-dialog.tsx` (novo, extraído de `dashboard.tsx`), `src/components/app-tabs.tsx`, `src/pages/dashboard.tsx`, `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`compras-e-categorias.md`](compras-e-categorias.md) (categorias globais), [`entradas.md`](entradas.md) (rotas por mês e barra de abas) |
+| Substituída em parte por | [`tela-de-categorias.md`](tela-de-categorias.md): o diálogo "Categorias" virou a tela `#/categorias`; as regras das categorias continuam as mesmas. |
 
 > Esta spec é a fonte da verdade da funcionalidade. A implementação segue a seção [Tarefas](#11-tarefas) e só termina quando todos os [Critérios de aceite](#10-critérios-de-aceite) forem atendidos. Mudanças de comportamento entram primeiro aqui e só depois no código.
 
