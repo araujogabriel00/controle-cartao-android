@@ -40,7 +40,7 @@ export default function Historico() {
 
       {!loading && upcoming.length > 0 && <section data-testid="section-upcoming" aria-labelledby="upcoming-title" className="enter mt-8 rounded-[22px] border border-[#e6d7b8] bg-[#f8efd9] p-4 sm:p-5" style={{ animationDelay: '.08s' }}>
         <div className="flex items-center gap-2 text-[#9a7d45]"><CalendarClock size={14}/><h2 id="upcoming-title" className="font-mono-data text-[10px] uppercase tracking-[.2em]">Próximos meses</h2></div>
-        <p className="mt-1 text-[11px] text-[#7a6a45]">Parcelas previstas e compras já registradas nos próximos meses.</p>
+        <p className="mt-1 text-[11px] text-[#7a6a45]">Parcelas e cobranças previstas e compras já registradas nos próximos meses.</p>
         <div className="mt-3 divide-y divide-[#ead9b4]">
           {upcoming.map((item) => <button key={item.month} data-testid={`row-upcoming-${item.month}`} onClick={() => navigate(monthPath(item.month))} className="flex w-full items-center justify-between gap-3 py-2.5 text-left">
             <span className="min-w-0"><span className="block truncate text-[13px] font-semibold text-[#5c4d2c]">{capitalize(monthLabel(item.month))}</span><span className="text-[10px] text-[#8f7f5a]">{plural(item.count, 'item', 'itens')}</span></span>

@@ -10,7 +10,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 >
 > O app aceita **vários cartões**, e cada um tem o próprio limite, meses e compras. As compras, o resumo por categoria e o histórico mostram sempre o **cartão selecionado** no carrossel. As categorias são globais, as mesmas para todos os cartões. Os detalhes estão na seção [10. Múltiplos cartões](#10-múltiplos-cartões) e na spec [`specs/multiplos-cartoes.md`](specs/multiplos-cartoes.md).
 >
-> Uma **compra parcelada** vira uma compra comum em cada mês em que cai, e os meses futuros mostram as parcelas previstas junto com as compras já registradas. Os detalhes estão na seção [11. Parcelamento](#11-parcelamento) e na spec [`specs/parcelamento.md`](specs/parcelamento.md).
+> Uma **compra parcelada** vira uma compra comum em cada mês em que cai, e os meses futuros mostram as parcelas previstas junto com as compras já registradas. Uma **compra recorrente** (assinaturas) funciona do mesmo jeito, repetindo todo mês: seção [15. Compra recorrente](#15-compra-recorrente). Os detalhes estão na seção [11. Parcelamento](#11-parcelamento) e na spec [`specs/parcelamento.md`](specs/parcelamento.md).
 >
 > Os **benefícios** (VR, VA etc.) são um saldo mensal numa aba própria, independente dos cartões e das entradas. Os detalhes estão na seção [13. Benefícios](#13-benefícios) e na spec [`specs/beneficios.md`](specs/beneficios.md).
 >
@@ -32,6 +32,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 12. [Entradas](#12-entradas)
 13. [Benefícios](#13-benefícios)
 14. [Contas fixas e gastos do dia a dia](#14-contas-fixas-e-gastos-do-dia-a-dia)
+15. [Compra recorrente](#15-compra-recorrente)
 
 ---
 
@@ -481,7 +482,7 @@ Funcionalidade: Histórico mensal do cartão
 
   Cenário: Navegar entre meses
     Dado que estou no painel de outubro de 2026, o mês atual
-    E que não há parcelas previstas nem compras em meses futuros
+    E que não há parcelas ou cobranças previstas nem compras em meses futuros
     Então o botão "Próximo mês" está desabilitado
     Quando eu clico em "Mês anterior"
     Então vejo o painel de setembro de 2026
@@ -1035,4 +1036,97 @@ Funcionalidade: Contas fixas e gastos do dia a dia
     Dado que há uma conta fixa desde julho de 2026
     Então a navegação vai de julho de 2026 até 12 meses à frente do mês corrente
     E um mês fora do intervalo volta para "#/entradas"
+```
+
+---
+
+## 15. Compra recorrente
+
+Resumo das assinaturas no cartão. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/compra-recorrente.md`](specs/compra-recorrente.md).
+
+```gherkin
+# language: pt
+
+Funcionalidade: Compra recorrente
+  Como pessoa com assinaturas no cartão
+  Quero registrar a cobrança uma vez e vê-la cair todo mês
+  Para saber quanto do limite já está comprometido nos próximos meses
+
+  Contexto:
+    Dado que hoje é 17/10/2026 e o cartão "Nubank" tem limite de R$ 1.000,00
+
+  Cenário: Registrar uma assinatura
+    Quando eu abro "Registrar compra" e ligo "Compra recorrente"
+    Então o título é "Nova compra recorrente" e o valor é "Valor mensal"
+    Quando eu informo "Streaming", o valor "40" e a data 15/10/2026
+    Então a prévia mostra "Todo mês, dia 15, a partir de outubro de 2026 · sem data final"
+    Quando eu clico em "Adicionar"
+    Então vejo "Compra recorrente registrada."
+    E outubro tem "Streaming" de R$ 40,00 com o selo "Mensal"
+    E o usado do Nubank em outubro inclui R$ 40,00
+
+  Cenário: Recorrente e parcelada não ficam juntas
+    Dado que "Compra parcelada" está ligada
+    Quando eu ligo "Compra recorrente"
+    Então "Compra parcelada" desliga
+
+  @regra
+  Cenário: Cobranças previstas nos meses seguintes
+    Dado que "Streaming" é recorrente sem fim
+    Quando eu abro novembro de 2026
+    Então vejo "Streaming" de R$ 40,00 com os selos "Mensal" e "prevista", sem editar nem excluir
+    E o usado de novembro inclui R$ 40,00
+    E o botão "Próximo mês" avança até 12 meses à frente do mês corrente
+
+  Cenário: Mês final e dia 31
+    Quando eu registro uma recorrente "até" um mês final
+    Então os meses depois dele não têm a cobrança
+    E uma cobrança no dia 31 cai no último dia dos meses mais curtos
+
+  Cenário: Assinatura que já existia
+    Quando eu registro "Nuvem" com data de dois meses atrás
+    Então os meses desde então têm "Nuvem" como compra gravada, e os meses do cartão que não existiam passam a existir com o limite atual
+    E os meses seguintes têm a cobrança prevista
+
+  @regra
+  Cenário: A cobrança entra quando o mês começa
+    Dado que um mês novo começa
+    Então a cobrança dele entra como compra gravada, com o selo "Mensal"
+
+  @regra
+  Cenário: Validação
+    Quando eu registro uma recorrente com valor "0"
+    Então vejo "Valor deve ser de pelo menos R$ 0,01."
+    Quando eu informo uma data daqui a 14 meses
+    Então vejo "A data deve ser de até 12 meses à frente."
+    Quando eu informo "Até" antes do mês da data
+    Então vejo "O mês final deve ser igual ou posterior ao mês inicial."
+
+  Cenário: Alterar só um mês
+    Dado que "Streaming" vale R$ 40,00 por mês
+    Quando eu edito a cobrança de outubro, escolho "Só este mês" e mudo o valor para "55"
+    Então o diálogo avisa "A mudança vale só para outubro de 2026" e não tem "Até (mês)"
+    E outubro mostra R$ 55,00 e novembro continua R$ 40,00
+
+  Cenário: Reajuste daqui em diante
+    Dado que "Streaming" vale R$ 40,00 desde agosto
+    Quando eu edito a cobrança de outubro, escolho "Este e os próximos" e mudo o valor para "55"
+    Então agosto e setembro continuam com R$ 40,00
+    E outubro e os meses seguintes têm R$ 55,00
+
+  Cenário: Pular um mês e encerrar uma assinatura
+    Quando eu excluo a cobrança de outubro com "Só este mês" e confirmo
+    Então só outubro perde a cobrança, e o usado diminui
+    Quando eu excluo uma cobrança com "Este e os próximos"
+    Então esse mês e os seguintes perdem a cobrança, e os anteriores ficam
+
+  @regra
+  Cenário: Cobrança não se altera sozinha
+    Quando eu tento alterar ou excluir uma cobrança como compra comum
+    Então vejo "Esta compra é recorrente. Altere a compra recorrente."
+
+  Cenário: Próximos meses no histórico
+    Dado que "Streaming" é recorrente sem fim
+    Quando eu abro o Histórico
+    Então "Próximos meses" mostra cada mês até 12 meses à frente com a cobrança
 ```

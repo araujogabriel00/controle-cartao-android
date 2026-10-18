@@ -16,6 +16,8 @@ export type StoredCategory = { id: number; name: string };
 export type StoredMovement = {
   id: number; cardId: number; categoryId: number | null; description: string; amount: number; date: string;
   purchaseId?: number; installment?: number; installmentCount?: number;
+  // Set on the charges of a recurring purchase (up to the current month).
+  recurringId?: number;
 };
 export type StoredPurchase = {
   id: number;
@@ -28,6 +30,15 @@ export type StoredPurchase = {
   firstMonth: MonthKey;
   day: number;
 };
+
+// A monthly charge on a card. Charges up to the current month are recorded as
+// purchases (recurringId); later ones are planned, never stored.
+export type StoredRecurring = {
+  id: number; cardId: number; categoryId: number | null; description: string; amount: number;
+  firstMonth: MonthKey; day: number; lastMonth: MonthKey | null;
+};
+// Skips or adjusts a single month of a recurring purchase.
+export type StoredRecurringException = { recurringId: number; month: MonthKey; skip: boolean; description?: string; amount?: number; day?: number };
 
 export const INCOME_KINDS = ['salario', 'prolabore', 'bonus', 'outro'] as const;
 export type IncomeKind = (typeof INCOME_KINDS)[number];
@@ -65,7 +76,7 @@ export type StoredBenefitSpend = {
 };
 
 type State = {
-  version: 8;
+  version: 9;
   nextId: number;
   selectedCardId: number | null;
   cards: StoredCard[];
@@ -80,13 +91,16 @@ type State = {
   bills: StoredBill[];
   billExceptions: StoredBillException[];
   dailyExpenses: StoredDailyExpense[];
+  recurrings: StoredRecurring[];
+  recurringExceptions: StoredRecurringException[];
 };
 
 // Previous formats, kept only to migrate saved data.
 type OldCategory = { id: number; cardId: number; month: MonthKey; name: string; amount: number; isClosed: boolean };
 type OldMovement = Omit<StoredMovement, 'cardId' | 'categoryId'> & { categoryId: number };
 type OldPurchase = Omit<StoredPurchase, 'categoryId'> & { categoryName: string };
-type StateV7 = Omit<State, 'version' | 'bills' | 'billExceptions' | 'dailyExpenses'> & { version: 7 };
+type StateV8 = Omit<State, 'version' | 'recurrings' | 'recurringExceptions'> & { version: 8 };
+type StateV7 = Omit<StateV8, 'version' | 'bills' | 'billExceptions' | 'dailyExpenses'> & { version: 7 };
 type StateV6 = Omit<StateV7, 'version' | 'benefits' | 'benefitSpends'> & { version: 6 };
 type StateV5 = Omit<StateV6, 'version' | 'categories' | 'movements' | 'purchases'> & {
   version: 5; categories: OldCategory[]; movements: OldMovement[]; purchases: OldPurchase[];
@@ -109,7 +123,7 @@ type StateV1 = {
   categories: Omit<OldCategory, 'cardId' | 'month'>[];
   movements: OldMovement[];
 };
-type Saved = StateV7 | StateV6 | StateV5 | StateV4 | StateV3 | StateV2 | StateV1;
+type Saved = StateV8 | StateV7 | StateV6 | StateV5 | StateV4 | StateV3 | StateV2 | StateV1;
 
 // limitAmount is the limit of the requested month; currentLimitAmount is the card's own.
 export type Card = StoredCard & { currentLimitAmount: number; usedAmount: number; availableAmount: number; percentUsed: number };
@@ -119,9 +133,13 @@ export type CategorySummary = { categoryId: number | null; name: string | null; 
 export type Movement = StoredMovement & {
   categoryName: string | null;
   purchase?: { id: number; totalAmount: number; installmentCount: number; firstInstallment: number };
+  recurring?: { id: number; amount: number; firstMonth: MonthKey; day: number; lastMonth: MonthKey | null };
 };
+// A charge of a future month: an installment of a purchase or a recurring charge.
 export type PlannedInstallment = {
-  purchaseId: number; description: string; installment: number; installmentCount: number; amount: number; date: string;
+  kind: 'installment' | 'recurring';
+  purchaseId?: number; recurringId?: number;
+  description: string; installment?: number; installmentCount?: number; amount: number; date: string;
   categoryId: number | null; categoryName: string | null;
 };
 export type MonthPreview = { month: MonthKey; amount: number; installments: PlannedInstallment[] };
@@ -179,6 +197,8 @@ export type BenefitRange = { first: MonthKey; last: MonthKey };
 export type CardInput = { name: string; limitAmount: number; color?: CardColor };
 export type CategoryInput = { name: string };
 export type MovementInput = { description: string; amount: number; date: string };
+// `date` gives the first month and the day of the month; no lastMonth = no end.
+export type RecurringInput = { description: string; amount: number; date: string; lastMonth?: MonthKey | null };
 export type BillInput = { name: string; amount: number; date: string; lastMonth?: MonthKey | null };
 export type DailyExpenseInput = { description: string; amount: number; date: string };
 export type IncomeInput = { kind: IncomeKind; description?: string; amount: number; date: string; recurring: boolean; lastMonth?: MonthKey | null };
@@ -190,7 +210,7 @@ export type BenefitSpendInput = { description: string; amount: number; date: str
 // purchase starts there, on update `firstInstallment` says where it starts.
 export type PurchaseInput = { description: string; totalAmount: number; installmentCount: number; installment: number; firstInstallment?: number; date: string };
 
-const emptyState = (): State => ({ version: 8, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [], benefits: [], benefitSpends: [], bills: [], billExceptions: [], dailyExpenses: [] });
+const emptyState = (): State => ({ version: 9, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [], benefits: [], benefitSpends: [], bills: [], billExceptions: [], dailyExpenses: [], recurrings: [], recurringExceptions: [] });
 
 // RN-05 (categories): names match ignoring case and surrounding spaces.
 const nameKey = (name: string) => name.trim().toLocaleLowerCase('pt-BR');
@@ -265,10 +285,13 @@ function migrateV5(old: StateV5): StateV6 {
 const migrateV6 = (old: StateV6): StateV7 => ({ ...old, version: 7, benefits: [], benefitSpends: [] });
 
 // Fixed bills and daily expenses didn't exist before v8.
-const migrateV7 = (old: StateV7): State => ({
+const migrateV7 = (old: StateV7): StateV8 => ({
   ...old, version: 8, bills: [], billExceptions: [], dailyExpenses: [],
   benefits: old.benefits.map((b) => ({ ...b, splits: b.splits ?? [], closures: b.closures ?? [] })),
 });
+
+// Recurring purchases didn't exist before v9.
+const migrateV8 = (old: StateV8): State => ({ ...old, version: 9, recurrings: [], recurringExceptions: [] });
 
 function migrate(old: Saved): State {
   if (old.version === 1) return migrate(migrateV1(old));
@@ -277,7 +300,8 @@ function migrate(old: Saved): State {
   if (old.version === 4) return migrate(migrateV4(old));
   if (old.version === 5) return migrate(migrateV5(old));
   if (old.version === 6) return migrate(migrateV6(old));
-  return migrateV7(old);
+  if (old.version === 7) return migrate(migrateV7(old));
+  return migrateV8(old);
 }
 
 let statePromise: Promise<State> | null = null;
@@ -295,12 +319,12 @@ function load(): Promise<State> {
     if (!value) return emptyState();
     try {
       const parsed = JSON.parse(value) as State | Saved;
-      if (parsed?.version === 8) {
+      if (parsed?.version === 9) {
         for (const b of parsed.benefits) { b.splits ??= []; b.closures ??= []; }
         return parsed;
       }
       const version: number | undefined = parsed?.version;
-      if (version !== 7 && version !== 6 && version !== 5 && version !== 4 && version !== 3 && version !== 2 && version !== 1) return emptyState();
+      if (version !== 8 && version !== 7 && version !== 6 && version !== 5 && version !== 4 && version !== 3 && version !== 2 && version !== 1) return emptyState();
       const migrated = migrate(parsed as Saved);
       // Saved right away so the data stays in this month even if the next
       // change only happens in a later month.
@@ -353,17 +377,29 @@ function installmentDate(purchase: StoredPurchase, k: number) {
 const installmentsOf = (purchase: StoredPurchase) =>
   Array.from({ length: purchase.installmentCount - purchase.firstInstallment + 1 }, (_, i) => purchase.firstInstallment + i);
 
+// RN-01: a recurring purchase charges every month from firstMonth to lastMonth (or with no end).
+const recurringOccursIn = (r: StoredRecurring, month: MonthKey) => month >= r.firstMonth && (!r.lastMonth || month <= r.lastMonth);
+
+// RN-01 / RN-02: the charge of a month, with its exception applied; null if it doesn't happen or was skipped.
+function recurringCharge(state: State, r: StoredRecurring, month: MonthKey) {
+  if (!recurringOccursIn(r, month)) return null;
+  const exception = state.recurringExceptions.find((e) => e.recurringId === r.id && e.month === month);
+  if (exception?.skip) return null;
+  return { description: exception?.description ?? r.description, amount: exception?.amount ?? r.amount, date: incomeDate(month, exception?.day ?? r.day) };
+}
+
 type Planned = PlannedInstallment & { cardId: number; month: MonthKey };
 
 // Installments of future months, which only exist as part of the purchase
 // until their month comes. A null cardId means every card.
 function plannedOf(state: State, cardId: number | null, month?: MonthKey): Planned[] {
   const current = currentMonth();
-  return state.purchases
+  const installments = state.purchases
     .filter((p) => cardId === null || p.cardId === cardId)
     .flatMap((p) => installmentsOf(p)
       .filter((k) => installmentMonth(p, k) > current && (!month || installmentMonth(p, k) === month))
-      .map((k) => ({
+      .map((k): Planned => ({
+        kind: 'installment',
         cardId: p.cardId,
         month: installmentMonth(p, k),
         purchaseId: p.id,
@@ -375,6 +411,20 @@ function plannedOf(state: State, cardId: number | null, month?: MonthKey): Plann
         categoryId: p.categoryId,
         categoryName: categoryNameOf(state, p.categoryId),
       })));
+  // RN-03: recurring charges of the months after the current one, up to a year ahead.
+  const cap = shiftMonth(current, 12);
+  const recurring = state.recurrings
+    .filter((r) => cardId === null || r.cardId === cardId)
+    .flatMap((r) => {
+      const planned: Planned[] = [];
+      for (let m = shiftMonth(current, 1); m <= cap && (!r.lastMonth || m <= r.lastMonth); m = shiftMonth(m, 1)) {
+        if (m < r.firstMonth || (month && m !== month)) continue;
+        const charge = recurringCharge(state, r, m);
+        if (charge) planned.push({ kind: 'recurring', cardId: r.cardId, month: m, recurringId: r.id, ...charge, categoryId: r.categoryId, categoryName: categoryNameOf(state, r.categoryId) });
+      }
+      return planned;
+    });
+  return [...installments, ...recurring];
 }
 
 // --- month totals -------------------------------------------------------------
@@ -503,11 +553,14 @@ function findMovement(state: State, movementId: number) {
   return movement;
 }
 
+const isRecurringCharge = (state: State, movement: StoredMovement) => state.recurrings.some((r) => r.id === movement.recurringId);
+
 const isLinked = (state: State, movement: StoredMovement) => state.purchases.some((p) => p.id === movement.purchaseId);
 
 // RN-11: an installment only changes through its purchase.
 function requireStandalone(state: State, movement: StoredMovement) {
   if (isLinked(state, movement)) throw new Error('Este lançamento é uma parcela. Altere a compra parcelada.');
+  if (isRecurringCharge(state, movement)) throw new Error('Esta compra é recorrente. Altere a compra recorrente.');
 }
 
 // Starts the card's month with its current limit, if it wasn't started yet.
@@ -550,6 +603,23 @@ function syncPurchases(state: State, cardId: number) {
     for (const k of installmentsOf(purchase)) {
       if (installmentMonth(purchase, k) > current) break;
       if (!hasInstallment(state, purchase.id, k)) placeInstallment(state, purchase, k);
+    }
+  }
+}
+
+const hasCharge = (state: State, recurringId: number, month: MonthKey) =>
+  state.movements.some((m) => m.recurringId === recurringId && monthOf(m.date) === month);
+
+// RN-02: records every charge of the card up to the current month that is missing and wasn't skipped.
+function syncRecurrings(state: State, cardId: number) {
+  const current = currentMonth();
+  for (const r of state.recurrings.filter((x) => x.cardId === cardId)) {
+    for (let m = r.firstMonth; m <= current && (!r.lastMonth || m <= r.lastMonth); m = shiftMonth(m, 1)) {
+      if (hasCharge(state, r.id, m)) continue;
+      const charge = recurringCharge(state, r, m);
+      if (!charge) continue;
+      ensureMonth(state, findCard(state, r.cardId), m);
+      state.movements.push({ id: state.nextId++, cardId: r.cardId, categoryId: r.categoryId, description: charge.description, amount: charge.amount, date: charge.date, recurringId: r.id });
     }
   }
 }
@@ -597,8 +667,10 @@ export async function getMovements(cardId: number, month: MonthKey): Promise<Mov
     .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
     .map((m) => {
       const purchase = state.purchases.find((p) => p.id === m.purchaseId);
+      const recurring = state.recurrings.find((r) => r.id === m.recurringId);
       const base = { ...m, categoryName: categoryNameOf(state, m.categoryId) };
-      return purchase ? { ...base, purchase: { id: purchase.id, totalAmount: purchase.totalAmount, installmentCount: purchase.installmentCount, firstInstallment: purchase.firstInstallment } } : base;
+      if (purchase) return { ...base, purchase: { id: purchase.id, totalAmount: purchase.totalAmount, installmentCount: purchase.installmentCount, firstInstallment: purchase.firstInstallment } };
+      return recurring ? { ...base, recurring: { id: recurring.id, amount: recurring.amount, firstMonth: recurring.firstMonth, day: recurring.day, lastMonth: recurring.lastMonth } } : base;
     });
 }
 
@@ -623,7 +695,8 @@ export async function getCategories(): Promise<Category[]> {
   return state.categories
     .map((c) => ({
       ...c,
-      movementCount: state.movements.filter((m) => m.categoryId === c.id && !isLinked(state, m)).length + state.purchases.filter((p) => p.categoryId === c.id).length
+      movementCount: state.movements.filter((m) => m.categoryId === c.id && !isLinked(state, m) && !isRecurringCharge(state, m)).length + state.purchases.filter((p) => p.categoryId === c.id).length
+        + state.recurrings.filter((r) => r.categoryId === c.id).length
         + state.benefitSpends.filter((x) => x.categoryId === c.id).length + state.dailyExpenses.filter((x) => x.categoryId === c.id).length,
     }))
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
@@ -646,7 +719,7 @@ export async function getFutureInstallments(cardId: number): Promise<FutureInsta
 
 // RF-10: planned installments of the card in a future month (read-only).
 export async function getMonthPreview(cardId: number, month: MonthKey): Promise<MonthPreview> {
-  const planned = plannedOf(await load(), cardId, month).sort((a, b) => a.date.localeCompare(b.date) || a.purchaseId - b.purchaseId);
+  const planned = plannedOf(await load(), cardId, month).sort((a, b) => a.date.localeCompare(b.date) || (a.purchaseId ?? a.recurringId ?? 0) - (b.purchaseId ?? b.recurringId ?? 0));
   return { month, amount: sum(planned.map((p) => p.amount)), installments: planned };
 }
 
@@ -696,6 +769,7 @@ export function startMonth(cardId: number, month: MonthKey) {
     const card = findCard(state, cardId);
     ensureMonth(state, card, requireMonth(month));
     syncPurchases(state, cardId);
+    syncRecurrings(state, cardId);
   });
 }
 
@@ -740,6 +814,9 @@ export function deleteCard(cardId: number) {
     state.months = state.months.filter((m) => m.cardId !== cardId);
     state.movements = state.movements.filter((m) => m.cardId !== cardId);
     state.purchases = state.purchases.filter((p) => p.cardId !== cardId);
+    const recurringIds = new Set(state.recurrings.filter((r) => r.cardId === cardId).map((r) => r.id));
+    state.recurrings = state.recurrings.filter((r) => r.cardId !== cardId);
+    state.recurringExceptions = state.recurringExceptions.filter((e) => !recurringIds.has(e.recurringId));
     if (state.selectedCardId === cardId) state.selectedCardId = state.cards[0]?.id ?? null;
   });
 }
@@ -771,6 +848,7 @@ export function deleteCategory(categoryId: number) {
     for (const p of state.purchases) if (p.categoryId === categoryId) p.categoryId = null;
     for (const x of state.benefitSpends) if (x.categoryId === categoryId) x.categoryId = null;
     for (const x of state.dailyExpenses) if (x.categoryId === categoryId) x.categoryId = null;
+    for (const r of state.recurrings) if (r.categoryId === categoryId) r.categoryId = null;
     for (const b of state.benefits) {
       for (const entry of b.splits) entry.items = entry.items.filter((i) => i.categoryId !== categoryId);
       b.closures = b.closures.filter((c) => c.categoryId !== categoryId);
@@ -1461,4 +1539,103 @@ export async function getMonthCash(month: MonthKey): Promise<MonthCash> {
   const dailyAmount = sum(state.dailyExpenses.filter((x) => monthOf(x.date) === month).map((x) => x.amount));
   const cardsAmount = consolidatedOf(state, month).usedAmount;
   return { month, incomeAmount, billsAmount, dailyAmount, cardsAmount, balanceAmount: cents(incomeAmount - billsAmount - dailyAmount - cardsAmount) };
+}
+
+// --- recurring purchases ------------------------------------------------------
+
+// RN-04: the date gives the first month and the day, up to a year ahead.
+function requireRecurring(input: RecurringInput) {
+  const date = requireDate(input.date);
+  if (date > lastDayOf(shiftMonth(currentMonth(), 12))) throw new Error('A data deve ser de até 12 meses à frente.');
+  const month = monthOf(date);
+  let lastMonth: MonthKey | null = null;
+  if (input.lastMonth) {
+    if (!isMonthKey(input.lastMonth)) throw new Error('Mês inválido.');
+    if (input.lastMonth < month) throw new Error('O mês final deve ser igual ou posterior ao mês inicial.');
+    lastMonth = input.lastMonth;
+  }
+  return {
+    description: requireText(input.description, 'Descrição', 200),
+    amount: requireAmount(input.amount, 'Valor'),
+    month, day: Number(date.slice(8, 10)), lastMonth,
+  };
+}
+
+function requireCharge(state: State, recurringId: number, month: MonthKey) {
+  const recurring = state.recurrings.find((r) => r.id === recurringId);
+  if (!recurring) throw new Error('Compra recorrente não encontrada.');
+  if (!isMonthKey(month) || !recurringCharge(state, recurring, month)) throw new Error('Esta cobrança não ocorre neste mês.');
+  return recurring;
+}
+
+const dropRecurringExceptionsFrom = (state: State, recurringId: number, month: MonthKey) => {
+  state.recurringExceptions = state.recurringExceptions.filter((e) => e.recurringId !== recurringId || e.month < month);
+};
+
+const dropChargesFrom = (state: State, recurringId: number, month: MonthKey) => {
+  state.movements = state.movements.filter((m) => m.recurringId !== recurringId || monthOf(m.date) < month);
+};
+
+const setRecurringException = (state: State, exception: StoredRecurringException) => {
+  state.recurringExceptions = state.recurringExceptions.filter((e) => !(e.recurringId === exception.recurringId && e.month === exception.month));
+  state.recurringExceptions.push(exception);
+};
+
+export function createRecurring(cardId: number, categoryId: number | null, input: RecurringInput) {
+  return mutate((state) => {
+    findCard(state, cardId);
+    const { month, ...fields } = requireRecurring(input);
+    const recurring: StoredRecurring = { id: state.nextId++, cardId, categoryId: requireCategory(state, categoryId), firstMonth: month, ...fields };
+    state.recurrings.push(recurring);
+    syncRecurrings(state, cardId);
+    return recurring;
+  });
+}
+
+// RN-05 / RN-06: "month" adjusts one charge; "forward" splits the rule.
+export function updateRecurring(recurringId: number, month: MonthKey, scope: IncomeScope, categoryId: number | null, input: RecurringInput) {
+  return mutate((state) => {
+    const recurring = requireCharge(state, recurringId, month);
+    const { month: inputMonth, ...fields } = requireRecurring(input);
+    if (inputMonth !== month) throw new Error(`A data deve estar dentro de ${monthLabel(month)}.`);
+    if (scope === 'month') {
+      const charge = state.movements.find((m) => m.recurringId === recurringId && monthOf(m.date) === month);
+      if (charge) Object.assign(charge, { description: fields.description, amount: fields.amount, date: input.date.slice(0, 10) });
+      else setRecurringException(state, { recurringId, month, skip: false, description: fields.description, amount: fields.amount, day: fields.day });
+      return recurring;
+    }
+    const nextCategoryId = requireCategory(state, categoryId);
+    dropRecurringExceptionsFrom(state, recurringId, month);
+    dropChargesFrom(state, recurringId, month);
+    let target = recurring;
+    if (month === recurring.firstMonth) {
+      Object.assign(recurring, { ...fields, categoryId: nextCategoryId });
+    } else {
+      recurring.lastMonth = shiftMonth(month, -1);
+      target = { id: state.nextId++, cardId: recurring.cardId, categoryId: nextCategoryId, firstMonth: month, ...fields };
+      state.recurrings.push(target);
+    }
+    syncRecurrings(state, recurring.cardId);
+    return target;
+  });
+}
+
+// RN-07 / RN-08
+export function deleteRecurring(recurringId: number, month: MonthKey, scope: IncomeScope) {
+  return mutate((state) => {
+    const recurring = requireCharge(state, recurringId, month);
+    if (scope === 'month') {
+      state.movements = state.movements.filter((m) => !(m.recurringId === recurringId && monthOf(m.date) === month));
+      setRecurringException(state, { recurringId, month, skip: true });
+      return;
+    }
+    dropChargesFrom(state, recurringId, month);
+    if (month === recurring.firstMonth) {
+      state.recurrings = state.recurrings.filter((r) => r.id !== recurringId);
+      state.recurringExceptions = state.recurringExceptions.filter((e) => e.recurringId !== recurringId);
+      return;
+    }
+    recurring.lastMonth = shiftMonth(month, -1);
+    dropRecurringExceptionsFrom(state, recurringId, month);
+  });
 }

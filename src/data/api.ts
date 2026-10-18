@@ -11,6 +11,7 @@ export type {
   FutureInstallments, MonthPreview, PlannedInstallment, StoredPurchase,
   CardInput, CategoryInput, MovementInput, PurchaseInput,
   IncomeInput, IncomeKind, IncomeOccurrence, IncomeRange, IncomeScope, Incomes, StoredIncome,
+  RecurringInput, StoredRecurring,
   Bills, BillOccurrence, BillInput, DailyExpense, DailyExpenses, DailyExpenseInput, MonthCash, StoredBill, StoredDailyExpense,
   Benefits, BenefitItem, BenefitSpend, BenefitRange, BenefitInput, BenefitUpdate, BenefitSpendInput, BenefitSplitItem, BenefitCategoryRow, StoredBenefit, StoredBenefitSpend,
 } from './store';
@@ -204,3 +205,12 @@ export const useUpdateDailyExpense = (options?: MutationOpts<store.StoredDailyEx
 
 export const useDeleteDailyExpense = (options?: MutationOpts<void, { expenseId: number }>) =>
   useMutation({ mutationFn: ({ expenseId }) => store.deleteDailyExpense(expenseId), ...options?.mutation });
+
+export const useCreateRecurring = (options?: MutationOpts<store.StoredRecurring, { cardId: number; categoryId: number | null; data: store.RecurringInput }>) =>
+  useMutation({ mutationFn: ({ cardId, categoryId, data }) => store.createRecurring(cardId, categoryId, data), ...options?.mutation });
+
+export const useUpdateRecurring = (options?: MutationOpts<store.StoredRecurring, { recurringId: number; month: store.MonthKey; scope: store.IncomeScope; categoryId: number | null; data: store.RecurringInput }>) =>
+  useMutation({ mutationFn: ({ recurringId, month, scope, categoryId, data }) => store.updateRecurring(recurringId, month, scope, categoryId, data), ...options?.mutation });
+
+export const useDeleteRecurring = (options?: MutationOpts<void, { recurringId: number; month: store.MonthKey; scope: store.IncomeScope }>) =>
+  useMutation({ mutationFn: ({ recurringId, month, scope }) => store.deleteRecurring(recurringId, month, scope), ...options?.mutation });
