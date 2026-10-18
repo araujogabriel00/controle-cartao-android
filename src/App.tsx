@@ -2,8 +2,8 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { getGetBenefitRangeQueryKey, getGetIncomeRangeQueryKey, getGetLastFutureMonthQueryKey, useGetBenefitRange, useGetIncomeRange, useGetLastFutureMonth } from '@workspace/api-client-react';
-import { areaPath, currentMonth, isFutureMonth, isMonthKey, listPath, type ListKind } from '@/lib/format';
+import { getGetBenefitRangeQueryKey, getGetBenefitsQueryKey, getGetIncomeRangeQueryKey, getGetLastFutureMonthQueryKey, useGetBenefitRange, useGetBenefits, useGetIncomeRange, useGetLastFutureMonth } from '@workspace/api-client-react';
+import { areaPath, benefitSpendsPath, currentMonth, isFutureMonth, isMonthKey, listPath, type ListKind } from '@/lib/format';
 import { readLastMonth } from '@/lib/last-month';
 import { FooterMenu } from '@/components/quick-add';
 import NotFound from '@/pages/not-found';
@@ -12,6 +12,7 @@ import Historico from '@/pages/historico';
 import Entradas from '@/pages/entradas';
 import EntradasLista from '@/pages/entradas-lista';
 import Beneficios from '@/pages/beneficios';
+import BeneficioLancamentos, { type SpendFilter } from '@/pages/beneficio-lancamentos';
 import Categorias from '@/pages/categorias';
 import {
   Redirect,
@@ -73,6 +74,26 @@ function ListRoute({ kind, month }: { kind: string; month?: string }) {
   return <EntradasLista key={`${list}-${month}`} kind={list} month={month} />;
 }
 
+// Spends of a benefit (specs/lancamentos-do-beneficio.md D8): a bad address, a month outside the
+// tab's range or a benefit that doesn't exist in the month goes back to the Benefícios tab.
+function SpendsRoute({ benefit, cat, month }: { benefit: string; cat: string; month?: string }) {
+  const range = useGetBenefitRange({ query: { queryKey: getGetBenefitRangeQueryKey() } });
+  const id = Number(benefit);
+  const filter: SpendFilter | null = cat === 'todos' || cat === 'sem' ? cat : /^\d+$/.test(cat) ? Number(cat) : null;
+  const target = month !== undefined && isMonthKey(month) ? month : currentMonth();
+  const benefits = useGetBenefits(target, { query: { queryKey: getGetBenefitsQueryKey(target), enabled: Number.isInteger(id) && filter !== null } });
+  if (!Number.isInteger(id) || filter === null) return <Redirect to="/beneficios" replace />;
+  if (month !== undefined && (!isMonthKey(month) || month === currentMonth())) return <Redirect to={benefitSpendsPath(id, filter, currentMonth())} replace />;
+  if (range.isLoading || benefits.isLoading) return null;
+  if (month !== undefined) {
+    if (!range.data) return <Redirect to={benefitSpendsPath(id, filter, currentMonth())} replace />;
+    const near = month < range.data.first ? range.data.first : month > range.data.last ? range.data.last : month;
+    if (near !== month) return <Redirect to={benefitSpendsPath(id, filter, near)} replace />;
+  }
+  if (!benefits.data?.items.some((item) => item.id === id)) return <Redirect to={areaPath('benefits', target)} replace />;
+  return <BeneficioLancamentos key={`${id}-${filter}-${target}`} benefitId={id} filter={filter} month={target} />;
+}
+
 function BenefitMonthRoute({ month }: { month: string }) {
   const range = useGetBenefitRange({ query: { queryKey: getGetBenefitRangeQueryKey() } });
   return <RangedMonthRoute area="benefits" month={month} range={range}><Beneficios key={month} month={month} /></RangedMonthRoute>;
@@ -92,6 +113,8 @@ function Router() {
         <Route path="/entradas/lista/:kind/mes/:month">{(params) => <ListRoute kind={params.kind} month={params.month} />}</Route>
         <Route path="/entradas/mes/:month">{(params) => <IncomeMonthRoute month={params.month} />}</Route>
         <Route path="/beneficios">{() => <Beneficios key={currentMonth()} month={currentMonth()} />}</Route>
+        <Route path="/beneficios/lancamentos/:benefit/:cat">{(params) => <SpendsRoute benefit={params.benefit} cat={params.cat} />}</Route>
+        <Route path="/beneficios/lancamentos/:benefit/:cat/mes/:month">{(params) => <SpendsRoute benefit={params.benefit} cat={params.cat} month={params.month} />}</Route>
         <Route path="/beneficios/mes/:month">{(params) => <BenefitMonthRoute month={params.month} />}</Route>
         <Route path="/categorias" component={Categorias} />
         <Route component={NotFound} />

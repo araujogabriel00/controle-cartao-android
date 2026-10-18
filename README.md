@@ -74,7 +74,7 @@ A especificação completa está em [`specs/contas-e-gastos.md`](specs/contas-e-
 
 A especificação completa está em [`specs/beneficios.md`](specs/beneficios.md).
 
-- Um benefício (VR, VA…) é um **saldo mensal** com nome, valor mensal, mês inicial e mês final opcional. Fica na aba **Benefícios** (`#/beneficios`, `#/beneficios/mes/AAAA-MM`), **independente dos cartões e das entradas**: um gasto de benefício não usa o limite de cartão. Os benefícios aparecem num **carrossel de cards** (como os cartões), com o card "Novo benefício" no fim; abaixo, o "Por categoria" e os gastos do benefício selecionado, que é lembrado só enquanto o app está aberto ([`specs/beneficios-em-carrossel.md`](specs/beneficios-em-carrossel.md)).
+- Um benefício (VR, VA…) é um **saldo mensal** com nome, valor mensal, mês inicial e mês final opcional. Fica na aba **Benefícios** (`#/beneficios`, `#/beneficios/mes/AAAA-MM`), **independente dos cartões e das entradas**: um gasto de benefício não usa o limite de cartão. Os benefícios aparecem num **carrossel de cards** (como os cartões), com o card "Novo benefício" no fim; abaixo, o "Por categoria" e os gastos do benefício selecionado, que é lembrado só enquanto o app está aberto ([`specs/beneficios-em-carrossel.md`](specs/beneficios-em-carrossel.md)). Os lançamentos (gastos) do benefício ficam em **tela própria**: tocar numa categoria do "Por categoria" abre os lançamentos dela, e "Todos os lançamentos" abre todos (`#/beneficios/lancamentos/:benefício/:categoria`, com `todos`, `sem` ou o número da categoria, e `/mes/AAAA-MM` no fim) ([`specs/lancamentos-do-beneficio.md`](specs/lancamentos-do-beneficio.md)).
 - **Disponível** do mês = sobra anterior + crédito do mês − gasto do mês. A sobra acumula de um mês para o outro e pode ficar negativa.
 - O valor mensal tem histórico: alterar o valor "a partir de um mês" vale daquele mês em diante, sem mexer nos anteriores. O mês inicial não muda depois de criado.
 - Os gastos são avulsos (descrição, valor, data) com categoria global opcional, e só aceitam datas dentro do período do benefício.
@@ -165,6 +165,7 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── pages/entradas-lista.tsx # listas de entradas, contas fixas e gastos
 │   ├── components/entry-dialogs.tsx # formulários de entrada, conta fixa e gasto
 │   ├── pages/beneficios.tsx # benefícios do mês
+│   ├── pages/beneficio-lancamentos.tsx # lançamentos de um benefício
 │   ├── pages/categorias.tsx # criar, renomear e excluir categorias
 │   └── ...
 ├── specs/                  # especificações das funcionalidades

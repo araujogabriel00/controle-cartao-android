@@ -54,6 +54,9 @@ export const areaPath = (area: Area, month: MonthKey) => (month === currentMonth
 // Screens of the Entradas lists (specs/telas-de-entradas.md D10); the month goes at the end like the areas.
 export type ListKind = 'entradas' | 'contas-fixas' | 'gastos' | 'cartoes';
 export const listPath = (kind: ListKind, month: MonthKey) => `/entradas/lista/${kind}${month === currentMonth() ? '' : `/mes/${month}`}`;
+// Screen with the spends of a benefit in a month: all of them, the ones without category ('sem') or one category.
+export const benefitSpendsPath = (benefitId: number, category: number | 'todos' | 'sem', month: MonthKey) =>
+  `/beneficios/lancamentos/${benefitId}/${category}${month === currentMonth() ? '' : `/mes/${month}`}`;
 export const monthPath = (month: MonthKey) => areaPath('cards', month);
 // RN-01: the open month is the one at the end of the address; without it, the current month.
 export const monthInPath = (path: string): MonthKey => {

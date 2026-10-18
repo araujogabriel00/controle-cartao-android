@@ -7,6 +7,7 @@
 | Escopo | `src/components/snap-carousel.tsx` (novo), `src/components/card-carousel.tsx`, `src/pages/beneficios.tsx`, `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`beneficios.md`](beneficios.md), [`multiplos-cartoes.md`](multiplos-cartoes.md) (o carrossel da aba Cartões), [`botao-lancar.md`](botao-lancar.md) |
 | Substitui em parte | A lista vertical de benefícios, o botão "Novo benefício" e a faixa "Disponível em todos os benefícios" da aba Benefícios ([`beneficios.md`](beneficios.md)). As regras de saldo, divisão por categoria e fechamento não mudam. |
+| Substituída em parte por | [`lancamentos-do-beneficio.md`](lancamentos-do-beneficio.md): a lista de gastos abaixo do carrossel (D4) vai para uma tela própria. |
 
 > Mudanças de comportamento entram primeiro aqui e só depois no código.
 
