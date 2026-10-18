@@ -8,6 +8,8 @@ import {
 } from '@workspace/api-client-react';
 import { CalendarDays, Check, ChevronDown, CircleHelp, FilePenLine, Plus, Repeat, Trash2, Utensils, X } from 'lucide-react';
 import { AppTabs } from '@/components/app-tabs';
+import { SnapCarousel } from '@/components/snap-carousel';
+import { CARD_COLOR_KEYS } from '@/lib/card-colors';
 import { MonthNav } from '@/components/month-nav';
 import { Progress } from '@/components/progress';
 import { dialogOverlay, dialogPanel } from '@/lib/dialog-styles';
@@ -106,6 +108,9 @@ export function SpendDialog({ month, benefit, spend, categories, busy, onClose, 
   </div>;
 }
 
+// D6: the selected benefit is kept while the app is open (the page remounts on every month), never saved.
+let lastSelectedBenefit: number | null = null;
+
 export default function Beneficios({ month }: { month: MonthKey }) {
   useRememberMonth(month);
   const client = useQueryClient();
@@ -116,6 +121,11 @@ export default function Beneficios({ month }: { month: MonthKey }) {
   const [spendDialog, setSpendDialog] = useState<{ benefit: BenefitItem; spend?: BenefitSpend } | null>(null);
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
   const items = benefitsQuery.data?.items ?? [];
+  const [selectedId, setSelectedId] = useState<number | null>(lastSelectedBenefit);
+  const selected = items.find((item) => item.id === selectedId) ?? items[0];
+  const chooseBenefit = (id: number) => { lastSelectedBenefit = id; setSelectedId(id); };
+  // D7: a benefit has no color of its own; it takes one from the card palette by its number.
+  const carouselItems = items.map((benefit) => ({ id: benefit.id, color: CARD_COLOR_KEYS[benefit.id % CARD_COLOR_KEYS.length], name: benefit.name, benefit }));
 
   // Categories are shared with the cards, so their lists refresh together.
   const refresh = () => {
@@ -166,56 +176,53 @@ export default function Beneficios({ month }: { month: MonthKey }) {
       <AppTabs/>
 
 
-      <section className="enter mt-6 flex flex-wrap justify-end gap-2" style={{ animationDelay: '.06s' }}>
-        <div className="flex flex-wrap gap-2"><button data-testid="button-new-benefit" onClick={() => setBenefitDialog({})} className="flex items-center gap-2 rounded-full bg-[#28513f] px-5 py-3.5 text-[13px] font-semibold text-[#fffaf0] shadow-[0_8px_18px_-10px_rgba(38,80,61,.7)] transition hover:-translate-y-0.5 hover:bg-[#1f4333]"><Plus size={16}/> Novo benefício</button></div>
-      </section>
 
-      {items.length > 0 && <section aria-label="Disponível em todos os benefícios" className="enter mt-6 rounded-[22px] border border-[#e1dbce] bg-[#fbf8f0] p-5" style={{ animationDelay: '.08s' }}>
-        <p className="font-mono-data text-[10px] uppercase tracking-[.17em] text-[#9a8d71]">Disponível em todos os benefícios · {capitalize(monthLabel(month))}</p>
-        <p data-testid="text-benefits-total" className={`mt-2 font-mono-data text-[28px] [overflow-wrap:anywhere] ${(benefitsQuery.data?.totalAvailable ?? 0) < 0 ? 'text-[#a55f50]' : 'text-[#315944]'}`}>{money(benefitsQuery.data?.totalAvailable)}</p>
-      </section>}
 
       {benefitsQuery.isLoading ? <div className="mt-6 space-y-3 animate-pulse"><div className="h-40 rounded-2xl bg-[#e9e3d7]"/><div className="h-40 rounded-2xl bg-[#e9e3d7]"/></div>
       : benefitsQuery.isError ? <div className="mt-6 rounded-2xl border border-[#e1dbce] bg-[#fbf8f0] px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#e9e3d7] text-[#315944]"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-[#345443]">Não conseguimos abrir os benefícios.</h3><button onClick={() => void benefitsQuery.refetch()} className="mt-4 text-xs font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4">Tentar novamente</button></div>
-      : items.length ? <div className="mt-6 space-y-5">
-        {items.map((benefit) => <article key={benefit.id} data-testid={`card-benefit-${benefit.id}`} className="enter overflow-hidden rounded-[22px] border border-[#e1dbce] bg-[#fbf8f0]">
-          <div className="flex items-center gap-3 border-b border-[#ece6da] px-4 py-3.5 sm:px-5">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] bg-[#e4ece2] text-[#52735c]"><Utensils size={17}/></span>
-            <p className="flex min-w-0 flex-1 items-center gap-2"><span className="truncate text-[15px] font-semibold text-[#2f4a3b]">{benefit.name}</span><span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e4ece2] px-2 py-0.5 text-[9px] font-semibold text-[#52735c]"><Repeat size={9}/> Mensal</span></p>
-            <button data-testid={`button-edit-benefit-${benefit.id}`} aria-label={`Editar ${benefit.name}`} onClick={() => setBenefitDialog({ benefit })} className="rounded-full p-2 text-[#718076] transition hover:bg-[#eee9df]"><FilePenLine size={15}/></button>
-            <button data-testid={`button-delete-benefit-${benefit.id}`} aria-label={`Excluir ${benefit.name}`} onClick={() => removeBenefit(benefit)} className="rounded-full p-2 text-[#a36354] transition hover:bg-[#f5e9e1]"><Trash2 size={15}/></button>
-          </div>
-          <div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-4 sm:gap-3 sm:p-5">
-            {([['Crédito do mês', benefit.amount, 'bg-[#f2eee4] text-[#7c877a]', 'text-[#315944]'], ['Sobra anterior', benefit.carriedAmount, 'bg-[#f2eee4] text-[#7c877a]', benefit.carriedAmount < 0 ? 'text-[#a55f50]' : 'text-[#315944]'], ['Gasto', benefit.spentAmount, 'bg-[#f5e9e1] text-[#927b70]', 'text-[#a55f50]'], ['Disponível', benefit.availableAmount, 'bg-[#e4ece2] text-[#5f7a66]', benefit.availableAmount < 0 ? 'text-[#a55f50]' : 'text-[#315944]']] as const).map(([label, value, box, tone]) =>
-              <div key={label} className={`min-w-0 rounded-2xl p-3 ${box}`}><span className="text-[10px]">{label}</span><p data-testid={`text-benefit-${label === 'Disponível' ? 'available' : label === 'Gasto' ? 'spent' : label === 'Sobra anterior' ? 'carried' : 'credit'}-${benefit.id}`} className={`mt-1 font-mono-data text-[13px] [overflow-wrap:anywhere] sm:text-[15px] ${tone}`}>{money(value)}</p></div>)}
-          </div>
-          <div className="flex items-center gap-3 px-4 sm:px-5"><div className="flex-1"><Progress value={benefit.percentUsed} tone={benefit.percentUsed > 85 ? 'peach' : 'green'}/></div><span className="w-9 text-right font-mono-data text-[9px] text-[#8c9388]">{Number(benefit.percentUsed).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%</span></div>
-          {benefit.categories.length > 0 && <div data-testid={`section-categories-${benefit.id}`} className="mt-4 border-t border-[#ece6da] px-4 py-3 sm:px-5">
+      : <div className="enter mt-6">
+        <SnapCarousel items={carouselItems} selectedId={selected?.id ?? null} onSelect={chooseBenefit} onAdd={() => setBenefitDialog({})}
+          region="Seus benefícios" faceTestId="benefit-face" itemLabel={(item) => `Benefício ${item.name}`}
+          add={{ testId: 'button-new-benefit', title: 'Novo benefício', text: items.length ? 'Um saldo que se renova todo mês, com a sobra acumulando.' : 'Nenhum benefício ainda. Crie o primeiro para registrar os gastos.', ariaLabel: 'Novo benefício' }}
+          renderFace={(item, active, accent) => {
+            const benefit = item.benefit;
+            return <>
+              <div className="relative flex items-start justify-between gap-3"><div className="min-w-0"><p className="flex items-center gap-1.5 font-mono-data text-[10px] uppercase tracking-[.18em] opacity-80" style={{ color: accent }}><Repeat size={10}/> Mensal</p><h2 className="mt-2 line-clamp-2 font-display text-2xl leading-tight [overflow-wrap:anywhere]">{benefit.name}</h2></div>
+                <div className={`flex shrink-0 gap-2 ${active ? '' : 'invisible'}`}>
+                  <button data-testid={`button-edit-benefit-${benefit.id}`} aria-label={`Editar ${benefit.name}`} tabIndex={active ? 0 : -1} onClick={() => setBenefitDialog({ benefit })} className="rounded-full border border-white/20 p-2 text-white/80 transition hover:bg-white/10"><FilePenLine size={15}/></button>
+                  <button data-testid={`button-delete-benefit-${benefit.id}`} aria-label={`Excluir ${benefit.name}`} tabIndex={active ? 0 : -1} onClick={() => removeBenefit(benefit)} className="rounded-full border border-white/20 p-2 text-white/80 transition hover:bg-white/10 hover:text-[#f1b5a5]"><Trash2 size={15}/></button>
+                </div></div>
+              <div className="relative mt-8 min-w-0"><p className="text-[11px] text-white/70">Disponível em {monthLabel(month)}</p><p data-testid={`text-benefit-available-${benefit.id}`} className="mt-1 font-display text-[clamp(26px,8vw,38px)] leading-tight tracking-[-.03em] [overflow-wrap:anywhere]">{money(benefit.availableAmount)}</p></div>
+              <p className="relative mt-4 text-[11px] leading-5 text-white/70">Crédito <span data-testid={`text-benefit-credit-${benefit.id}`}>{money(benefit.amount)}</span> · Sobra anterior <span data-testid={`text-benefit-carried-${benefit.id}`}>{money(benefit.carriedAmount)}</span> · Gasto <span data-testid={`text-benefit-spent-${benefit.id}`}>{money(benefit.spentAmount)}</span></p>
+              <div className="relative mt-4"><div className="mb-2 flex justify-between text-[10px] text-white/70"><span>Gasto do mês</span><span className="font-mono-data" style={{ color: accent }}>{Number(benefit.percentUsed).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%</span></div><div className="h-2 overflow-hidden rounded-full bg-white/15"><div className="progress-fill h-full rounded-full" style={{ background: accent, transform: `scaleX(${Math.min(100, Math.max(0, benefit.percentUsed)) / 100})` }}/></div></div>
+            </>;
+          }}/>
+        {selected && <article key={selected.id} data-testid={`card-benefit-${selected.id}`} className="enter mt-6 overflow-hidden rounded-[22px] border border-[#e1dbce] bg-[#fbf8f0]">
+          {selected.categories.length > 0 && <div data-testid={`section-categories-${selected.id}`} className="mt-4 border-t border-[#ece6da] px-4 py-3 sm:px-5">
             <p className="font-mono-data text-[10px] uppercase tracking-[.17em] text-[#9a8d71]">Por categoria</p>
-            <ul className="mt-3 space-y-4">{benefit.categories.map((row) => <li key={row.categoryId ?? 'none'} data-testid={`row-category-${benefit.id}-${row.categoryId ?? 'none'}`}>
+            <ul className="mt-3 space-y-4">{selected.categories.map((row) => <li key={row.categoryId ?? 'none'} data-testid={`row-category-${selected.id}-${row.categoryId ?? 'none'}`}>
               <div className="flex items-center justify-between gap-2">
                 <span className="flex min-w-0 items-center gap-2"><span className="truncate text-[13px] font-semibold text-[#345443]">{row.name ?? 'Sem categoria'}</span>{row.closed && <span className="shrink-0 rounded-full bg-[#e9e5dc] px-2 py-0.5 text-[9px] font-medium text-[#82877e]">Fechada</span>}</span>
                 <span className="flex shrink-0 items-center gap-1"><span className={`font-mono-data text-[13px] ${row.availableAmount < 0 ? 'text-[#a55f50]' : 'text-[#315944]'}`}>{money(row.availableAmount)}</span>
                   {row.categoryId !== null && (row.closed
-                    ? <button data-testid={`button-reopen-${benefit.id}-${row.categoryId}`} onClick={() => reopenCategory.mutate({ benefitId: benefit.id, categoryId: row.categoryId as number, month })} className="rounded-full px-2 py-1 text-[10px] font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4 hover:bg-[#eee9df]">Reabrir</button>
-                    : <button data-testid={`button-close-${benefit.id}-${row.categoryId}`} onClick={() => closeRow(benefit, row)} className="rounded-full px-2 py-1 text-[10px] font-semibold text-[#8c5a4c] underline decoration-[#d8b3a8] underline-offset-4 hover:bg-[#f5e9e1]">Fechar</button>)}</span>
+                    ? <button data-testid={`button-reopen-${selected.id}-${row.categoryId}`} onClick={() => reopenCategory.mutate({ benefitId: selected.id, categoryId: row.categoryId as number, month })} className="rounded-full px-2 py-1 text-[10px] font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4 hover:bg-[#eee9df]">Reabrir</button>
+                    : <button data-testid={`button-close-${selected.id}-${row.categoryId}`} onClick={() => closeRow(selected, row)} className="rounded-full px-2 py-1 text-[10px] font-semibold text-[#8c5a4c] underline decoration-[#d8b3a8] underline-offset-4 hover:bg-[#f5e9e1]">Fechar</button>)}</span>
               </div>
-              <p className="mt-1 text-[10px] text-[#899186]">sobra {money(row.carriedAmount)} + crédito {money(row.amount)} − gasto {money(row.spentAmount)}{row.releasedAmount !== 0 && <> · <b data-testid={`text-released-${benefit.id}-${row.categoryId}`} className="font-semibold text-[#52735c]">Liberado {money(row.releasedAmount)}</b></>}</p>
+              <p className="mt-1 text-[10px] text-[#899186]">sobra {money(row.carriedAmount)} + crédito {money(row.amount)} − gasto {money(row.spentAmount)}{row.releasedAmount !== 0 && <> · <b data-testid={`text-released-${selected.id}-${row.categoryId}`} className="font-semibold text-[#52735c]">Liberado {money(row.releasedAmount)}</b></>}</p>
               {!row.closed && <div className="mt-2 flex items-center gap-3"><div className="flex-1"><Progress value={row.percentUsed} tone={row.percentUsed > 85 ? 'peach' : 'green'}/></div><span className="w-9 text-right font-mono-data text-[9px] text-[#8c9388]">{Number(row.percentUsed).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%</span></div>}
             </li>)}</ul>
           </div>}
-          <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#ece6da] px-4 py-3 sm:px-5"><p className="text-[10px] text-[#899186]">{plural(benefit.spends.length, 'gasto', 'gastos')} neste mês</p></div>
-          {benefit.spends.length ? <ul className="divide-y divide-[#ece6da] border-t border-[#ece6da]">
-            {benefit.spends.map((spend) => <li key={spend.id} data-testid={`row-spend-${spend.id}`} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#ece6da] px-4 py-3 sm:px-5"><p className="text-[10px] text-[#899186]">{plural(selected.spends.length, 'gasto', 'gastos')} neste mês</p></div>
+          {selected.spends.length ? <ul className="divide-y divide-[#ece6da] border-t border-[#ece6da]">
+            {selected.spends.map((spend) => <li key={spend.id} data-testid={`row-spend-${spend.id}`} className="flex items-center gap-3 px-4 py-3 sm:px-5">
               <div className="min-w-0 flex-1"><p className="truncate text-[12px] font-semibold text-[#3d5948]">{spend.description}</p><p className="mt-1 flex items-center gap-2 text-[10px] text-[#8b9185]"><span className="flex items-center gap-1"><CalendarDays size={11}/>{dateLabel(spend.date)}</span>{spend.categoryName && <span className="truncate rounded-full bg-[#e4ece2] px-2 py-0.5 text-[9px] font-medium text-[#52735c]">{spend.categoryName}</span>}</p></div>
               <span className="shrink-0 font-mono-data text-[12px] text-[#a36354]">− {money(spend.amount)}</span>
-              <button aria-label={`Editar ${spend.description}`} onClick={() => setSpendDialog({ benefit, spend })} className="rounded p-1.5 text-[#7c897e] hover:bg-[#eee9df]"><FilePenLine size={13}/></button>
+              <button aria-label={`Editar ${spend.description}`} onClick={() => setSpendDialog({ benefit: selected, spend })} className="rounded p-1.5 text-[#7c897e] hover:bg-[#eee9df]"><FilePenLine size={13}/></button>
               <button aria-label={`Excluir ${spend.description}`} onClick={() => { if (window.confirm(`Remover o gasto “${spend.description}”? Esta ação não pode ser desfeita.`)) deleteSpend.mutate({ spendId: spend.id }); }} className="rounded p-1.5 text-[#ad6a5a] hover:bg-[#f4e8e1]"><Trash2 size={13}/></button>
             </li>)}
-          </ul> : <p data-testid={`text-no-spends-${benefit.id}`} className="border-t border-[#ece6da] px-4 py-5 text-center text-xs text-[#7d887c] sm:px-5">Sem gastos neste mês.</p>}
-        </article>)}
-      </div>
-      : <div className="mt-6 rounded-2xl border border-dashed border-[#d9d2c4] bg-[#f8f5ed] px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#e8e9df] text-[#63806a]"><Utensils size={18}/></div><h3 data-testid="text-benefits-empty" className="mt-3 font-display text-[20px] text-[#345443]">Nenhum benefício ainda.</h3><p className="mx-auto mt-1 max-w-xs text-xs leading-5 text-[#7d887c]">Cadastre um vale-refeição, vale-alimentação ou algo parecido para acompanhar o saldo.</p></div>}
+          </ul> : <p data-testid={`text-no-spends-${selected.id}`} className="border-t border-[#ece6da] px-4 py-5 text-center text-xs text-[#7d887c] sm:px-5">Sem gastos neste mês.</p>}
+        </article>}
+      </div>}
     </div>
 
     {benefitDialog && <BenefitDialog key={benefitDialog.benefit?.id ?? 'new'} month={month} benefit={benefitDialog.benefit} categories={categories} busy={busy} onClose={() => setBenefitDialog(null)} onSave={saveBenefit}/>}

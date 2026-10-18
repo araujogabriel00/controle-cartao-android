@@ -40,6 +40,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 18. [Histórico no card do cartão](#18-histórico-no-card-do-cartão)
 19. [Botão Lançar](#19-botão-lançar)
 20. [Telas de entradas, contas fixas, gastos e cartões](#20-telas-de-entradas-contas-fixas-gastos-e-cartões)
+21. [Benefícios em carrossel](#21-benefícios-em-carrossel)
 
 ---
 
@@ -734,7 +735,7 @@ Funcionalidade: Entradas
 
 ## 13. Benefícios
 
-Resumo dos benefícios. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/beneficios.md`](specs/beneficios.md).
+Os benefícios aparecem num carrossel de cards, como os cartões ([seção 21](#21-benefícios-em-carrossel)). Resumo dos benefícios. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/beneficios.md`](specs/beneficios.md).
 
 ```gherkin
 # language: pt
@@ -754,14 +755,14 @@ Funcionalidade: Benefícios
   Cenário: Nenhum benefício cadastrado
     Dado que não há benefícios
     Quando eu abro a aba "Benefícios"
-    Então vejo "Nenhum benefício ainda." e o botão "Novo benefício"
+    Então vejo só o card "Novo benefício", com "Nenhum benefício ainda."
 
   Cenário: Criar um benefício
-    Quando eu toco em "Novo benefício"
+    Quando eu toco no card "Novo benefício"
     E preencho o nome "VR", o valor mensal "800" e mantenho o mês inicial
     E toco em "Adicionar"
-    Então vejo o cartão "VR" com o selo "Mensal"
-    E ele mostra crédito R$ 800,00, sobra anterior R$ 0,00, gasto R$ 0,00 e disponível R$ 800,00
+    Então vejo o card "VR" com o selo "Mensal" no carrossel
+    E ele mostra disponível R$ 800,00 e "Crédito R$ 800,00 · Sobra anterior R$ 0,00 · Gasto R$ 0,00"
     E vejo "Sem gastos neste mês."
 
   @regra
@@ -796,9 +797,9 @@ Funcionalidade: Benefícios
     Então o disponível fica negativo
     E o mês seguinte começa com essa sobra negativa
 
-  Cenário: Disponível em todos os benefícios
+  Cenário: Sem faixa de total
     Dado que "VR" tem R$ 500,00 disponíveis e "VA" tem R$ 200,00
-    Então a faixa "Disponível em todos os benefícios" mostra R$ 700,00
+    Então a aba não mostra a faixa "Disponível em todos os benefícios"; cada card mostra o seu disponível
 
   Cenário: Reajuste do valor mensal daqui em diante
     Dado que "VR" vale R$ 800,00 desde o mês inicial
@@ -1407,4 +1408,38 @@ Funcionalidade: Telas próprias de entradas, contas fixas e gastos do dia a dia
   Cenário: Mês fora do alcance
     Quando eu abro uma tela com um mês depois do último que a aba abre
     Então vejo a mesma tela no mês mais próximo que ela abre
+```
+
+---
+
+## 21. Benefícios em carrossel
+
+Resumo. A especificação completa está em [`specs/beneficios-em-carrossel.md`](specs/beneficios-em-carrossel.md).
+
+```gherkin
+# language: pt
+
+Funcionalidade: Benefícios em carrossel
+  Contexto:
+    Dado que existem os benefícios "VR" (R$ 800,00) e "VA" (R$ 500,00)
+
+  Cenário: Benefícios como cards na horizontal
+    Quando eu abro a aba "Benefícios"
+    Então vejo os cards "VR" e "VA" lado a lado num carrossel, com o card "Novo benefício" depois do último
+    E não há botão "Novo benefício" no topo
+
+  Cenário: O que o card mostra
+    Então cada card mostra o nome com "Mensal", o Disponível do mês, "Crédito · Sobra anterior · Gasto" e a barra de percentual
+    E editar e excluir aparecem só no card ativo
+
+  Cenário: Trocar de benefício
+    Quando eu deslizo até o "VA" ou toco no pontinho "VA"
+    Então o "VA" fica selecionado
+    E "Por categoria" e os gastos abaixo passam a ser os do "VA"
+
+  Cenário: A seleção acompanha o mês e a aba
+    Dado que o "VA" está selecionado
+    Quando eu troco de mês ou de aba e volto
+    Então o "VA" continua selecionado, enquanto o app está aberto
+    Mas se ele não existe naquele mês, o primeiro benefício fica selecionado
 ```
