@@ -8,14 +8,14 @@ As funcionalidades estão descritas em BDD em [`FUNCIONALIDADES.md`](FUNCIONALID
 
 - A interface (`src/pages/dashboard.tsx`, `src/index.css`) é a mesma do app web.
 - O pacote `@workspace/api-client-react`, que no app web chama a API, aqui é um **alias** para `src/data/api.ts`. Esse módulo exporta os mesmos hooks (`useGetCard`, `useCreateMovement`, …), mas lê e grava localmente.
-- `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 9`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
+- `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 10`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
 - As fontes (Fraunces, DM Sans e DM Mono) vêm junto com o app via `@fontsource`, então funcionam offline.
 
 ### Compras e categorias
 
 A especificação completa está em [`specs/compras-e-categorias.md`](specs/compras-e-categorias.md).
 
-- As compras são registradas **direto no cartão**, sem planejamento prévio, e cada uma **consome o limite pelo valor gasto**. Gastar acima do limite é permitido (o disponível fica negativo).
+- As compras são registradas **direto no cartão**, sem planejamento prévio, e o cartão **não tem limite**: o que importa é o total da **fatura** do mês ([`specs/cartao-sem-limite.md`](specs/cartao-sem-limite.md)).
 - A **categoria é opcional** e vem de uma lista **global**, a mesma para todos os cartões. Ela só classifica: não tem orçamento, mês nem estado aberto/fechado. Excluir uma categoria deixa as compras dela "Sem categoria".
 - A tela do cartão mostra a lista de compras do mês, o filtro por categoria e o resumo por categoria. As categorias são gerenciadas num lugar só, a tela "Categorias" (`#/categorias`, em [`specs/tela-de-categorias.md`](specs/tela-de-categorias.md)), aberta pelo botão "Categorias" de cada aba.
 
@@ -23,14 +23,13 @@ A especificação completa está em [`specs/compras-e-categorias.md`](specs/comp
 
 Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês do calendário**: a data da compra define o mês dela. As especificações completas estão em [`specs/historico-mensal.md`](specs/historico-mensal.md) e [`specs/multiplos-cartoes.md`](specs/multiplos-cartoes.md).
 
-- O app aceita vários cartões, cada um com cor, limite, meses e compras próprios. A troca é feita num carrossel horizontal no estilo das carteiras digitais, e o app lembra o último cartão usado.
-- Com 2 cartões ou mais, o painel mostra a faixa "Todos os cartões" (usado, disponível e limite somados no mês), e o histórico ganha uma linha com o total de cada mês.
+- O app aceita vários cartões, cada um com nome, cor, meses e compras próprios. A troca é feita num carrossel horizontal no estilo das carteiras digitais, e o app lembra o último cartão usado.
+- Com 2 cartões ou mais, o histórico ganha, em cada mês, a linha "Todos os cartões" com o total das faturas.
 - `#/` mostra o mês corrente, `#/mes/AAAA-MM` mostra outro mês e `#/historico` lista todos os meses com seus totais. As rotas usam hash porque o bundle tem base relativa.
 - **O mês é o mesmo nas três abas** ([`specs/mes-compartilhado.md`](specs/mes-compartilhado.md)): o seletor de mês fica acima da barra de abas e trocar de aba mantém o mês (`#/entradas/mes/AAAA-MM`, `#/beneficios/mes/AAAA-MM`). Se a aba de destino não abre aquele mês, abre o mais próximo. O app **lembra o último mês aberto** (só um mês que não é o corrente) e abre a aba Cartões nele; "Voltar para o mês atual" apaga a lembrança, e um endereço com mês vale mais que ela.
-- Na virada do mês, o mês novo começa sozinho, com o limite atual do cartão, sem perguntar nada.
-- Cada mês guarda o limite do cartão da época. Editar o limite muda só o mês corrente daquele cartão.
+- Na virada do mês, o mês novo começa sozinho, sem perguntar nada.
 - Meses passados continuam editáveis. Um mês futuro abre até o último mês que tenha parcela prevista ou compra registrada: mostra as parcelas previstas e as compras já registradas, e aceita "Registrar compra", mas não é iniciado até chegar.
-- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, a `version: 4` acrescenta a lista vazia de compras parceladas, a `version: 5` acrescenta as listas vazias de entradas, a `version: 6` troca as categorias-envelope por categorias globais (os lançamentos viram compras no cartão em que estavam; orçamentos e o estado aberto/fechado são descartados), a `version: 7` acrescenta as listas vazias de benefícios, a `version: 8` acrescenta as listas vazias de contas fixas e de gastos do dia a dia, e a `version: 9` acrescenta as listas vazias de compras recorrentes.
+- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, a `version: 4` acrescenta a lista vazia de compras parceladas, a `version: 5` acrescenta as listas vazias de entradas, a `version: 6` troca as categorias-envelope por categorias globais (os lançamentos viram compras no cartão em que estavam; orçamentos e o estado aberto/fechado são descartados), a `version: 7` acrescenta as listas vazias de benefícios, a `version: 8` acrescenta as listas vazias de contas fixas e de gastos do dia a dia, a `version: 9` acrescenta as listas vazias de compras recorrentes, e a `version: 10` apaga o limite dos cartões e dos meses.
 
 ### Parcelamento
 
@@ -54,7 +53,7 @@ A especificação completa está em [`specs/entradas.md`](specs/entradas.md).
 A especificação completa está em [`specs/compra-recorrente.md`](specs/compra-recorrente.md).
 
 - Uma compra recorrente (assinatura) guarda a descrição, o valor mensal, o dia, a categoria opcional, o mês inicial e o mês final opcional. Cadastra-se pelo interruptor "Compra recorrente" do "Registrar compra" (não fica ligado junto com "Compra parcelada").
-- Funciona como o parcelamento: cada cobrança até o mês corrente é gravada como **compra comum** (selo "Mensal"), e as dos meses futuros são **previstas** (calculadas, até 12 meses à frente) e já entram no usado previsto, na prévia de meses e nos "Próximos meses" do Histórico.
+- Funciona como o parcelamento: cada cobrança até o mês corrente é gravada como **compra comum** (selo "Mensal"), e as dos meses futuros são **previstas** (calculadas, até 12 meses à frente) e já entram na fatura prevista, na prévia de meses e nos "Próximos meses" do Histórico.
 - Editar ou excluir uma cobrança pergunta "Só este mês" ou "Este e os próximos", como nas entradas e contas fixas. Um reajuste vale daqui em diante sem reescrever o passado.
 
 ### Contas fixas, gastos do dia a dia e saldo
@@ -63,7 +62,7 @@ A especificação completa está em [`specs/contas-e-gastos.md`](specs/contas-e-
 
 - **Conta fixa** (aluguel, internet…): despesa mensal com nome, valor, dia e mês final opcional. Como as entradas recorrentes, os meses são calculados e editar ou excluir pergunta "Só este mês" ou "Este e os próximos".
 - **Gasto do dia a dia**: despesa avulsa (descrição, valor, data) com categoria global opcional e um resumo por categoria no mês. Aceita datas até 12 meses à frente.
-- **Resultado do mês** = entradas − contas fixas − gastos do dia a dia − o usado dos cartões no mês. O **Saldo** do mês é o **Saldo anterior + o resultado**, e passa para o mês seguinte: a sobra e a falta acumulam. O saldo anterior é a soma dos resultados desde o primeiro mês com entrada, conta fixa ou gasto (os cartões não definem o início), calculada a cada leitura, e os meses futuros projetam o saldo. A tela **só lê** os cartões: nada daqui altera cartões, compras ou benefícios, e os benefícios não entram no saldo.
+- **Resultado do mês** = entradas − contas fixas − gastos do dia a dia − o total das faturas no mês. O **Saldo** do mês é o **Saldo anterior + o resultado**, e passa para o mês seguinte: a sobra e a falta acumulam. O saldo anterior é a soma dos resultados desde o primeiro mês com entrada, conta fixa ou gasto (os cartões não definem o início), calculada a cada leitura, e os meses futuros projetam o saldo. A tela **só lê** os cartões: nada daqui altera cartões, compras ou benefícios, e os benefícios não entram no saldo.
 
 ### Benefícios
 
@@ -79,18 +78,17 @@ A especificação completa está em [`specs/beneficios.md`](specs/beneficios.md)
 
 ### Regras de cálculo
 
-Todos os valores abaixo são calculados **por cartão e dentro de um mês**, só com as compras daquele cartão naquele mês. O total "Todos os cartões" soma, para cada cartão, o limite do mês e o usado.
+Todos os valores abaixo são calculados **por cartão e dentro de um mês**, só com as compras daquele cartão naquele mês. O total das faturas soma a fatura de cada cartão.
 
 | Valor | Cálculo |
 | ----- | ------- |
-| **Usado (cartão)** | soma das compras do cartão no mês. Num mês futuro, soma também as parcelas previstas |
-| **Disponível** | limite do mês − usado |
-| Percentual | usado ÷ limite do mês (a barra é limitada a 100%) |
-| Resumo por categoria | soma das compras de cada categoria no mês e a participação no usado; compras sem categoria ficam em "Sem categoria" |
-| **Resultado do mês** (aba Entradas) | entradas − contas fixas − gastos do dia a dia − usado dos cartões, só do mês |
+| **Fatura (cartão)** | soma das compras do cartão no mês. Num mês futuro, soma também as parcelas e as cobranças previstas |
+| **Total das faturas** | soma das faturas de todos os cartões no mês |
+| Resumo por categoria | soma das compras de cada categoria no mês e a participação no total; compras sem categoria ficam em "Sem categoria" |
+| **Resultado do mês** (aba Entradas) | entradas − contas fixas − gastos do dia a dia − total das faturas, só do mês |
 | **Saldo do mês** (aba Entradas) | saldo anterior (soma dos resultados dos meses antes) + resultado do mês |
 
-Não existe reserva de orçamento: o limite só é consumido pelo que foi de fato comprado. Remover um cartão apaga os meses, as compras e as compras parceladas dele, sem alterar os outros cartões nem as categorias.
+Não existe limite nem reserva de orçamento: só contam as compras de fato lançadas. Remover um cartão apaga os meses, as compras e as compras parceladas dele, sem alterar os outros cartões nem as categorias.
 
 ## Como adicionar uma funcionalidade
 

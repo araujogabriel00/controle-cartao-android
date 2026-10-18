@@ -1,18 +1,18 @@
 import { type KeyboardEvent, useEffect, useLayoutEffect, useRef } from 'react';
 import { FilePenLine, Plus, Trash2 } from 'lucide-react';
 import { CARD_COLORS, type CardColor } from '@/lib/card-colors';
-import { money } from '@/lib/format';
+import { isFutureMonth, money, monthLabel, plural, type MonthKey } from '@/lib/format';
 
 export type CarouselCard = {
   id: number; name: string; color: CardColor;
-  limitAmount: number; usedAmount: number; availableAmount: number; percentUsed: number;
+  invoiceAmount: number; movementCount: number;
 };
 
 // Wallet-style card picker (Samsung Wallet): one card face per slide, snapped
 // to the center, neighbours peeking at the edges, an "add card" slot at the end.
 // Whatever card settles in the middle becomes the selected one.
-export function CardCarousel({ cards, selectedId, onSelect, onAdd, onEdit, onDelete }: {
-  cards: CarouselCard[]; selectedId: number | null;
+export function CardCarousel({ cards, month, selectedId, onSelect, onAdd, onEdit, onDelete }: {
+  cards: CarouselCard[]; month: MonthKey; selectedId: number | null;
   onSelect: (cardId: number) => void; onAdd: () => void;
   onEdit: (card: CarouselCard) => void; onDelete: (card: CarouselCard) => void;
 }) {
@@ -93,16 +93,15 @@ export function CardCarousel({ cards, selectedId, onSelect, onAdd, onEdit, onDel
           <div className="absolute -right-20 -top-28 h-72 w-72 rounded-full border border-white/10"/><div className="absolute -right-8 -top-16 h-52 w-52 rounded-full border border-white/10"/>
           <div className="relative flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-mono-data text-[10px] uppercase tracking-[.18em] opacity-80" style={{ color: accent }}>Visão do cartão</p><h2 className="mt-2 line-clamp-2 font-display text-2xl leading-tight [overflow-wrap:anywhere]">{card.name}</h2></div>
             <div className={`flex shrink-0 gap-2 ${active ? '' : 'invisible'}`}><button aria-label="Editar cartão" data-testid="button-edit-card" tabIndex={active ? 0 : -1} onClick={() => onEdit(card)} className="rounded-full border border-white/20 p-2 text-white/80 transition hover:bg-white/10"><FilePenLine size={15}/></button><button aria-label="Remover cartão" data-testid="button-delete-card" tabIndex={active ? 0 : -1} onClick={() => onDelete(card)} className="rounded-full border border-white/20 p-2 text-white/80 transition hover:bg-white/10 hover:text-[#f1b5a5]"><Trash2 size={15}/></button></div></div>
-          <div className="relative mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2"><div className="min-w-0"><p className="text-[11px] text-white/70">Disponível para usar</p><p className="mt-1 font-display text-[clamp(26px,8vw,38px)] leading-tight tracking-[-.03em] [overflow-wrap:anywhere]">{money(card.availableAmount)}</p></div><div className="min-w-0 border-t border-white/15 pt-4 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0"><p className="text-[11px] text-white/70">Usado no mês</p><p className="mt-2 font-mono-data text-[20px] [overflow-wrap:anywhere]" style={{ color: accent }}>{money(card.usedAmount)}</p></div></div>
-          <div className="relative mt-7"><div className="mb-2 flex justify-between text-[10px] text-white/70"><span>Limite utilizado</span><span className="font-mono-data" style={{ color: accent }}>{Number(card.percentUsed).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span></div><div className="h-2 overflow-hidden rounded-full bg-white/15"><div className="progress-fill h-full rounded-full" style={{ background: accent, transform: `scaleX(${Math.min(100, Math.max(0, card.percentUsed)) / 100})` }}/></div><p className="mt-2 text-right text-[10px] text-white/70">de {money(card.limitAmount)}</p></div>
-          {card.usedAmount === 0 && <p className="relative mt-4 text-[11px] text-white/70">Seu primeiro gasto ainda está por vir. Tudo começa com um registro.</p>}
+          <div className="relative mt-8 min-w-0"><p className="text-[11px] text-white/70">{isFutureMonth(month) ? 'Fatura prevista de' : 'Fatura de'} {monthLabel(month)}</p><p className="mt-1 font-display text-[clamp(26px,8vw,38px)] leading-tight tracking-[-.03em] [overflow-wrap:anywhere]">{money(card.invoiceAmount)}</p></div>
+          <p className="relative mt-4 text-[11px] text-white/70">{card.movementCount === 0 ? 'Nenhuma compra neste mês.' : plural(card.movementCount, 'compra', 'compras')}</p>
         </article>;
       })}
       <button ref={(el) => { slides.current[cards.length] = el; }} data-testid="button-add-card" onClick={onAdd}
         className="flex w-[86%] shrink-0 snap-center flex-col items-center justify-center gap-3 rounded-[26px] border-2 border-dashed border-[#cfc7b7] bg-[#f8f5ed] p-6 text-[#496754] transition hover:bg-[#f1ede3]">
         <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#e4ece2] text-[#52735c]"><Plus size={22}/></span>
         <span className="font-display text-[22px] text-[#234638]">Adicionar cartão</span>
-        <span className="max-w-[220px] text-center text-xs leading-5 text-[#7d887c]">Cada cartão tem seu limite, suas categorias e seus lançamentos.</span>
+        <span className="max-w-[220px] text-center text-xs leading-5 text-[#7d887c]">Cada cartão tem suas compras e a fatura de cada mês.</span>
       </button>
       <div aria-hidden className="w-[calc(7%-12px)] shrink-0"/>
     </div>

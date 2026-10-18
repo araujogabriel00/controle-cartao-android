@@ -35,7 +35,6 @@ export const getGetCategorySummaryQueryKey = (cardId?: number, month?: store.Mon
 export const getGetMovementsQueryKey = (cardId?: number, month?: store.MonthKey) => key('movements', cardId, month);
 export const getGetMonthHistoryQueryKey = (cardId?: number) => key('months', cardId);
 export const getGetMonthStatusQueryKey = (cardId?: number) => key('months', cardId, 'status');
-export const getGetConsolidatedQueryKey = (month?: store.MonthKey) => key('consolidated', month);
 export const getGetConsolidatedHistoryQueryKey = () => ['consolidated', 'history'] as const;
 export const getGetFutureInstallmentsQueryKey = (cardId?: number) => key('installments', cardId);
 export const getGetMonthPreviewQueryKey = (cardId: number, month: store.MonthKey) => ['installments', cardId, 'preview', month] as const;
@@ -77,8 +76,6 @@ export const useGetMonthHistory = (cardId: number, options?: QueryOpts<store.Mon
 export const useGetMonthStatus = (cardId: number, options?: QueryOpts<store.MonthStatus>) =>
   useLocalQuery(getGetMonthStatusQueryKey(cardId), () => store.getMonthStatus(cardId), options);
 
-export const useGetConsolidated = (month: store.MonthKey, options?: QueryOpts<store.Consolidated>) =>
-  useLocalQuery(getGetConsolidatedQueryKey(month), () => store.getConsolidated(month), options);
 
 export const useGetConsolidatedHistory = (options?: QueryOpts<store.Consolidated[]>) =>
   useLocalQuery(getGetConsolidatedHistoryQueryKey(), store.getConsolidatedHistory, options);

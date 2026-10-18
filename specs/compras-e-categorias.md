@@ -8,6 +8,7 @@
 | Depende de | [`historico-mensal.md`](historico-mensal.md), [`multiplos-cartoes.md`](multiplos-cartoes.md), [`parcelamento.md`](parcelamento.md) |
 | Substitui em parte | As regras de categoria-envelope (orçamento, fechar/abrir, categoria por mês, copiar categorias na virada do mês, parcela fixa em categoria fechada) dessas três specs. O restante delas continua valendo. |
 | Substituída em parte por | [`tela-de-categorias.md`](tela-de-categorias.md): o diálogo "Categorias" virou a tela `#/categorias`; as regras das categorias continuam as mesmas. |
+| Substituída em parte por | [`cartao-sem-limite.md`](cartao-sem-limite.md): o cartão não tem mais limite, disponível nem percentual; a face do cartão, o Histórico e a faixa "Todos os cartões" mostram a fatura. |
 
 > Esta spec é a fonte da verdade da funcionalidade. A implementação segue a seção [Tarefas](#11-tarefas) e só termina quando todos os [Critérios de aceite](#10-critérios-de-aceite) forem atendidos. Mudanças de comportamento entram primeiro aqui e só depois no código.
 >

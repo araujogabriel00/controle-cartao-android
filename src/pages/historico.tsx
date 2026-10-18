@@ -5,7 +5,6 @@ import {
 } from '@workspace/api-client-react';
 import { ArrowLeft, CalendarClock, CalendarDays, ChevronRight, CircleHelp, History } from 'lucide-react';
 import { AppTabs } from '@/components/app-tabs';
-import { Progress } from '@/components/progress';
 import { capitalize, currentMonth, money, monthLabel, monthPath } from '@/lib/format';
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
@@ -34,7 +33,7 @@ export default function Historico() {
       <section className="enter mt-9 sm:mt-12" style={{ animationDelay: '.06s' }}>
         <div className="flex items-center gap-2 text-[#ac8f60]"><History size={14}/><p className="font-mono-data text-[10px] uppercase tracking-[.2em]">Histórico</p></div>
         <h1 className="mt-2 font-display text-[42px] leading-[1.05] tracking-[-.03em] text-[#234638] sm:text-[54px]">Mês a <em className="font-medium text-[#d78470]">mês.</em></h1>
-        <p className="mt-3 max-w-lg text-sm leading-6 text-[#6e7a6f]">{card ? <><b data-testid="text-history-card" className="font-semibold text-[#42624d]">{card.name}</b> — quanto</> : 'Quanto'} o cartão usou do limite em cada mês.</p>
+        <p className="mt-3 max-w-lg text-sm leading-6 text-[#6e7a6f]">{card ? <><b data-testid="text-history-card" className="font-semibold text-[#42624d]">{card.name}</b> — a fatura de cada mês.</> : 'A fatura do cartão em cada mês.'}</p>
       </section>
 
       {!loading && upcoming.length > 0 && <section data-testid="section-upcoming" aria-labelledby="upcoming-title" className="enter mt-8 rounded-[22px] border border-[#e6d7b8] bg-[#f8efd9] p-4 sm:p-5" style={{ animationDelay: '.08s' }}>
@@ -56,13 +55,8 @@ export default function Historico() {
             <div className="flex min-w-0 items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] bg-[#e4ece2] text-[#52735c]"><CalendarDays size={17}/></span><span className="min-w-0"><span className="block truncate font-display text-[22px] leading-tight text-[#234638]">{capitalize(monthLabel(item.month))}</span><span className="mt-1 block text-[10px] text-[#899186]">{plural(item.movementCount, 'compra', 'compras')}</span></span></div>
             <ChevronRight size={18} className="mt-2 shrink-0 text-[#8c9388]"/>
           </div>
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            <div className="min-w-0"><p className="text-[10px] text-[#7c877a]">Usado</p><p className="mt-1 font-mono-data text-[18px] text-[#a36354] [overflow-wrap:anywhere] sm:text-[20px]">{money(item.usedAmount)}</p></div>
-            <div className="min-w-0 border-l border-[#e9e3d8] pl-3"><p className="text-[10px] text-[#7c877a]">Disponível</p><p className="mt-1 font-mono-data text-[18px] text-[#315944] [overflow-wrap:anywhere] sm:text-[20px]">{money(item.availableAmount)}</p></div>
-          </div>
-          <div className="mt-4 flex items-center gap-3"><div className="flex-1"><Progress value={item.percentUsed} tone={item.percentUsed > 85 ? 'peach' : 'green'}/></div><span className="w-9 text-right font-mono-data text-[9px] text-[#8c9388]">{Number(item.percentUsed).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%</span></div>
-          <p className="mt-2 text-right text-[10px] text-[#8c9388]">limite de {money(item.limitAmount)}</p>
-          {totalOf(item.month) && <p data-testid={`text-all-cards-${item.month}`} className="mt-3 border-t border-[#e9e3d8] pt-3 text-[10px] text-[#7c877a]"><b className="font-semibold text-[#42624d]">Todos os cartões:</b> usado <span className="font-mono-data text-[#a36354]">{money(totalOf(item.month)?.usedAmount)}</span> · disponível <span className="font-mono-data text-[#315944]">{money(totalOf(item.month)?.availableAmount)}</span></p>}
+          <div className="mt-5 min-w-0"><p className="text-[10px] text-[#7c877a]">Fatura</p><p className="mt-1 font-mono-data text-[18px] text-[#a36354] [overflow-wrap:anywhere] sm:text-[20px]">{money(item.invoiceAmount)}</p></div>
+          {totalOf(item.month) && <p data-testid={`text-all-cards-${item.month}`} className="mt-3 border-t border-[#e9e3d8] pt-3 text-[10px] text-[#7c877a]"><b className="font-semibold text-[#42624d]">Todos os cartões:</b> fatura <span className="font-mono-data text-[#a36354]">{money(totalOf(item.month)?.invoiceAmount)}</span></p>}
         </button>)}
       </div>
       : <div className="mt-8 rounded-2xl border border-dashed border-[#d9d2c4] bg-[#f8f5ed] px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#e8e9df] text-[#63806a]"><History size={18}/></div><h3 className="mt-3 font-display text-[20px] text-[#345443]">Nada por aqui ainda.</h3><p className="mx-auto mt-1 max-w-xs text-xs leading-5 text-[#7d887c]">Seu histórico começa quando você cadastrar o cartão.</p></div>}
