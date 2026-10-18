@@ -46,8 +46,17 @@ export const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.
 // Today when it falls inside the month, otherwise the month's last day.
 export const defaultDateFor = (month: MonthKey) => monthOf(today()) === month ? today() : lastDayOf(month);
 
-// The current month always lives at "/".
-export const monthPath = (month: MonthKey) => month === currentMonth() ? '/' : `/mes/${month}`;
+// The three areas of the app (the tabs). The current month always lives at the
+// area's short route; any other month at "<area>/mes/AAAA-MM" (shared-month RN-02).
+export type Area = 'cards' | 'income' | 'benefits';
+const AREA_ROOT: Record<Area, string> = { cards: '', income: '/entradas', benefits: '/beneficios' };
+export const areaPath = (area: Area, month: MonthKey) => (month === currentMonth() ? AREA_ROOT[area] || '/' : `${AREA_ROOT[area]}/mes/${month}`);
+export const monthPath = (month: MonthKey) => areaPath('cards', month);
+// RN-01: the open month is the one at the end of the address; without it, the current month.
+export const monthInPath = (path: string): MonthKey => {
+  const month = path.match(/\/mes\/(\d{4}-\d{2})$/)?.[1];
+  return month && isMonthKey(month) ? month : currentMonth();
+};
 
 // "1 compra", "2 compras"
 export const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;

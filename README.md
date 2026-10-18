@@ -26,6 +26,7 @@ Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês 
 - O app aceita vários cartões, cada um com cor, limite, meses e compras próprios. A troca é feita num carrossel horizontal no estilo das carteiras digitais, e o app lembra o último cartão usado.
 - Com 2 cartões ou mais, o painel mostra a faixa "Todos os cartões" (usado, disponível e limite somados no mês), e o histórico ganha uma linha com o total de cada mês.
 - `#/` mostra o mês corrente, `#/mes/AAAA-MM` mostra outro mês e `#/historico` lista todos os meses com seus totais. As rotas usam hash porque o bundle tem base relativa.
+- **O mês é o mesmo nas três abas** ([`specs/mes-compartilhado.md`](specs/mes-compartilhado.md)): o seletor de mês fica acima da barra de abas e trocar de aba mantém o mês (`#/entradas/mes/AAAA-MM`, `#/beneficios/mes/AAAA-MM`). Se a aba de destino não abre aquele mês, abre o mais próximo. O app **lembra o último mês aberto** (só um mês que não é o corrente) e abre a aba Cartões nele; "Voltar para o mês atual" apaga a lembrança, e um endereço com mês vale mais que ela.
 - Na virada do mês, o mês novo começa sozinho, com o limite atual do cartão, sem perguntar nada.
 - Cada mês guarda o limite do cartão da época. Editar o limite muda só o mês corrente daquele cartão.
 - Meses passados continuam editáveis. Um mês futuro abre até o último mês que tenha parcela prevista ou compra registrada: mostra as parcelas previstas e as compras já registradas, e aceita "Registrar compra", mas não é iniciado até chegar.
@@ -147,10 +148,12 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── data/
 │   │   ├── store.ts        # armazenamento local, validações, cálculos e migração
 │   │   └── api.ts          # hooks compatíveis com @workspace/api-client-react
-│   ├── lib/format.ts       # formatação de valores, datas e meses
+│   ├── lib/format.ts       # formatação de valores, datas e meses; caminho de cada aba num mês
+│   ├── lib/last-month.ts   # último mês aberto (lembrado fora do estado)
 │   ├── lib/card-colors.ts  # paleta de cores dos cartões
 │   ├── components/card-carousel.tsx # carrossel de cartões
 │   ├── components/app-tabs.tsx # abas Entradas | Cartões | Benefícios
+│   ├── components/month-nav.tsx # seletor de mês, acima das abas
 │   ├── pages/dashboard.tsx # painel de um mês
 │   ├── pages/historico.tsx # lista de meses
 │   ├── pages/entradas.tsx  # entradas do mês

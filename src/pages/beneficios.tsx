@@ -7,13 +7,13 @@ import {
   useGetBenefitRange, useGetBenefits, useGetCategories, useReopenBenefitCategory, useUpdateBenefit, useUpdateBenefitSpend,
   type BenefitCategoryRow, type BenefitItem, type BenefitSpend, type Category,
 } from '@workspace/api-client-react';
-import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, FilePenLine, Plus, Repeat, Tag, Trash2, Utensils, X } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown, CircleHelp, FilePenLine, Plus, Repeat, Tag, Trash2, Utensils, X } from 'lucide-react';
 import { AppTabs } from '@/components/app-tabs';
+import { MonthNav } from '@/components/month-nav';
 import { Progress } from '@/components/progress';
 import { dialogOverlay, dialogPanel } from '@/lib/dialog-styles';
-import { capitalize, currentMonth, dateLabel, firstDayOf, lastDayOf, money, monthLabel, plural, shiftMonth, today, type MonthKey } from '@/lib/format';
-
-export const benefitPath = (month: MonthKey) => (month === currentMonth() ? '/beneficios' : `/beneficios/mes/${month}`);
+import { useRememberMonth } from '@/lib/last-month';
+import { capitalize, dateLabel, firstDayOf, lastDayOf, money, monthLabel, plural, today, type MonthKey } from '@/lib/format';
 
 type BenefitValues = { name: string; amount: number; firstMonth: MonthKey; from: MonthKey; lastMonth: MonthKey | null; split: { categoryId: number; amount: number }[] };
 
@@ -108,6 +108,7 @@ function SpendDialog({ month, benefit, spend, categories, busy, onClose, onSave 
 }
 
 export default function Beneficios({ month }: { month: MonthKey }) {
+  useRememberMonth(month);
   const [, navigate] = useLocation();
   const client = useQueryClient();
   const benefitsQuery = useGetBenefits(month, { query: { queryKey: getGetBenefitsQueryKey(month), refetchOnWindowFocus: true } });
@@ -159,18 +160,13 @@ export default function Beneficios({ month }: { month: MonthKey }) {
 
   const canGoPrevious = !range || month > range.first;
   const canGoNext = !range || month < range.last;
-  const isCurrentMonth = month === currentMonth();
   const busy = createBenefit.isPending || updateBenefit.isPending || createSpend.isPending || updateSpend.isPending;
 
   return <main className="notebook-grain min-h-safe bg-[#f5f1e7] text-[#294438]">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
+      <MonthNav area="benefits" month={month} canGoPrevious={canGoPrevious} canGoNext={canGoNext}/>
       <AppTabs/>
 
-      <nav aria-label="Mês" className="enter mt-4 flex items-center justify-between gap-2 rounded-full border border-[#e1dbce] bg-[#fbf8f0] p-1.5">
-        <button data-testid="button-previous-month" aria-label="Mês anterior" disabled={!canGoPrevious} onClick={() => navigate(benefitPath(shiftMonth(month, -1)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#546b5d] transition hover:bg-[#ece7dc] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"><ChevronLeft size={17}/></button>
-        <div className="min-w-0 text-center"><p data-testid="text-month" className="truncate font-display text-[17px] text-[#234638]">{capitalize(monthLabel(month))}</p>{!isCurrentMonth && <button data-testid="button-current-month" onClick={() => navigate('/beneficios')} className="text-[10px] font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4">Voltar para o mês atual</button>}</div>
-        <button data-testid="button-next-month" aria-label="Próximo mês" disabled={!canGoNext} onClick={() => navigate(benefitPath(shiftMonth(month, 1)))} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#546b5d] transition hover:bg-[#ece7dc] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"><ChevronRight size={17}/></button>
-      </nav>
 
       <section className="enter mt-6 flex flex-wrap justify-end gap-2" style={{ animationDelay: '.06s' }}>
         <div className="flex flex-wrap gap-2"><button data-testid="button-categories" onClick={() => navigate('/categorias')} className="flex items-center gap-1.5 rounded-full border border-[#d9d2c4] bg-[#faf7ef] px-4 py-3 text-xs font-semibold text-[#496754] transition hover:bg-[#eee9dd]"><Tag size={14}/> Categorias</button><button data-testid="button-new-benefit" onClick={() => setBenefitDialog({})} className="flex items-center gap-2 rounded-full bg-[#28513f] px-5 py-3.5 text-[13px] font-semibold text-[#fffaf0] shadow-[0_8px_18px_-10px_rgba(38,80,61,.7)] transition hover:-translate-y-0.5 hover:bg-[#1f4333]"><Plus size={16}/> Novo benefício</button></div>

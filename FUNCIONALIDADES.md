@@ -12,6 +12,8 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 >
 > Uma **compra parcelada** vira uma compra comum em cada mês em que cai, e os meses futuros mostram as parcelas previstas junto com as compras já registradas. Uma **compra recorrente** (assinaturas) funciona do mesmo jeito, repetindo todo mês: seção [15. Compra recorrente](#15-compra-recorrente). Os detalhes estão na seção [11. Parcelamento](#11-parcelamento) e na spec [`specs/parcelamento.md`](specs/parcelamento.md).
 >
+> O **mês aberto é o mesmo nas três abas** (Entradas, Cartões e Benefícios): o seletor de mês fica acima da barra de abas, trocar de aba mantém o mês, e o app lembra o último mês aberto. Os detalhes estão na seção [16. Mês compartilhado](#16-mês-compartilhado) e na spec [`specs/mes-compartilhado.md`](specs/mes-compartilhado.md).
+>
 > Os **benefícios** (VR, VA etc.) são um saldo mensal numa aba própria, independente dos cartões e das entradas. Os detalhes estão na seção [13. Benefícios](#13-benefícios) e na spec [`specs/beneficios.md`](specs/beneficios.md).
 >
 > As **entradas** (salário, pró-labore, bônus) ficam numa aba própria, separada dos cartões, e não alteram nenhum valor deles. A mesma aba tem as **contas fixas**, os **gastos do dia a dia** e o **saldo do mês** (entradas − saídas − o usado dos cartões), que **acumula** para os meses seguintes. Os detalhes estão nas seções [12. Entradas](#12-entradas) e [14. Contas fixas e gastos do dia a dia](#14-contas-fixas-e-gastos-do-dia-a-dia) e nas specs [`specs/entradas.md`](specs/entradas.md) e [`specs/contas-e-gastos.md`](specs/contas-e-gastos.md).
@@ -33,6 +35,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 13. [Benefícios](#13-benefícios)
 14. [Contas fixas e gastos do dia a dia](#14-contas-fixas-e-gastos-do-dia-a-dia)
 15. [Compra recorrente](#15-compra-recorrente)
+16. [Mês compartilhado](#16-mês-compartilhado)
 
 ---
 
@@ -372,8 +375,9 @@ Funcionalidade: Carregamento e tratamento de erros
     Então vejo a página de "não encontrado"
 
   Cenário: Mês inválido ou futuro
-    Quando eu acesso "#/mes/2026-13" ou um mês futuro depois do último com parcela prevista ou compra registrada
+    Quando eu acesso "#/mes/2026-13"
     Então sou levado para o painel do mês atual
+    Mas um mês que a aba não abre (por exemplo, um mês futuro depois do último com parcela prevista ou compra registrada) leva ao mês mais próximo que ela abre (seção 16)
 ```
 
 ## 7. Formulários
@@ -1171,4 +1175,88 @@ Funcionalidade: Compra recorrente
     Dado que "Streaming" é recorrente sem fim
     Quando eu abro o Histórico
     Então "Próximos meses" mostra cada mês até 12 meses à frente com a cobrança
+```
+
+---
+
+## 16. Mês compartilhado
+
+Resumo da navegação por mês nas três abas. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/mes-compartilhado.md`](specs/mes-compartilhado.md).
+
+```gherkin
+# language: pt
+
+Funcionalidade: Mês compartilhado entre as abas
+  Como pessoa que acompanha o dinheiro mês a mês
+  Quero trocar de aba sem perder o mês que estou olhando
+  Para comparar cartões, entradas e benefícios do mesmo mês
+
+  Contexto:
+    Dado que hoje é 18/10/2026
+
+  Cenário: O seletor de mês fica acima das abas
+    Dado que estou na aba "Entradas", "Cartões" ou "Benefícios"
+    Então o seletor de mês aparece acima da barra de abas, e o conteúdo abaixo dela
+    Mas em "Cartões" a linha com "Histórico" e "Atualizar" continua acima do seletor
+
+  Cenário: Trocar de aba mantém o mês
+    Dado que estou na aba "Entradas" em dezembro de 2026
+    Quando eu toco na aba "Cartões"
+    Então vejo "Cartões" em dezembro de 2026, com o endereço "#/mes/2026-12"
+    Quando eu toco na aba "Benefícios"
+    Então vejo "Benefícios" em dezembro de 2026, com o endereço "#/beneficios/mes/2026-12"
+
+  Cenário: O mês corrente usa a rota curta
+    Dado que estou na aba "Cartões" em outubro de 2026
+    Quando eu toco na aba "Entradas"
+    Então o endereço é "#/entradas"
+
+  @regra
+  Cenário: A aba de destino não abre aquele mês
+    Dado que estou em "Entradas" em março de 2027 e Cartões só abre meses até dezembro de 2026
+    Quando eu toco na aba "Cartões"
+    Então vejo "Cartões" em dezembro de 2026, o mês mais próximo que ela abre, sem mensagem
+    E do mesmo jeito, um mês antes do primeiro que a aba abre leva ao primeiro
+
+  Cenário: Voltar para o mês atual
+    Dado que estou na aba "Benefícios" em dezembro de 2026
+    Quando eu toco em "Voltar para o mês atual"
+    Então vejo "Benefícios" em outubro de 2026
+    E ao tocar na aba "Entradas", vejo outubro de 2026
+
+  Cenário: Trocar de aba a partir do Histórico
+    Dado que estou no Histórico
+    Quando eu toco na aba "Entradas"
+    Então vejo "Entradas" no mês corrente
+    Mas ao tocar num mês do Histórico, abre "Cartões" naquele mês
+
+  Cenário: Abrir o app no último mês
+    Dado que eu estava vendo dezembro de 2026 e fechei o app
+    Quando eu abro o app de novo
+    Então vejo "Cartões" em dezembro de 2026, com o link "Voltar para o mês atual"
+
+  @regra
+  Cenário: O mês corrente não é lembrado
+    Dado que eu estava vendo o mês corrente quando fechei o app
+    Quando eu abro o app num mês novo
+    Então vejo "Cartões" no mês de hoje, e não no mês em que fechei
+
+  Cenário: Voltar para o mês atual apaga a lembrança
+    Dado que o app abriu em dezembro de 2026 por causa da lembrança
+    Quando eu toco em "Voltar para o mês atual"
+    Então vejo o mês corrente
+    E ao fechar e abrir o app de novo, ele abre no mês corrente
+
+  @regra
+  Cenário: Um endereço com mês vale mais que a lembrança
+    Dado que o mês lembrado é dezembro de 2026
+    Quando eu abro "#/entradas/mes/2026-11" direto
+    Então vejo "Entradas" em novembro de 2026, e não em dezembro
+
+  @regra
+  Cenário: Lembrança fora do alcance ou com falha
+    Dado que o mês lembrado é março de 2027 e Cartões só abre até dezembro de 2026
+    Quando eu abro o app
+    Então vejo "Cartões" em dezembro de 2026
+    Mas se a lembrança não puder ser lida ou for inválida, o app abre no mês corrente, sem mensagem
 ```

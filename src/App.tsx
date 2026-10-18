@@ -1,9 +1,10 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { getGetBenefitRangeQueryKey, getGetIncomeRangeQueryKey, getGetLastFutureMonthQueryKey, useGetBenefitRange, useGetIncomeRange, useGetLastFutureMonth } from '@workspace/api-client-react';
-import { currentMonth, isFutureMonth, isMonthKey } from '@/lib/format';
+import { areaPath, currentMonth, isFutureMonth, isMonthKey } from '@/lib/format';
+import { readLastMonth } from '@/lib/last-month';
 import NotFound from '@/pages/not-found';
 import Dashboard from '@/pages/dashboard';
 import Historico from '@/pages/historico';
@@ -21,37 +22,42 @@ import { useHashLocation } from 'wouter/use-hash-location';
 
 const queryClient = new QueryClient();
 
-// Invalid months go back to the current one (RN-03), and so do future months
-// past the last planned installment (installments RN-14); the current month
-// always lives at "/".
+// An invalid month goes back to the current one (RN-06). A month the area doesn't
+// open goes to the nearest one it does (RN-05): Cartões opens up to the last month
+// with a planned charge or a purchase (installments RN-14); the current month
+// always lives at the area's short route.
 function MonthRoute({ month }: { month: string }) {
   const lastPlanned = useGetLastFutureMonth({ query: { queryKey: getGetLastFutureMonthQueryKey(), enabled: isMonthKey(month) && isFutureMonth(month) } });
   if (!isMonthKey(month) || month === currentMonth()) return <Redirect to="/" replace />;
   if (isFutureMonth(month)) {
     if (lastPlanned.isLoading) return null;
-    if (!lastPlanned.data || month > lastPlanned.data) return <Redirect to="/" replace />;
+    if (!lastPlanned.data) return <Redirect to="/" replace />;
+    if (month > lastPlanned.data) return <Redirect to={areaPath('cards', lastPlanned.data)} replace />;
   }
   return <Dashboard key={month} month={month} />;
 }
 
-// Income months outside [oldest income, now + 12 months] go back to the current
-// one (income RN-09); the current month always lives at "/entradas".
-function IncomeMonthRoute({ month }: { month: string }) {
-  const range = useGetIncomeRange({ query: { queryKey: getGetIncomeRangeQueryKey() } });
-  if (!isMonthKey(month) || month === currentMonth()) return <Redirect to="/entradas" replace />;
+// Income and benefit months open from the oldest one (never after now) to now + 12
+// months (income RN-09, benefits RN-12); outside that, the nearest one opens.
+function RangedMonthRoute({ area, month, range, children }: {
+  area: 'income' | 'benefits'; month: string; range: { data?: { first: string; last: string }; isLoading: boolean }; children: ReactNode;
+}) {
+  if (!isMonthKey(month) || month === currentMonth()) return <Redirect to={areaPath(area, currentMonth())} replace />;
   if (range.isLoading) return null;
-  if (!range.data || month < range.data.first || month > range.data.last) return <Redirect to="/entradas" replace />;
-  return <Entradas key={month} month={month} />;
+  if (!range.data) return <Redirect to={areaPath(area, currentMonth())} replace />;
+  const target = month < range.data.first ? range.data.first : month > range.data.last ? range.data.last : month;
+  if (target !== month) return <Redirect to={areaPath(area, target)} replace />;
+  return <>{children}</>;
 }
 
-// Same rule for benefits (benefits RN-12): outside [oldest benefit, now + 12
-// months] goes back to the current month, which lives at "/beneficios".
+function IncomeMonthRoute({ month }: { month: string }) {
+  const range = useGetIncomeRange({ query: { queryKey: getGetIncomeRangeQueryKey() } });
+  return <RangedMonthRoute area="income" month={month} range={range}><Entradas key={month} month={month} /></RangedMonthRoute>;
+}
+
 function BenefitMonthRoute({ month }: { month: string }) {
   const range = useGetBenefitRange({ query: { queryKey: getGetBenefitRangeQueryKey() } });
-  if (!isMonthKey(month) || month === currentMonth()) return <Redirect to="/beneficios" replace />;
-  if (range.isLoading) return null;
-  if (!range.data || month < range.data.first || month > range.data.last) return <Redirect to="/beneficios" replace />;
-  return <Beneficios key={month} month={month} />;
+  return <RangedMonthRoute area="benefits" month={month} range={range}><Beneficios key={month} month={month} /></RangedMonthRoute>;
 }
 
 function Router() {
@@ -79,6 +85,24 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
+// RF-08 / RN-10: on start, an empty address ("#/" or none) opens Cartões in the remembered
+// month. It is read before the first screen shows, so the current month never flashes, and
+// an address with a month, or of another area, is left alone (D9).
+function Bootstrap({ children }: { children: ReactNode }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void readLastMonth().then((last) => {
+      if (!alive) return;
+      const hash = window.location.hash;
+      if (last && last !== currentMonth() && (hash === '' || hash === '#' || hash === '#/')) window.history.replaceState(null, '', `#${areaPath('cards', last)}`);
+      setReady(true);
+    });
+    return () => { alive = false; };
+  }, []);
+  return ready ? <>{children}</> : null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -86,7 +110,7 @@ function App() {
         {/* Hash routes: the bundle uses a relative base, so nested paths would
             break asset URLs on reload. */}
         <WouterRouter hook={useHashLocation}>
-          <Router />
+          <Bootstrap><Router /></Bootstrap>
         </WouterRouter>
       </TooltipProvider>
     </QueryClientProvider>
