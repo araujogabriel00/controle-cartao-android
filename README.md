@@ -62,7 +62,7 @@ A especificação completa está em [`specs/contas-e-gastos.md`](specs/contas-e-
 
 - **Conta fixa** (aluguel, internet…): despesa mensal com nome, valor, dia e mês final opcional. Como as entradas recorrentes, os meses são calculados e editar ou excluir pergunta "Só este mês" ou "Este e os próximos".
 - **Gasto do dia a dia**: despesa avulsa (descrição, valor, data) com categoria global opcional e um resumo por categoria no mês. Aceita datas até 12 meses à frente.
-- **Saldo do mês** = entradas − contas fixas − gastos do dia a dia − o usado dos cartões no mês. O saldo é de cada mês e não acumula. A tela **só lê** os cartões: nada daqui altera cartões, compras ou benefícios, e os benefícios não entram no saldo.
+- **Resultado do mês** = entradas − contas fixas − gastos do dia a dia − o usado dos cartões no mês. O **Saldo** do mês é o **Saldo anterior + o resultado**, e passa para o mês seguinte: a sobra e a falta acumulam. O saldo anterior é a soma dos resultados desde o primeiro mês com entrada, conta fixa ou gasto (os cartões não definem o início), calculada a cada leitura, e os meses futuros projetam o saldo. A tela **só lê** os cartões: nada daqui altera cartões, compras ou benefícios, e os benefícios não entram no saldo.
 
 ### Benefícios
 
@@ -86,7 +86,8 @@ Todos os valores abaixo são calculados **por cartão e dentro de um mês**, só
 | **Disponível** | limite do mês − usado |
 | Percentual | usado ÷ limite do mês (a barra é limitada a 100%) |
 | Resumo por categoria | soma das compras de cada categoria no mês e a participação no usado; compras sem categoria ficam em "Sem categoria" |
-| **Saldo do mês** (aba Entradas) | entradas − contas fixas − gastos do dia a dia − usado dos cartões |
+| **Resultado do mês** (aba Entradas) | entradas − contas fixas − gastos do dia a dia − usado dos cartões, só do mês |
+| **Saldo do mês** (aba Entradas) | saldo anterior (soma dos resultados dos meses antes) + resultado do mês |
 
 Não existe reserva de orçamento: o limite só é consumido pelo que foi de fato comprado. Remover um cartão apaga os meses, as compras e as compras parceladas dele, sem alterar os outros cartões nem as categorias.
 
