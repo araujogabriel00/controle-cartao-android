@@ -1,12 +1,13 @@
 import { type FormEvent, type MouseEvent, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import {
   getGetBenefitRangeQueryKey, getGetBenefitsQueryKey, getGetCategoriesQueryKey,
   useCloseBenefitCategory, useCreateBenefit, useCreateBenefitSpend, useDeleteBenefit, useDeleteBenefitSpend,
   useGetBenefitRange, useGetBenefits, useGetCategories, useReopenBenefitCategory, useUpdateBenefit, useUpdateBenefitSpend,
   type BenefitCategoryRow, type BenefitItem, type BenefitSpend, type Category,
 } from '@workspace/api-client-react';
-import { CalendarDays, Check, ChevronDown, CircleHelp, FilePenLine, Plus, Repeat, Trash2, Utensils, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, CircleHelp, FilePenLine, Plus, Repeat, Trash2, Utensils, X } from 'lucide-react';
 import { AppTabs } from '@/components/app-tabs';
 import { SnapCarousel } from '@/components/snap-carousel';
 import { CARD_COLOR_KEYS } from '@/lib/card-colors';
@@ -14,7 +15,7 @@ import { MonthNav } from '@/components/month-nav';
 import { Progress } from '@/components/progress';
 import { dialogOverlay, dialogPanel } from '@/lib/dialog-styles';
 import { useRememberMonth } from '@/lib/last-month';
-import { capitalize, dateLabel, firstDayOf, lastDayOf, money, monthLabel, plural, today, type MonthKey } from '@/lib/format';
+import { benefitSpendsPath, firstDayOf, lastDayOf, money, monthLabel, today, type MonthKey } from '@/lib/format';
 
 type BenefitValues = { name: string; amount: number; firstMonth: MonthKey; from: MonthKey; lastMonth: MonthKey | null; split: { categoryId: number; amount: number }[] };
 
@@ -110,15 +111,16 @@ export function SpendDialog({ month, benefit, spend, categories, busy, onClose, 
 
 // D6: the selected benefit is kept while the app is open (the page remounts on every month), never saved.
 let lastSelectedBenefit: number | null = null;
+export const rememberBenefit = (id: number) => { lastSelectedBenefit = id; };
 
 export default function Beneficios({ month }: { month: MonthKey }) {
   useRememberMonth(month);
+  const [, navigate] = useLocation();
   const client = useQueryClient();
   const benefitsQuery = useGetBenefits(month, { query: { queryKey: getGetBenefitsQueryKey(month), refetchOnWindowFocus: true } });
   const range = useGetBenefitRange({ query: { queryKey: getGetBenefitRangeQueryKey() } }).data;
   const categories = useGetCategories({ query: { queryKey: getGetCategoriesQueryKey() } }).data ?? [];
   const [benefitDialog, setBenefitDialog] = useState<{ benefit?: BenefitItem } | null>(null);
-  const [spendDialog, setSpendDialog] = useState<{ benefit: BenefitItem; spend?: BenefitSpend } | null>(null);
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
   const items = benefitsQuery.data?.items ?? [];
   const [selectedId, setSelectedId] = useState<number | null>(lastSelectedBenefit);
@@ -135,26 +137,17 @@ export default function Beneficios({ month }: { month: MonthKey }) {
   };
   const notify = (text: string) => { setToast({ text }); window.setTimeout(() => setToast(null), 3200); };
   const failed = (error?: Error) => { setToast({ text: error?.message || 'Não foi possível salvar. Tente novamente.', error: true }); window.setTimeout(() => setToast(null), 4200); };
-  const closing = (text: string) => ({ onSuccess: () => { refresh(); setBenefitDialog(null); setSpendDialog(null); notify(text); }, onError: failed });
+  const closing = (text: string) => ({ onSuccess: () => { refresh(); setBenefitDialog(null); notify(text); }, onError: failed });
   const done = (text: string) => ({ onSuccess: () => { refresh(); notify(text); }, onError: failed });
   const createBenefit = useCreateBenefit({ mutation: closing('Benefício criado.') });
   const updateBenefit = useUpdateBenefit({ mutation: closing('Benefício atualizado.') });
   const deleteBenefit = useDeleteBenefit({ mutation: done('Benefício removido.') });
-  const createSpend = useCreateBenefitSpend({ mutation: closing('Gasto registrado.') });
-  const updateSpend = useUpdateBenefitSpend({ mutation: closing('Gasto atualizado.') });
-  const deleteSpend = useDeleteBenefitSpend({ mutation: done('Gasto excluído.') });
   const closeCategory = useCloseBenefitCategory({ mutation: done('Categoria fechada.') });
   const reopenCategory = useReopenBenefitCategory({ mutation: done('Categoria reaberta.') });
 
   const saveBenefit = (values: BenefitValues) => {
     if (benefitDialog?.benefit) updateBenefit.mutate({ benefitId: benefitDialog.benefit.id, month: values.from, data: { name: values.name, amount: values.amount, lastMonth: values.lastMonth, split: values.split } });
     else createBenefit.mutate({ data: { name: values.name, amount: values.amount, firstMonth: values.firstMonth, lastMonth: values.lastMonth, split: values.split } });
-  };
-  const saveSpend = (values: SpendValues) => {
-    if (!spendDialog) return;
-    const data = { description: values.description, amount: values.amount, date: values.date };
-    if (spendDialog.spend) updateSpend.mutate({ spendId: spendDialog.spend.id, categoryId: values.categoryId, data });
-    else createSpend.mutate({ benefitId: spendDialog.benefit.id, categoryId: values.categoryId, data });
   };
   const removeBenefit = (benefit: BenefitItem) => {
     const spends = benefit.spendCount === 0 ? '' : benefit.spendCount === 1 ? ' e seu 1 gasto' : ` e seus ${benefit.spendCount} gastos`;
@@ -168,7 +161,7 @@ export default function Beneficios({ month }: { month: MonthKey }) {
 
   const canGoPrevious = !range || month > range.first;
   const canGoNext = !range || month < range.last;
-  const busy = createBenefit.isPending || updateBenefit.isPending || createSpend.isPending || updateSpend.isPending;
+  const busy = createBenefit.isPending || updateBenefit.isPending;
 
   return <main className="notebook-grain min-h-safe bg-[#f5f1e7] text-[#294438]">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
@@ -202,7 +195,7 @@ export default function Beneficios({ month }: { month: MonthKey }) {
             <p className="font-mono-data text-[10px] uppercase tracking-[.17em] text-[#9a8d71]">Por categoria</p>
             <ul className="mt-3 space-y-4">{selected.categories.map((row) => <li key={row.categoryId ?? 'none'} data-testid={`row-category-${selected.id}-${row.categoryId ?? 'none'}`}>
               <div className="flex items-center justify-between gap-2">
-                <span className="flex min-w-0 items-center gap-2"><span className="truncate text-[13px] font-semibold text-[#345443]">{row.name ?? 'Sem categoria'}</span>{row.closed && <span className="shrink-0 rounded-full bg-[#e9e5dc] px-2 py-0.5 text-[9px] font-medium text-[#82877e]">Fechada</span>}</span>
+                <button data-testid={`open-category-${selected.id}-${row.categoryId ?? 'none'}`} aria-label={`Ver lançamentos de ${row.name ?? 'Sem categoria'}`} onClick={() => navigate(benefitSpendsPath(selected.id, row.categoryId ?? 'sem', month))} className="flex min-w-0 flex-1 items-center gap-2 text-left"><span className="truncate text-[13px] font-semibold text-[#345443]">{row.name ?? 'Sem categoria'}</span>{row.closed && <span className="shrink-0 rounded-full bg-[#e9e5dc] px-2 py-0.5 text-[9px] font-medium text-[#82877e]">Fechada</span>}<ChevronRight size={13} className="shrink-0 text-[#9aa497]"/></button>
                 <span className="flex shrink-0 items-center gap-1"><span className={`font-mono-data text-[13px] ${row.availableAmount < 0 ? 'text-[#a55f50]' : 'text-[#315944]'}`}>{money(row.availableAmount)}</span>
                   {row.categoryId !== null && (row.closed
                     ? <button data-testid={`button-reopen-${selected.id}-${row.categoryId}`} onClick={() => reopenCategory.mutate({ benefitId: selected.id, categoryId: row.categoryId as number, month })} className="rounded-full px-2 py-1 text-[10px] font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4 hover:bg-[#eee9df]">Reabrir</button>
@@ -212,21 +205,12 @@ export default function Beneficios({ month }: { month: MonthKey }) {
               {!row.closed && <div className="mt-2 flex items-center gap-3"><div className="flex-1"><Progress value={row.percentUsed} tone={row.percentUsed > 85 ? 'peach' : 'green'}/></div><span className="w-9 text-right font-mono-data text-[9px] text-[#8c9388]">{Number(row.percentUsed).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%</span></div>}
             </li>)}</ul>
           </div>}
-          <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#ece6da] px-4 py-3 sm:px-5"><p className="text-[10px] text-[#899186]">{plural(selected.spends.length, 'gasto', 'gastos')} neste mês</p></div>
-          {selected.spends.length ? <ul className="divide-y divide-[#ece6da] border-t border-[#ece6da]">
-            {selected.spends.map((spend) => <li key={spend.id} data-testid={`row-spend-${spend.id}`} className="flex items-center gap-3 px-4 py-3 sm:px-5">
-              <div className="min-w-0 flex-1"><p className="truncate text-[12px] font-semibold text-[#3d5948]">{spend.description}</p><p className="mt-1 flex items-center gap-2 text-[10px] text-[#8b9185]"><span className="flex items-center gap-1"><CalendarDays size={11}/>{dateLabel(spend.date)}</span>{spend.categoryName && <span className="truncate rounded-full bg-[#e4ece2] px-2 py-0.5 text-[9px] font-medium text-[#52735c]">{spend.categoryName}</span>}</p></div>
-              <span className="shrink-0 font-mono-data text-[12px] text-[#a36354]">− {money(spend.amount)}</span>
-              <button aria-label={`Editar ${spend.description}`} onClick={() => setSpendDialog({ benefit: selected, spend })} className="rounded p-1.5 text-[#7c897e] hover:bg-[#eee9df]"><FilePenLine size={13}/></button>
-              <button aria-label={`Excluir ${spend.description}`} onClick={() => { if (window.confirm(`Remover o gasto “${spend.description}”? Esta ação não pode ser desfeita.`)) deleteSpend.mutate({ spendId: spend.id }); }} className="rounded p-1.5 text-[#ad6a5a] hover:bg-[#f4e8e1]"><Trash2 size={13}/></button>
-            </li>)}
-          </ul> : <p data-testid={`text-no-spends-${selected.id}`} className="border-t border-[#ece6da] px-4 py-5 text-center text-xs text-[#7d887c] sm:px-5">Sem gastos neste mês.</p>}
+          <button data-testid={`button-all-spends-${selected.id}`} onClick={() => navigate(benefitSpendsPath(selected.id, 'todos', month))} className="flex w-full items-center justify-between gap-3 border-t border-[#ece6da] px-4 py-3.5 text-left text-[13px] font-semibold text-[#3d5948] transition hover:bg-[#f4f0e6] sm:px-5">Todos os lançamentos ({selected.spends.length})<ChevronRight size={16} className="shrink-0 text-[#9aa497]"/></button>
         </article>}
       </div>}
     </div>
 
     {benefitDialog && <BenefitDialog key={benefitDialog.benefit?.id ?? 'new'} month={month} benefit={benefitDialog.benefit} categories={categories} busy={busy} onClose={() => setBenefitDialog(null)} onSave={saveBenefit}/>}
-    {spendDialog && <SpendDialog key={`${spendDialog.benefit.id}-${spendDialog.spend?.id ?? 'new'}`} month={month} benefit={spendDialog.benefit} spend={spendDialog.spend} categories={categories} busy={busy} onClose={() => setSpendDialog(null)} onSave={saveSpend}/>}
     {toast && <div role="status" data-testid="status-toast" className={`fixed bottom-5 left-4 right-4 z-[60] mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-full px-4 py-3 text-xs font-semibold text-white shadow-lg sm:left-auto sm:right-5 sm:mx-0 ${toast.error ? 'bg-[#a85e50]' : 'bg-[#28513f]'}`}><Check size={14} className="shrink-0"/><span className="min-w-0">{toast.text}</span></div>}
   </main>;
 }

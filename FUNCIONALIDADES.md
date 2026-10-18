@@ -41,6 +41,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 19. [Botão Lançar](#19-botão-lançar)
 20. [Telas de entradas, contas fixas, gastos e cartões](#20-telas-de-entradas-contas-fixas-gastos-e-cartões)
 21. [Benefícios em carrossel](#21-benefícios-em-carrossel)
+22. [Lançamentos do benefício](#22-lançamentos-do-benefício)
 
 ---
 
@@ -763,7 +764,7 @@ Funcionalidade: Benefícios
     E toco em "Adicionar"
     Então vejo o card "VR" com o selo "Mensal" no carrossel
     E ele mostra disponível R$ 800,00 e "Crédito R$ 800,00 · Sobra anterior R$ 0,00 · Gasto R$ 0,00"
-    E vejo "Sem gastos neste mês."
+    E o botão "Todos os lançamentos (0)"
 
   @regra
   Cenário: Validação do benefício
@@ -776,8 +777,8 @@ Funcionalidade: Benefícios
     Dado que existe o benefício "VR" e a categoria "Mercado"
     Quando eu toco no botão "+" do rodapé, em "Gasto de benefício" e escolho "VR"
     E informo a descrição "Almoço", o valor "300", a categoria "Mercado" e uma data do mês
-    Então o cartão "VR" lista "Almoço" em "Mercado" com R$ 300,00
-    E mostra gasto R$ 300,00 e disponível R$ 500,00
+    Então o card "VR" mostra gasto R$ 300,00 e disponível R$ 500,00
+    E "Almoço" aparece na tela de lançamentos de "Mercado" e na de todos os lançamentos (seção 22)
 
   @regra
   Cenário: Gasto fora do período do benefício
@@ -1442,4 +1443,47 @@ Funcionalidade: Benefícios em carrossel
     Quando eu troco de mês ou de aba e volto
     Então o "VA" continua selecionado, enquanto o app está aberto
     Mas se ele não existe naquele mês, o primeiro benefício fica selecionado
+```
+
+---
+
+## 22. Lançamentos do benefício
+
+Resumo. A especificação completa está em [`specs/lancamentos-do-beneficio.md`](specs/lancamentos-do-beneficio.md).
+
+```gherkin
+# language: pt
+
+Funcionalidade: Lançamentos do benefício em tela própria
+  Contexto:
+    Dado que o benefício "VR" tem os lançamentos "Almoço" (Mercado) R$ 300,00, "Jantar" (Mercado) R$ 80,00 e "Cinema" (sem categoria) R$ 50,00 em outubro
+
+  Cenário: A aba não lista mais os gastos
+    Quando eu abro a aba "Benefícios"
+    Então vejo o card "VR", o "Por categoria" e o botão "Todos os lançamentos (3)"
+    E não vejo a lista de lançamentos
+
+  Cenário: Abrir uma categoria
+    Quando eu toco em "Mercado" no "Por categoria"
+    Então abre a tela "Mercado" do "VR" com o total R$ 380,00, "Almoço" e "Jantar"
+    Mas "Fechar" e "Reabrir" continuam na linha e não abrem a tela
+
+  Cenário: Abrir sem categoria e todos
+    Quando eu toco em "Sem categoria"
+    Então a tela mostra só "Cinema" com R$ 50,00
+    Quando eu toco em "Todos os lançamentos (3)"
+    Então a tela mostra os 3 lançamentos com o total R$ 430,00
+
+  Cenário: Editar, excluir e criar
+    Dado que estou numa tela de lançamentos
+    Então cada lançamento tem editar e excluir, e não há botão de criar
+    E lançar pelo "+" do rodapé atualiza a lista e o total
+
+  Cenário: Voltar
+    Quando eu toco em "Voltar"
+    Então vejo a aba "Benefícios" no mesmo mês, com o mesmo benefício selecionado
+
+  Cenário: Endereço inválido
+    Quando eu abro a tela de um benefício que não existe ou um mês fora do alcance
+    Então volto à aba "Benefícios" ou ao mês mais próximo
 ```
