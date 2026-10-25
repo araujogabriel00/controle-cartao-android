@@ -145,7 +145,9 @@ export type PlannedInstallment = {
   purchaseId?: number; recurringId?: number;
   description: string; installment?: number; installmentCount?: number; amount: number; date: string;
   categoryId: number | null; categoryName: string | null;
+  purchase?: { id: number; totalAmount: number; installmentCount: number; firstInstallment: number };
 };
+export type AllMovements = { movements: Movement[]; planned: PlannedInstallment[] };
 export type MonthPreview = { month: MonthKey; amount: number; installments: PlannedInstallment[] };
 export type FutureInstallments = { month: MonthKey; amount: number; count: number };
 export type MonthSummary = {
@@ -420,6 +422,7 @@ function plannedOf(state: State, cardId: number | null, month?: MonthKey): Plann
         date: installmentDate(p, k),
         categoryId: p.categoryId,
         categoryName: categoryNameOf(state, p.categoryId),
+        purchase: { id: p.id, totalAmount: p.totalAmount, installmentCount: p.installmentCount, firstInstallment: p.firstInstallment },
       })));
   // RN-03: recurring charges of the months after the current one, up to a year ahead.
   const cap = shiftMonth(current, 12);
@@ -619,7 +622,7 @@ function syncRecurrings(state: State, cardId: number) {
 }
 
 // RN-05 / RN-15. On create the purchase starts at `installment`.
-function requirePurchase(input: PurchaseInput, firstFallback?: number) {
+function requirePurchase(input: PurchaseInput, firstFallback?: number, editing = false) {
   const installmentCount = Number(input.installmentCount);
   if (!Number.isInteger(installmentCount) || installmentCount < 2 || installmentCount > 24) throw new Error('Nº de parcelas deve ser de 2 a 24.');
   const installment = Number(input.installment);
@@ -630,7 +633,7 @@ function requirePurchase(input: PurchaseInput, firstFallback?: number) {
   const totalAmount = Number(input.totalAmount);
   if (!Number.isFinite(totalAmount) || cents(totalAmount) < minimum) throw new Error(`Valor total deve ser de pelo menos ${money(minimum)}.`);
   const date = requireDate(input.date);
-  if (isFutureMonth(monthOf(date))) throw new Error('Compra parcelada não aceita data em mês futuro.');
+  if (!editing && isFutureMonth(monthOf(date))) throw new Error('Compra parcelada não aceita data em mês futuro.');
   return {
     description: requireText(input.description, 'Descrição', 200),
     totalAmount: cents(totalAmount),
@@ -654,18 +657,30 @@ export async function getCard(cardId: number, month: MonthKey): Promise<Card | n
   return card ? toCard(state, card, month) : null;
 }
 
+// A stored purchase with its category name and the installment or recurring data the screens need.
+function toMovement(state: State, m: StoredMovement): Movement {
+  const purchase = state.purchases.find((p) => p.id === m.purchaseId);
+  const recurring = state.recurrings.find((r) => r.id === m.recurringId);
+  const base = { ...m, categoryName: categoryNameOf(state, m.categoryId) };
+  if (purchase) return { ...base, purchase: { id: purchase.id, totalAmount: purchase.totalAmount, installmentCount: purchase.installmentCount, firstInstallment: purchase.firstInstallment } };
+  return recurring ? { ...base, recurring: { id: recurring.id, amount: recurring.amount, firstMonth: recurring.firstMonth, day: recurring.day, lastMonth: recurring.lastMonth } } : base;
+}
+const newestFirst = (a: StoredMovement, b: StoredMovement) => b.date.localeCompare(a.date) || b.id - a.id;
+
 // RF-03: the card's purchases of the month, newest first.
 export async function getMovements(cardId: number, month: MonthKey): Promise<Movement[]> {
   const state = await load();
-  return movementsOf(state, cardId, month)
-    .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
-    .map((m) => {
-      const purchase = state.purchases.find((p) => p.id === m.purchaseId);
-      const recurring = state.recurrings.find((r) => r.id === m.recurringId);
-      const base = { ...m, categoryName: categoryNameOf(state, m.categoryId) };
-      if (purchase) return { ...base, purchase: { id: purchase.id, totalAmount: purchase.totalAmount, installmentCount: purchase.installmentCount, firstInstallment: purchase.firstInstallment } };
-      return recurring ? { ...base, recurring: { id: recurring.id, amount: recurring.amount, firstMonth: recurring.firstMonth, day: recurring.day, lastMonth: recurring.lastMonth } } : base;
-    });
+  return movementsOf(state, cardId, month).sort(newestFirst).map((m) => toMovement(state, m));
+}
+
+// specs/todas-as-compras.md RN-04: every purchase of the card in any month, plus the planned
+// installments of the future months (planned recurring charges are left out, D5).
+export async function getAllMovements(cardId: number): Promise<AllMovements> {
+  const state = await load();
+  return {
+    movements: state.movements.filter((m) => m.cardId === cardId).sort(newestFirst).map((m) => toMovement(state, m)),
+    planned: plannedOf(state, cardId).filter((p) => p.kind === 'installment'),
+  };
 }
 
 // RF-05: amount and share of each category in the month, biggest first.
@@ -893,7 +908,7 @@ export function createPurchase(cardId: number, categoryId: number | null, input:
 export function updatePurchase(purchaseId: number, categoryId: number | null, input: PurchaseInput) {
   return mutate((state) => {
     const purchase = findPurchase(state, purchaseId);
-    const next = { categoryId: requireCategory(state, categoryId), ...requirePurchase(input, purchase.firstInstallment) };
+    const next = { categoryId: requireCategory(state, categoryId), ...requirePurchase(input, purchase.firstInstallment, true) };
     state.movements = state.movements.filter((m) => m.purchaseId !== purchase.id);
     Object.assign(purchase, next);
     syncPurchases(state, purchase.cardId);
