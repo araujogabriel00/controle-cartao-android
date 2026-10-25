@@ -175,14 +175,14 @@ Não muda (RN-06).
 
 ## 10. Critérios de aceite
 
-- [ ] (não verificado no navegador) RF-01, RF-04: lista agrupada, totais e vazio.
-- [ ] (não verificado no navegador) RF-02, RF-07: editar e excluir em qualquer mês, sem sair da tela.
-- [ ] (não verificado no navegador) RF-03: busca e filtro.
-- [ ] (não verificado no navegador) RF-05: entrada e volta.
-- [ ] (não verificado no navegador) RF-06: excluir pela prévia.
+- [x] RF-01, RF-04: lista agrupada, totais e vazio.
+- [x] RF-02, RF-07: editar e excluir em qualquer mês, sem sair da tela (compra comum e parcela prevista; compra recorrente não foi exercitada no navegador).
+- [ ] RF-03: busca e filtro (não confirmado no navegador).
+- [x] RF-05: entrada e volta.
+- [ ] RF-06: excluir pela prévia (o botão usa o mesmo tratamento da tela de compras, mas não foi clicado na prévia).
 - [x] `npm run typecheck` e `npm run build` passam.
 
-> Verificado exercitando `store.ts` (script com `localStorage` simulado): `getAllMovements` junta as compras de todos os meses e as parcelas previstas; editar pela parcela prevista recalcula as parcelas; excluir remove tudo; criar compra parcelada com data futura continua recusado. A tela em si ainda precisa ser conferida no navegador.
+> Verificado exercitando `store.ts` (script com `localStorage` simulado): `getAllMovements` junta as compras de todos os meses e as parcelas previstas; editar pela parcela prevista recalcula as parcelas; excluir remove tudo; criar compra parcelada com data futura continua recusado. A tela foi conferida no navegador (`npm run dev`) com compra comum, parcelada e prevista.
 
 ## 11. Tarefas
 
