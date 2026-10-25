@@ -42,6 +42,8 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 20. [Telas de entradas, contas fixas, gastos e cartões](#20-telas-de-entradas-contas-fixas-gastos-e-cartões)
 21. [Benefícios em carrossel](#21-benefícios-em-carrossel)
 22. [Lançamentos do benefício](#22-lançamentos-do-benefício)
+23. [Editar parcela prevista](#23-editar-parcela-prevista)
+24. [Todas as compras do cartão](#24-todas-as-compras-do-cartão)
 
 ---
 
@@ -1486,4 +1488,68 @@ Funcionalidade: Lançamentos do benefício em tela própria
   Cenário: Endereço inválido
     Quando eu abro a tela de um benefício que não existe ou um mês fora do alcance
     Então volto à aba "Benefícios" ou ao mês mais próximo
+```
+
+---
+
+## 23. Editar parcela prevista
+
+Resumo. A especificação completa está em [`specs/editar-parcela-prevista.md`](specs/editar-parcela-prevista.md). A prévia de mês futuro (seção 11) deixa de ser só leitura para as parcelas: elas podem ser editadas.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Editar parcela prevista
+  Contexto:
+    Dado que hoje é 25/10/2026
+    E que existe a compra "Fone" de R$ 100,00 em 3x, com a parcela 1 em 15/10/2026
+
+  Cenário: Editar a compra pela parcela prevista
+    Quando eu abro novembro de 2026
+    E toco em "Editar compra parcelada" na parcela "Fone" "2/3"
+    Então vejo "Editar compra parcelada" com "Parcela neste mês" "2" e data 15/11/2026
+    Quando mudo o valor total para "150" e salvo
+    Então novembro de 2026 mostra "Fone" "2/3" de R$ 50,00
+
+  Cenário: Cobrança recorrente prevista não tem botão
+    Então a cobrança recorrente prevista não mostra "Editar compra parcelada"
+```
+
+---
+
+## 24. Todas as compras do cartão
+
+Resumo. A especificação completa está em [`specs/todas-as-compras.md`](specs/todas-as-compras.md). A prévia de mês futuro (seção 11) também passa a permitir excluir a compra parcelada pela parcela prevista.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Todas as compras do cartão
+  Contexto:
+    Dado que hoje é 25/10/2026
+    E a compra "Mercado" de R$ 80,00 em 05/08/2026
+    E a compra parcelada "Fone" de R$ 100,00 em 3x com a parcela 1 em 15/10/2026
+
+  Cenário: Ver as compras de todos os meses
+    Quando toco em "Todas as compras" na aba Cartões
+    Então vejo os grupos dezembro, novembro, outubro e agosto de 2026, nessa ordem
+    E novembro e dezembro mostram "Fone" como "prevista"
+
+  Cenário: Editar ou excluir uma compra de um mês antigo
+    Quando edito "Mercado" para R$ 95,00 em 07/09/2026
+    Então "Mercado" passa para o grupo setembro de 2026
+    Quando excluo "Mercado" e confirmo
+    Então o grupo some
+
+  Cenário: Excluir uma parcela exclui a compra parcelada
+    Quando excluo "Fone" "1/3" e confirmo
+    Então "Fone" some de todos os meses
+
+  Cenário: Compra recorrente pergunta o escopo
+    Quando excluo uma cobrança de compra recorrente
+    Então o app pergunta "Só este mês" ou "Deste mês em diante"
+
+  Cenário: Excluir pela prévia de mês futuro
+    Quando abro novembro de 2026 e excluo a parcela "Fone" "2/3"
+    Então "Fone" é removido de todos os meses
 ```

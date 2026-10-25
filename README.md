@@ -161,6 +161,7 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── components/month-nav.tsx # seletor de mês, acima das abas
 │   ├── pages/dashboard.tsx # painel de um mês
 │   ├── pages/historico.tsx # lista de meses
+│   ├── pages/compras.tsx # todas as compras do cartão, de qualquer mês
 │   ├── pages/entradas.tsx  # resumo do mês e saldo
 │   ├── pages/entradas-lista.tsx # listas de entradas, contas fixas e gastos
 │   ├── components/entry-dialogs.tsx # formulários de entrada, conta fixa e gasto

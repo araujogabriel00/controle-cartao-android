@@ -8,7 +8,7 @@ import * as store from './store';
 
 export type {
   Card, Cards, CardColor, Category, CategorySummary, Consolidated, Movement, MonthKey, MonthSummary, MonthStatus,
-  FutureInstallments, MonthPreview, PlannedInstallment, StoredPurchase,
+  AllMovements, FutureInstallments, MonthPreview, PlannedInstallment, StoredPurchase,
   CardInput, CategoryInput, MovementInput, PurchaseInput,
   IncomeInput, IncomeKind, IncomeOccurrence, IncomeRange, IncomeScope, Incomes, StoredIncome,
   RecurringInput, StoredRecurring,
@@ -33,6 +33,8 @@ export const getGetCardQueryKey = (cardId?: number, month?: store.MonthKey) => k
 export const getGetCategoriesQueryKey = () => ['categories'] as const;
 export const getGetCategorySummaryQueryKey = (cardId?: number, month?: store.MonthKey) => key('category-summary', cardId, month);
 export const getGetMovementsQueryKey = (cardId?: number, month?: store.MonthKey) => key('movements', cardId, month);
+// Under the 'movements' prefix, so every purchase change refreshes it too.
+export const getGetAllMovementsQueryKey = (cardId?: number) => key('movements', cardId, 'all');
 export const getGetMonthHistoryQueryKey = (cardId?: number) => key('months', cardId);
 export const getGetMonthStatusQueryKey = (cardId?: number) => key('months', cardId, 'status');
 export const getGetConsolidatedHistoryQueryKey = () => ['consolidated', 'history'] as const;
@@ -69,6 +71,9 @@ export const useGetCategorySummary = (cardId: number, month: store.MonthKey, opt
 
 export const useGetMovements = (cardId: number, month: store.MonthKey, options?: QueryOpts<store.Movement[]>) =>
   useLocalQuery(getGetMovementsQueryKey(cardId, month), () => store.getMovements(cardId, month), options);
+
+export const useGetAllMovements = (cardId: number, options?: QueryOpts<store.AllMovements>) =>
+  useLocalQuery(getGetAllMovementsQueryKey(cardId), () => store.getAllMovements(cardId), options);
 
 export const useGetMonthHistory = (cardId: number, options?: QueryOpts<store.MonthSummary[]>) =>
   useLocalQuery(getGetMonthHistoryQueryKey(cardId), () => store.getMonthHistory(cardId), options);

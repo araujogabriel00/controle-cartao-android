@@ -9,6 +9,7 @@ import { FooterMenu } from '@/components/quick-add';
 import NotFound from '@/pages/not-found';
 import Dashboard from '@/pages/dashboard';
 import Historico from '@/pages/historico';
+import Compras from '@/pages/compras';
 import Entradas from '@/pages/entradas';
 import EntradasLista from '@/pages/entradas-lista';
 import Beneficios from '@/pages/beneficios';
@@ -108,6 +109,7 @@ function Router() {
         <Route path="/">{() => <Dashboard key={currentMonth()} month={currentMonth()} />}</Route>
         <Route path="/mes/:month">{(params) => <MonthRoute month={params.month} />}</Route>
         <Route path="/historico" component={Historico} />
+        <Route path="/compras" component={Compras} />
         <Route path="/entradas">{() => <Entradas key={currentMonth()} month={currentMonth()} />}</Route>
         <Route path="/entradas/lista/:kind">{(params) => <ListRoute kind={params.kind} />}</Route>
         <Route path="/entradas/lista/:kind/mes/:month">{(params) => <ListRoute kind={params.kind} month={params.month} />}</Route>
