@@ -17,6 +17,7 @@ import {
   LayoutDashboard, MoreHorizontal, Plus, X,
 } from 'lucide-react';
 import { CardPicker, type CarouselCard } from '@/components/card-picker';
+import { chargeDialog, chargeOfMovement, chargeOfPlanned, type RecurringCharge } from '@/lib/recurring-charge';
 import { CardMenu } from '@/components/card-menu';
 import { ChartLegend } from '@/components/charts/chart-legend';
 import { Columns } from '@/components/charts/columns';
@@ -172,7 +173,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   const [showAll, setShowAll] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // RF-04 / RF-05: editing or deleting a charge of a recurring purchase asks for the scope first.
-  const [scopeAsk, setScopeAsk] = useState<{ action: 'edit' | 'delete'; movement: Movement } | null>(null);
+  const [scopeAsk, setScopeAsk] = useState<{ action: 'edit' | 'delete'; charge: RecurringCharge } | null>(null);
 
   // Prefix keys: refreshes every card and month, plus the history, the totals and the planned installments.
   const refresh = () => {
@@ -254,36 +255,42 @@ export default function Dashboard({ month }: { month: MonthKey }) {
     }
   };
   const askDelete = (label: string) => confirm(removeAsk(label));
-  const editMovement = (movement: Movement) => movement.recurring ? setScopeAsk({ action: 'edit', movement }) : setDialog({
+  const editMovement = (movement: Movement) => movement.recurring ? setScopeAsk({ action: 'edit', charge: chargeOfMovement(movement)! }) : setDialog({
     kind: 'movement',
     onDelete: () => removeMovement(movement),
     initial: movement.purchase
       ? { id: movement.id, categoryId: movement.categoryId, description: movement.description, amount: movement.purchase.totalAmount, date: movement.date, isPurchase: true, purchaseId: movement.purchase.id, installmentCount: movement.purchase.installmentCount, installment: movement.installment, firstInstallment: movement.purchase.firstInstallment }
       : { id: movement.id, categoryId: movement.categoryId, description: movement.description, amount: movement.amount, date: movement.date },
   });
-  const editPlanned = (planned: PlannedInstallment) => planned.purchase && setDialog({
-    kind: 'movement',
-    onDelete: () => removePlanned(planned),
-    initial: { id: planned.purchase.id, categoryId: planned.categoryId, description: planned.description, amount: planned.purchase.totalAmount, date: planned.date, isPurchase: true, purchaseId: planned.purchase.id, installmentCount: planned.purchase.installmentCount, installment: planned.installment, firstInstallment: planned.purchase.firstInstallment },
-  });
+  // A planned installment edits the whole purchase; a planned recurring charge asks for the scope first (compras-em-qualquer-mes RF-01).
+  const editPlanned = (planned: PlannedInstallment) => {
+    const charge = chargeOfPlanned(planned);
+    if (charge) { setScopeAsk({ action: 'edit', charge }); return; }
+    if (planned.purchase) setDialog({
+      kind: 'movement',
+      onDelete: () => removePlanned(planned),
+      initial: { id: planned.purchase.id, categoryId: planned.categoryId, description: planned.description, amount: planned.purchase.totalAmount, date: planned.date, isPurchase: true, purchaseId: planned.purchase.id, installmentCount: planned.purchase.installmentCount, installment: planned.installment, firstInstallment: planned.purchase.firstInstallment },
+    });
+  };
   const removePlanned = async (planned: PlannedInstallment) => {
-    if (planned.purchase && await askDelete(`a compra parcelada “${planned.description}” e todas as suas parcelas`)) deletePurchase.mutate({ purchaseId: planned.purchase.id });
+    const charge = chargeOfPlanned(planned);
+    if (charge) setScopeAsk({ action: 'delete', charge });
+    else if (planned.purchase && await askDelete(`a compra parcelada “${planned.description}” e todas as suas parcelas`)) deletePurchase.mutate({ purchaseId: planned.purchase.id });
   };
   const chooseScope = async (scope: 'month' | 'forward') => {
-    if (!scopeAsk?.movement.recurring) return;
-    const { action, movement } = scopeAsk;
-    const recurring = movement.recurring!;
-    const chargeMonth = monthOf(movement.date);
+    if (!scopeAsk) return;
+    const { action, charge } = scopeAsk;
+    const chargeMonth = monthOf(charge.date);
     setScopeAsk(null);
     if (action === 'edit') {
-      setDialog({ kind: 'movement', onDelete: () => removeMovement(movement), initial: { id: movement.id, categoryId: movement.categoryId, description: movement.description, amount: movement.amount, date: movement.date, isRecurring: true, recurringId: recurring.id, lastMonth: recurring.lastMonth, scope } });
+      setDialog({ kind: 'movement', onDelete: () => setScopeAsk({ action: 'delete', charge }), initial: chargeDialog(charge, scope) });
       return;
     }
-    const what = scope === 'month' ? `“${movement.description}” só em ${monthLabel(chargeMonth)}` : `“${movement.description}” de ${monthLabel(chargeMonth)} em diante`;
-    if (await askDelete(what)) deleteRecurring.mutate({ recurringId: recurring.id, month: chargeMonth, scope });
+    const what = scope === 'month' ? `“${charge.description}” só em ${monthLabel(chargeMonth)}` : `“${charge.description}” de ${monthLabel(chargeMonth)} em diante`;
+    if (await askDelete(what)) deleteRecurring.mutate({ recurringId: charge.recurringId, month: chargeMonth, scope });
   };
   const removeMovement = async (movement: Movement) => {
-    if (movement.recurring) { setScopeAsk({ action: 'delete', movement }); return; }
+    if (movement.recurring) { setScopeAsk({ action: 'delete', charge: chargeOfMovement(movement)! }); return; }
     if (movement.purchase) { if (await askDelete(`a compra parcelada “${movement.description}” e todas as suas parcelas`)) deletePurchase.mutate({ purchaseId: movement.purchase.id }); }
     else if (await askDelete(`a compra “${movement.description}”`)) deleteMovement.mutate({ movementId: movement.id });
   };
@@ -359,7 +366,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
             {visibleRows.length ? <div data-testid="list-movements" className="divide-y divide-line">
               {(showAll ? visibleRows : visibleRows.slice(0, 8)).map((row) => {
                 // D3 / D4: a registered purchase or a planned installment opens its edit form; a planned recurring charge has no action.
-                const open = row.movement ? () => editMovement(row.movement!) : row.planned?.purchase ? () => editPlanned(row.planned!) : null;
+                const open = row.movement ? () => editMovement(row.movement!) : row.planned ? () => editPlanned(row.planned!) : null;
                 const content = <>
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#f1e9df] text-[#9a4f3f]"><ArrowUpRight size={18}/></span>
                   <span className="block min-w-0 flex-1">
@@ -382,7 +389,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
     </div>
     {menuOpen && card && <CardMenu title={card.name} editLabel="Editar cartão" deleteLabel="Excluir cartão" onClose={() => setMenuOpen(false)} onEdit={() => setDialog({ kind: 'card', initial: { id: card.id, name: card.name, color: card.color } })} onDelete={async () => { if (await askDelete(`o cartão “${card.name}” e todos os seus registros`)) deleteCard.mutate({ cardId: card.id }); }}/>}
     {dialog && <Dialog kind={dialog.kind} initial={dialog.initial} month={month} categories={categories} busy={isMutating} error={formError} onClose={() => setDialog(null)} onSave={submitDialog} onDelete={dialog.onDelete && (() => { const remove = dialog.onDelete!; setDialog(null); remove(); })}/>}
-    {scopeAsk && <ScopeDialog subject="compra recorrente" action={scopeAsk.action} month={monthOf(scopeAsk.movement.date)} onChoose={chooseScope} onClose={() => setScopeAsk(null)}/>}
+    {scopeAsk && <ScopeDialog subject="compra recorrente" action={scopeAsk.action} month={monthOf(scopeAsk.charge.date)} onChoose={chooseScope} onClose={() => setScopeAsk(null)}/>}
     <Notice notice={notice}/>
   </main>;
 }

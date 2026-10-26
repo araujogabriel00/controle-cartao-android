@@ -5,6 +5,7 @@
 | Status | Implementada |
 | Criada em | 12/10/2026 |
 | Escopo | `src/data/store.ts`, `src/data/api.ts`, `src/App.tsx`, `src/pages/dashboard.tsx`, `src/pages/historico.tsx`, `FUNCIONALIDADES.md`, `specs/historico-mensal.md`, `README.md` |
+| Substituída em parte por | [`compras-em-qualquer-mes.md`](compras-em-qualquer-mes.md): a compra parcelada aceita data até 12 meses à frente (RN-05 muda). |
 | Depende de | [`historico-mensal.md`](historico-mensal.md), [`multiplos-cartoes.md`](multiplos-cartoes.md) |
 | Substituída em parte por | [`editar-parcela-prevista.md`](editar-parcela-prevista.md): as parcelas previstas da prévia podem ser editadas, e a edição aceita data em mês futuro. |
 | Substituída em parte por | [`compras-e-categorias.md`](compras-e-categorias.md): as parcelas caem na categoria global da compra parcelada (sem criar categoria por mês nem orçamento), não existe mais parcela fixa em categoria fechada, e o mês futuro passa a mostrar também compras registradas. |

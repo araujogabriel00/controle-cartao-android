@@ -35,7 +35,7 @@ Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês 
 - `#/` mostra o mês corrente, `#/mes/AAAA-MM` mostra outro mês e `#/historico` lista todos os meses com seus totais. As rotas usam hash porque o bundle tem base relativa.
 - **O mês é o mesmo nas três abas** ([`specs/mes-compartilhado.md`](specs/mes-compartilhado.md)): o seletor de mês fica acima da barra de abas e trocar de aba mantém o mês (`#/entradas/mes/AAAA-MM`, `#/beneficios/mes/AAAA-MM`). Se a aba de destino não abre aquele mês, abre o mais próximo. O app **lembra o último mês aberto** (só um mês que não é o corrente) e abre a aba Cartões nele; "Voltar para o mês atual" apaga a lembrança, e um endereço com mês vale mais que ela.
 - Na virada do mês, o mês novo começa sozinho, sem perguntar nada.
-- Meses passados continuam editáveis. Um mês futuro abre até o último mês que tenha parcela prevista ou compra registrada: mostra as parcelas previstas e as compras já registradas, e aceita "Registrar compra", mas não é iniciado até chegar.
+- Meses passados continuam editáveis. Um mês futuro abre até o último mês que tenha parcela prevista ou compra registrada: mostra as parcelas e cobranças previstas e as compras já registradas, e aceita "Registrar compra", editar e excluir, mas não é iniciado até chegar.
 - Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, a `version: 4` acrescenta a lista vazia de compras parceladas, a `version: 5` acrescenta as listas vazias de entradas, a `version: 6` troca as categorias-envelope por categorias globais (os lançamentos viram compras no cartão em que estavam; orçamentos e o estado aberto/fechado são descartados), a `version: 7` acrescenta as listas vazias de benefícios, a `version: 8` acrescenta as listas vazias de contas fixas e de gastos do dia a dia, a `version: 9` acrescenta as listas vazias de compras recorrentes, e a `version: 10` apaga o limite dos cartões e dos meses.
 
 ### Parcelamento
@@ -43,7 +43,7 @@ Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês 
 A especificação completa está em [`specs/parcelamento.md`](specs/parcelamento.md).
 
 - Uma compra parcelada guarda o valor total, o nº de parcelas, a parcela inicial e a categoria. A divisão é feita em centavos, e o resto fica na parcela 1.
-- Cada parcela vira uma **compra comum** no mês em que cai, na categoria da compra parcelada. A compra parcelada não aceita data em mês futuro.
+- Cada parcela vira uma **compra comum** no mês em que cai, na categoria da compra parcelada. A compra parcelada aceita data de até 12 meses à frente (as parcelas ficam todas previstas).
 - As parcelas de meses futuros não são gravadas: elas são calculadas a partir da compra e gravadas quando o mês começa.
 - Editar ou excluir uma parcela muda a compra inteira, todas as parcelas.
 
