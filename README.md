@@ -10,7 +10,7 @@ As funcionalidades estão descritas em BDD em [`FUNCIONALIDADES.md`](FUNCIONALID
 - O pacote `@workspace/api-client-react`, que no app web chama a API, aqui é um **alias** para `src/data/api.ts`. Esse módulo exporta os mesmos hooks (`useGetCard`, `useCreateMovement`, …), mas lê e grava localmente.
 - `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 10`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
 - As fontes (Fraunces, DM Sans e DM Mono) vêm junto com o app via `@fontsource`, então funcionam offline.
-- As cores novas têm nome no tema do Tailwind (`paper`, `surface`, `line`, `ink`, `ink-soft`, `brand`, `on-brand`, `on-brand-soft`, `eyebrow`, `alert`, em `src/index.css`). A tela Entradas, o seletor de mês, as abas e o menu de rodapé já as usam; as demais telas ainda têm hexadecimais e vão migrar aos poucos ([`specs/redesign-entradas.md`](specs/redesign-entradas.md)).
+- As cores novas têm nome no tema do Tailwind (`paper`, `surface`, `line`, `ink`, `ink-soft`, `brand`, `on-brand`, `on-brand-soft`, `eyebrow`, `alert`, em `src/index.css`). A tela Entradas, o seletor de mês, as abas e o menu de rodapé já as usam; as cores `chart-*` (`chart-in`, `chart-out`, `chart-neutral`, `chart-track`, `chart-violet`, `chart-rose`, `chart-rose-tint`) são só dos gráficos ([`specs/redesign-opcao-d-entradas.md`](specs/redesign-opcao-d-entradas.md)); as demais telas ainda têm hexadecimais e vão migrar aos poucos ([`specs/redesign-entradas.md`](specs/redesign-entradas.md)).
 
 ### Compras e categorias
 
@@ -163,7 +163,9 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── pages/dashboard.tsx # painel de um mês
 │   ├── pages/historico.tsx # lista de meses
 │   ├── pages/compras.tsx # todas as compras do cartão, de qualquer mês
-│   ├── pages/entradas.tsx  # resumo do mês e saldo
+│   ├── pages/entradas.tsx  # saldo e gráfico "Entrou e saiu"
+│   ├── pages/entradas-resumo.tsx # tela "Resumo do mês" (aberta pelo rodapé)
+│   ├── components/charts/  # gráficos em SVG (barras divergentes, legenda, tabela de apoio)
 │   ├── pages/entradas-lista.tsx # listas de entradas, contas fixas e gastos
 │   ├── components/entry-dialogs.tsx # formulários de entrada, conta fixa e gasto
 │   ├── pages/beneficios.tsx # benefícios do mês

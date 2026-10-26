@@ -78,6 +78,14 @@
   --color-on-brand-soft: #d5ddd0;
   --color-eyebrow: #7a6a45;
   --color-alert: #8c4636;
+  /* Gráficos (specs/redesign-opcao-d-entradas.md seção 6): par entrou/saiu validado para daltonismo. */
+  --color-chart-in: #2a78d6;
+  --color-chart-out: #eb6834;
+  --color-chart-neutral: #6b7a70;
+  --color-chart-track: #e6e1d5;
+  --color-chart-violet: #5b46b0;
+  --color-chart-rose: #a63d5a;
+  --color-chart-rose-tint: #e6c3cc;
 }
 
 /* LIGHT MODE */
