@@ -49,6 +49,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 26. [Redesign da aba Benefícios](#26-redesign-da-aba-benefícios)
 27. [Opção D: Entradas](#27-opção-d-entradas)
 28. [Opção D: Cartões](#28-opção-d-cartões)
+29. [Opção D: Benefícios](#29-opção-d-benefícios)
 
 ---
 
@@ -740,7 +741,7 @@ Funcionalidade: Entradas
 
 ## 13. Benefícios
 
-Os benefícios aparecem num carrossel de cards, como os cartões ([seção 21](#21-benefícios-em-carrossel)). Resumo dos benefícios. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/beneficios.md`](specs/beneficios.md).
+Os benefícios aparecem numa fileira de botões, como os cartões ([seção 21](#21-benefícios-em-carrossel)). Resumo dos benefícios. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/beneficios.md`](specs/beneficios.md).
 
 ```gherkin
 # language: pt
@@ -766,8 +767,8 @@ Funcionalidade: Benefícios
     Quando eu toco no card "Novo benefício"
     E preencho o nome "VR", o valor mensal "800" e mantenho o mês inicial
     E toco em "Adicionar"
-    Então vejo o card "VR" com o selo "Mensal" no carrossel
-    E ele mostra disponível R$ 800,00 e "Crédito R$ 800,00 · Sobra anterior R$ 0,00 · Gasto R$ 0,00"
+    Então vejo "VR" na fileira de benefícios, selecionado
+    E vejo disponível R$ 800,00 e as colunas "Crédito R$ 800,00", "Gasto R$ 0,00" e "Disponível R$ 800,00", com "Sobra anterior R$ 0,00"
     E o botão "Todos os lançamentos (0)"
 
   @regra
@@ -834,7 +835,7 @@ Funcionalidade: Benefícios
   Cenário: Dividir o benefício por categoria
     Dado que "VR" vale R$ 800,00 e existem as categorias "Mercado" e "Lazer"
     Quando eu edito "VR", divido R$ 500,00 em "Mercado" e R$ 200,00 em "Lazer" e salvo
-    Então o cartão "VR" lista, em "Por categoria", "Mercado" R$ 500,00, "Lazer" R$ 200,00 e "Sem categoria" R$ 100,00
+    Então o benefício "VR" lista, em "Uso por categoria", "Mercado" R$ 500,00, "Lazer" R$ 200,00 e "Sem categoria" R$ 100,00
     E o disponível do benefício continua R$ 800,00
     E o diálogo mostra "Sem categoria: R$ 100,00" enquanto eu divido
 
@@ -900,7 +901,7 @@ Funcionalidade: Benefícios
 
   Cenário: Benefício sem divisão
     Dado que "VR" não tem divisão
-    Então o cartão "VR" não mostra a lista "Por categoria"
+    Então o benefício "VR" não mostra "Uso por categoria"
 
   Cenário: Categorias na aba Benefícios
     Quando eu toco no ícone de categorias do rodapé, na aba "Benefícios"
@@ -1427,19 +1428,19 @@ Funcionalidade: Benefícios em carrossel
   Contexto:
     Dado que existem os benefícios "VR" (R$ 800,00) e "VA" (R$ 500,00)
 
-  Cenário: Benefícios como cards na horizontal
+  Cenário: Benefícios numa fileira de botões
     Quando eu abro a aba "Benefícios"
-    Então vejo os cards "VR" e "VA" lado a lado num carrossel, com o card "Novo benefício" depois do último
+    Então vejo os botões "VR" e "VA" lado a lado, com "Novo benefício" depois do último (seção 29)
     E não há botão "Novo benefício" no topo
 
-  Cenário: O que o card mostra
-    Então cada card mostra o nome com "Mensal", o Disponível do mês, "Crédito · Sobra anterior · Gasto" e a barra de percentual
-    E o botão "⋯" (Editar e Excluir benefício) aparece só no card ativo
+  Cenário: O que a tela mostra do benefício selecionado
+    Então vejo o Disponível do mês, "Crédito · Gasto · Disponível" e a barra "Uso do crédito"
+    E o botão "⋯" (Editar e Excluir benefício) ao lado do valor
 
   Cenário: Trocar de benefício
-    Quando eu deslizo até o "VA" ou toco no pontinho "VA"
+    Quando eu toco em "VA" na fileira
     Então o "VA" fica selecionado
-    E "Por categoria" e os gastos abaixo passam a ser os do "VA"
+    E "Uso por categoria" abaixo passa a ser o do "VA"
 
   Cenário: A seleção acompanha o mês e a aba
     Dado que o "VA" está selecionado
@@ -1463,11 +1464,11 @@ Funcionalidade: Lançamentos do benefício em tela própria
 
   Cenário: A aba não lista mais os gastos
     Quando eu abro a aba "Benefícios"
-    Então vejo o card "VR", o "Por categoria" e o botão "Todos os lançamentos (3)"
+    Então vejo o "VR", o "Uso por categoria" e o botão "Todos os lançamentos (3)"
     E não vejo a lista de lançamentos
 
   Cenário: Abrir uma categoria
-    Quando eu toco em "Mercado" no "Por categoria"
+    Quando eu toco em "Mercado" no "Uso por categoria"
     Então abre a tela "Mercado" do "VR" com o total R$ 380,00, "Almoço" e "Jantar"
     Mas "Fechar categoria" e "Reabrir categoria" ficam numa linha própria e não abrem a tela
 
@@ -1641,9 +1642,8 @@ Funcionalidade: Aba Benefícios redesenhada
     Dado que o benefício "FLASH" tem crédito de R$ 800,00, sobra anterior de R$ 0,00 e gasto de R$ 580,00 em outubro de 2026
     Quando eu abro a aba "Benefícios"
     Então vejo "FLASH", "Disponível em outubro de 2026" e "R$ 220,00"
-    E vejo três colunas: "Crédito", "Sobra anterior" e "Gasto" com os valores
-    E vejo "Gasto do mês" com "73%"
-    E vejo o botão "Mais opções do benefício"
+    E vejo três colunas: "Crédito", "Gasto" e "Disponível" com os valores e a "Sobra anterior" abaixo
+    E vejo a barra "Uso do crédito" e o botão "Mais opções do benefício"
 
   Cenário: Editar ou excluir o benefício pelo menu
     Quando eu toco em "Mais opções do benefício"
@@ -1662,10 +1662,10 @@ Funcionalidade: Aba Benefícios redesenhada
   Cenário: Sem categoria não fecha
     Então a linha "Sem categoria" não tem "Fechar categoria" nem "Reabrir categoria"
 
-  Cenário: Alertas de cor
-    Dado uma categoria com mais de 85% usado e outra com disponível negativo
-    Então a barra da primeira aparece no tom quente
-    E o valor da segunda aparece na cor de alerta
+  Cenário: Alerta de categoria estourada
+    Dado uma categoria com disponível negativo
+    Então o valor dela aparece na cor de alerta
+    E a barra continua na cor única dos gráficos de Benefícios
 ```
 
 ---
@@ -1765,4 +1765,48 @@ Funcionalidade: Aba Cartões na Opção D
     Dado que um mês não tem compras
     Então "Ritmo do mês" mostra "Nenhuma compra neste mês."
     E "Para onde foi" mostra a mensagem de resumo vazio
+```
+
+---
+
+## 29. Opção D: Benefícios
+
+Resumo. A especificação completa está em [`specs/redesign-opcao-d-beneficios.md`](specs/redesign-opcao-d-beneficios.md). Nenhuma regra de saldo, período ou categoria muda. A face colorida saiu: a aba mostra a fileira de benefícios, o disponível em texto grande, a barra "Uso do crédito" e o "Uso por categoria". Os lançamentos continuam em tela própria, aberta pelas categorias e por "Todos os lançamentos".
+
+```gherkin
+# language: pt
+
+Funcionalidade: Aba Benefícios na Opção D
+  Contexto:
+    Dado o benefício "Vale-refeição" com crédito mensal de R$ 600,00
+    E em outubro de 2026 há R$ 120,00 em lançamentos
+
+  Cenário: Disponível em destaque
+    Quando eu abro a aba "Benefícios"
+    Então vejo "Disponível em outubro de 2026" e "R$ 480,00"
+    E "de R$ 600,00 de crédito · 2 lançamentos"
+
+  Cenário: Uso do crédito
+    Então a barra mostra 20% de gasto e 80% de disponível
+    E vejo Crédito R$ 600,00, Gasto R$ 120,00 e Disponível R$ 480,00, com "Sobra anterior"
+
+  Cenário: Passou do crédito
+    Dado que os lançamentos somam R$ 650,00
+    Então a barra fica toda na cor de gasto
+    E vejo "Passou R$ 50,00 do crédito" e o disponível na cor de alerta
+
+  Cenário: Abrir os lançamentos de uma categoria
+    Quando eu toco numa categoria em "Uso por categoria"
+    Então abre a tela de lançamentos dela
+
+  Cenário: Fechar categoria
+    Quando eu toco em "Fechar categoria" e confirmo
+    Então a categoria é fechada como antes
+
+  Cenário: Mês fora do período
+    Quando eu abro um mês depois do mês final do benefício
+    Então vejo "Sem crédito em dezembro de 2026", o botão "Novo benefício" e nenhum gráfico
+
+  Cenário: Sem nenhum benefício
+    Então vejo "Nenhum benefício ainda. Crie o primeiro para registrar os gastos." e o botão "Novo benefício"
 ```
