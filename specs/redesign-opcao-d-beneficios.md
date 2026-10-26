@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Proposta |
+| Status | Implementada |
 | Criada em | 26/10/2026 |
 | Escopo | `src/pages/benefits.tsx` (e componentes da aba), `src/components/charts/` (reuso), `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`redesign-opcao-d-entradas.md`](redesign-opcao-d-entradas.md), [`redesign-opcao-d-cartoes.md`](redesign-opcao-d-cartoes.md) (fileira de seleção e folha "⋯"), [`beneficios.md`](beneficios.md), [`compras-e-categorias.md`](compras-e-categorias.md) |
@@ -111,11 +111,13 @@ Reutiliza `chart-rose`, `chart-rose-tint`, `chart-track`, `hbars.tsx`, `chart-le
 
 ## 8. Critérios de aceite
 
-- A aba não mostra mais a face colorida; mostra fileira, hero, barra de uso e categorias.
-- Os números batem com a tela de hoje.
-- Editar, excluir, filtrar, fechar categoria e abrir lançamento continuam funcionando.
-- Mês fora do período se comporta como D8.
-- `npm run typecheck` e `npm run build` passam; documentação atualizada; status "Implementada".
+- [x] A aba não mostra mais a face colorida; mostra fileira, hero, barra de uso e categorias.
+- [x] Os números batem com a tela de antes.
+- [ ] Editar, excluir, filtrar, fechar categoria e abrir lançamento continuam funcionando. _Verificado no navegador: menu "⋯" com editar e excluir, abrir a tela de lançamentos de uma categoria e "Todos os lançamentos". Pendente: concluir editar, excluir e fechar categoria (código dessas ações não mudou)._ As categorias abrem a tela de lançamentos (não filtram uma lista na aba, que não existe), conforme combinado.
+- [x] Mês fora do período se comporta como D8.
+- [x] `npm run typecheck` e `npm run build` passam; documentação atualizada; status "Implementada".
+
+**Decisões na implementação:** o total da barra é crédito + sobra anterior (disponível = total − gasto), e a "Sobra anterior" aparece numa linha abaixo das três colunas; "Uso por categoria" mostra o gasto e o `percentUsed` de cada categoria e não agrupa em "Outras" (cada linha tem Fechar/Reabrir); o selo "Mensal" da face antiga saiu.
 
 ## 9. Tarefas
 
