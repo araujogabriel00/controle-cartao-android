@@ -8,7 +8,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 >
 > Todos os valores são calculados **dentro de um mês**: cartão, compras e resumo por categoria mostram só o mês que está aberto no painel. O funcionamento por mês está detalhado na seção [9. Histórico mensal](#9-histórico-mensal) e na spec [`specs/historico-mensal.md`](specs/historico-mensal.md).
 >
-> O app aceita **vários cartões**, e cada um tem o próprio nome, cor, meses e compras. As compras, o resumo por categoria e o histórico mostram sempre o **cartão selecionado** no carrossel. As categorias são globais, as mesmas para todos os cartões. Os detalhes estão na seção [10. Múltiplos cartões](#10-múltiplos-cartões) e na spec [`specs/multiplos-cartoes.md`](specs/multiplos-cartoes.md).
+> O app aceita **vários cartões**, e cada um tem o próprio nome, cor, meses e compras. As compras, o resumo por categoria e o histórico mostram sempre o **cartão selecionado** na fileira de cartões. As categorias são globais, as mesmas para todos os cartões. Os detalhes estão na seção [10. Múltiplos cartões](#10-múltiplos-cartões) e na spec [`specs/multiplos-cartoes.md`](specs/multiplos-cartoes.md).
 >
 > Uma **compra parcelada** vira uma compra comum em cada mês em que cai, e os meses futuros mostram as parcelas previstas junto com as compras já registradas. Uma **compra recorrente** (assinaturas) funciona do mesmo jeito, repetindo todo mês: seção [15. Compra recorrente](#15-compra-recorrente). Os detalhes estão na seção [11. Parcelamento](#11-parcelamento) e na spec [`specs/parcelamento.md`](specs/parcelamento.md).
 >
@@ -48,6 +48,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 25. [Redesign da aba Cartões](#25-redesign-da-aba-cartões)
 26. [Redesign da aba Benefícios](#26-redesign-da-aba-benefícios)
 27. [Opção D: Entradas](#27-opção-d-entradas)
+28. [Opção D: Cartões](#28-opção-d-cartões)
 
 ---
 
@@ -76,30 +77,30 @@ Funcionalidade: Gerenciar o cartão
     Quando eu preencho o nome do cartão com "Cartão principal"
     E clico em "Adicionar"
     Então vejo a mensagem "Alterações salvas com cuidado."
-    E vejo a face verde do cartão "Cartão principal" no carrossel, selecionada
+    E vejo o cartão "Cartão principal" na fileira de cartões, selecionado, com a bolinha verde
     E o formulário não pede limite
     E o mês atual passa a fazer parte do histórico desse cartão
 
   Cenário: Exibir a situação do cartão
     Dado que o cartão selecionado tem 2 compras somando R$ 1.250,00 em outubro de 2026
-    Quando eu vejo a face do cartão no carrossel
+    Quando eu abro a aba "Cartões"
     Então vejo "Fatura de outubro de 2026" com o valor "R$ 1.250,00"
     E vejo "2 compras"
     E não vejo disponível, limite nem barra de progresso
 
   Cenário: Cartão ainda sem gastos
     Dado que o cartão selecionado não tem nenhuma compra no mês
-    Quando eu vejo a face do cartão no carrossel
+    Quando eu abro a aba "Cartões"
     Então vejo a fatura "R$ 0,00" e a mensagem "Nenhuma compra neste mês."
 
   Cenário: Editar o cartão
     Dado que existe um cartão selecionado
-    Quando eu clico em "Editar cartão" na face do cartão
+    Quando eu toco em "Mais opções do cartão" e em "Editar cartão"
     Então o formulário "Ajustar cartão" abre preenchido com o nome e a cor, sem limite
     Quando eu altero o nome para "Cartão roxo"
     E clico em "Salvar alterações"
     Então vejo a mensagem "Alterações salvas com cuidado."
-    E a face mostra o nome novo
+    E a fileira de cartões mostra o nome novo
     E as compras e as faturas dos meses não mudam
 
   Cenário: Remover o único cartão
@@ -288,7 +289,7 @@ Funcionalidade: Visão geral do mês
 
   Cenário: Exibir o resumo
     Dado que outubro de 2026 tem 3 compras somando R$ 233,34
-    Quando eu vejo a face do cartão em outubro de 2026
+    Quando eu abro a aba "Cartões" em outubro de 2026
     Então vejo "Fatura de outubro de 2026" com "R$ 233,34" e "3 compras"
 
   Cenário: Resumo de um mês passado
@@ -481,7 +482,7 @@ Funcionalidade: Histórico mensal do cartão
 
   Cenário: Ver o histórico
     Dado que tenho dados em setembro e outubro de 2026
-    Quando eu toco em "Ver histórico" na face do cartão ativo
+    Quando eu toco em "Histórico", no título de "Próximas faturas"
     Então vejo o histórico daquele cartão, com "Outubro de 2026" antes de "Setembro de 2026"
     E cada mês mostra a fatura e a quantidade de compras, sem limite nem disponível
 
@@ -539,30 +540,27 @@ Funcionalidade: Múltiplos cartões
     Dado que tenho o cartão "Nubank", verde
 
   Cenário: Adicionar um segundo cartão
-    Quando eu deslizo o carrossel até o slot "Adicionar cartão" e toco nele
+    Quando eu toco em "Novo cartão" na fileira de cartões
     Então o formulário "Seu cartão" abre com a primeira cor ainda não usada (azul) marcada
     Quando eu cadastro o cartão "Inter"
-    Então o carrossel desliza até "Inter", na cor azul, e ele fica selecionado
-    E vejo um pontinho para cada cartão e um "+"
+    Então "Inter" aparece na fileira, com a bolinha azul, e fica selecionado
 
   Cenário: Trocar de cartão
     Dado que tenho também o cartão "Inter", com compras próprias
-    Quando eu deslizo o carrossel até "Inter"
-    Ou toco no pontinho "Cartão Inter"
-    Ou uso a seta para a direita com o foco no carrossel
-    Então "Inter" fica centralizado e selecionado
+    Quando eu toco em "Inter" na fileira de cartões
+    Então "Inter" fica selecionado
     E as compras, o resumo por categoria e o histórico passam a ser os de "Inter"
 
   Cenário: Lembrar o último cartão usado
     Dado que deixei "Inter" selecionado
     Quando eu fecho e abro o aplicativo
-    Então o carrossel abre em "Inter", sem animação
+    Então a aba "Cartões" abre com "Inter" selecionado
 
   Cenário: Escolher a cor do cartão
-    Quando eu clico em "Editar cartão" na face de "Nubank"
+    Quando eu toco em "Mais opções do cartão" e em "Editar cartão" com "Nubank" selecionado
     Então vejo as amostras verde, azul, roxo, vinho, grafite e terracota, com a cor atual marcada
     Quando eu escolho vinho e salvo
-    Então a face de "Nubank" fica vinho
+    Então a bolinha de "Nubank" na fileira fica vinho
 
   @regra
   Cenário: Nome de cartão repetido
@@ -580,14 +578,14 @@ Funcionalidade: Múltiplos cartões
   Cenário: Remover um de vários cartões
     Dado que tenho também o cartão "Inter", selecionado
     Quando eu removo "Inter" e confirmo
-    Então "Inter" sai do carrossel com todos os seus registros
+    Então "Inter" sai da fileira de cartões com todos os seus registros
     E "Nubank" fica selecionado, sem nenhuma alteração
 
   @regra
   Cenário: Dados de uma versão anterior do app
     Dado que o app tinha um único cartão salvo antes dos múltiplos cartões existirem
     Quando eu abro a nova versão
-    Então ele aparece como o primeiro cartão do carrossel, verde e selecionado, sem perda de dados
+    Então ele aparece como o primeiro cartão da fileira, com a bolinha verde, selecionado, sem perda de dados
 ```
 
 ## 11. Parcelamento
@@ -1052,7 +1050,7 @@ Funcionalidade: Contas fixas e gastos do dia a dia
 
   Cenário: Resumo dos gastos por categoria
     Dado que há R$ 300,00 em "Mercado", R$ 100,00 em "Lazer" e R$ 100,00 sem categoria
-    Então "Por categoria" mostra "Mercado" R$ 300,00 (60%), "Lazer" R$ 100,00 (20%) e "Sem categoria" R$ 100,00 (20%)
+    Então "Para onde foi" mostra "Mercado" R$ 300,00 · 60%, "Lazer" R$ 100,00 · 20% e "Sem categoria" R$ 100,00 · 20%
 
   Cenário: Excluir uma categoria usada nos gastos
     Dado que "Mercado" tem 1 compra no cartão e 2 gastos do dia a dia
@@ -1262,15 +1260,15 @@ Funcionalidade: Cartão sem limite
     Quando eu clico em "Cadastrar cartão"
     Então o formulário "Seu cartão" abre com nome e cor, e sem campo de limite
 
-  Cenário: A face do cartão mostra a fatura do mês
+  Cenário: A aba mostra a fatura do mês
     Dado que o "Nubank" tem as compras de R$ 120,00 e R$ 80,00 em outubro de 2026
-    Então a face mostra "Fatura de outubro de 2026" com R$ 200,00 e "2 compras"
+    Então vejo "Fatura de outubro de 2026" com R$ 200,00 e "2 compras"
     E não mostra disponível, limite nem barra de limite utilizado
 
   Cenário: Mês futuro mostra a fatura prevista
     Dado que o "Nubank" tem a parcela "2/3" de R$ 33,33 e a cobrança recorrente de R$ 40,00 previstas para novembro
     Quando eu abro novembro de 2026
-    Então a face mostra "Fatura prevista de novembro de 2026" com R$ 73,33
+    Então vejo "Fatura prevista de novembro de 2026" com R$ 73,33
 
   Cenário: A aba Cartões sem a faixa e sem o painel do mês
     Dado que existem 2 cartões
@@ -1309,10 +1307,9 @@ Funcionalidade: Histórico no card do cartão
     Então não há botões "Atualizar" nem "Histórico" no topo
     E no celular a linha de controles não aparece
 
-  Cenário: O botão fica no card
+  Cenário: O link fica em "Próximas faturas"
     Dado que "Nubank" é o cartão selecionado
-    Então a face do "Nubank" tem o botão "Ver histórico de Nubank", ao lado de editar e remover
-    Mas nos cartões vizinhos o botão não fica disponível até eles serem selecionados
+    Então o título de "Próximas faturas" tem o link "Histórico" (ver seção 28)
 
   Cenário: Abrir o histórico do cartão
     Dado que "Inter" é o cartão selecionado
@@ -1602,8 +1599,8 @@ Funcionalidade: Aba Cartões redesenhada
   Cenário: Face do cartão
     Dado que o cartão "Nubank" tem fatura de R$ 490,50 em outubro de 2026 com 4 compras
     Quando eu abro a aba "Cartões"
-    Então vejo "Nubank", "Fatura de outubro de 2026", "R$ 490,50" e "4 compras"
-    E vejo os botões "Ver histórico de Nubank" e "Mais opções do cartão"
+    Então vejo "Nubank" na fileira, "Fatura de outubro de 2026", "R$ 490,50" e "4 compras"
+    E vejo o botão "Mais opções do cartão" (o "Histórico" passou para "Próximas faturas", seção 28)
 
   Cenário: Editar ou excluir o cartão pelo menu
     Quando eu toco em "Mais opções do cartão"
@@ -1706,4 +1703,66 @@ Funcionalidade: Aba Entradas na Opção D
 
   Cenário: Acessibilidade do gráfico
     Então o gráfico tem descrição com os cinco valores por extenso e uma tabela de apoio visível só para leitor de tela
+```
+
+---
+
+## 28. Opção D: Cartões
+
+Resumo. A especificação completa está em [`specs/redesign-opcao-d-cartoes.md`](specs/redesign-opcao-d-cartoes.md). Nenhuma regra de fatura, parcela, categoria ou histórico muda. A face colorida do cartão saiu: a aba mostra uma fileira de botões de cartão, a fatura em texto grande e três gráficos ("Ritmo do mês", "Para onde foi" e "Próximas faturas") antes da lista de compras.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Aba Cartões na Opção D
+  Contexto:
+    Dado que hoje é 26/10/2026 e existe o cartão "Nubank"
+    E em outubro há "Cabo" de R$ 20,00 (02/10), "Fone" 1/3 de R$ 40,00 (15/10) e "teste" 1/7 de R$ 357,16 (17/10)
+
+  Cenário: Fatura em destaque
+    Quando eu abro a aba "Cartões"
+    Então vejo "Fatura de outubro de 2026" e "R$ 417,16"
+    E "3 compras · próxima fatura prevista R$ 397,16"
+    E não vejo a face colorida do cartão
+
+  Cenário: Trocar de cartão
+    Dado que existem os cartões "Nubank" e "Inter"
+    Quando eu toco em "Inter" na fileira
+    Então o cartão selecionado passa a ser "Inter" e a tela mostra a fatura dele
+
+  Cenário: Ritmo do mês
+    Então vejo o gráfico "Ritmo do mês" com degraus em 02, 15 e 17 de outubro
+    E "+R$ 357,16" ao lado da maior alta e a linha "hoje"
+
+  Cenário: Para onde foi
+    Então vejo "testes R$ 357,16 · 86%" e "Eletrônicos R$ 60,00 · 14%", na mesma cor
+    Quando eu toco em "Eletrônicos"
+    Então a lista de Compras mostra só "Fone" e "Cabo"
+
+  Cenário: Próximas faturas
+    Então vejo sete colunas: outubro cheia com R$ 417,16
+    E novembro e dezembro claras com R$ 397,16 e janeiro a abril claras com R$ 357,16
+
+  Cenário: Abrir o histórico
+    Quando eu toco em "Histórico" no título de "Próximas faturas"
+    Então abre a tela de histórico do cartão
+
+  Cenário: Editar e excluir o cartão
+    Quando eu toco em "Mais opções do cartão" e em "Excluir cartão"
+    Então vejo a confirmação e o cartão só some se eu confirmar
+
+  Cenário: Mês passado
+    Quando eu volto para setembro de 2026
+    Então "Ritmo do mês" não mostra a linha "hoje"
+    E a primeira coluna de "Próximas faturas" é setembro, em cor cheia
+
+  Cenário: Mês futuro
+    Quando eu abro novembro de 2026
+    Então o rótulo é "Fatura prevista de novembro de 2026"
+    E o ritmo mostra as parcelas previstas em tom claro, com o rótulo "prevista"
+
+  Cenário: Mês sem compras
+    Dado que um mês não tem compras
+    Então "Ritmo do mês" mostra "Nenhuma compra neste mês."
+    E "Para onde foi" mostra a mensagem de resumo vazio
 ```

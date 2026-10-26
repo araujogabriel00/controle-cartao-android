@@ -30,7 +30,7 @@ A especificação completa está em [`specs/compras-e-categorias.md`](specs/comp
 
 Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês do calendário**: a data da compra define o mês dela. As especificações completas estão em [`specs/historico-mensal.md`](specs/historico-mensal.md) e [`specs/multiplos-cartoes.md`](specs/multiplos-cartoes.md).
 
-- O app aceita vários cartões, cada um com nome, cor, meses e compras próprios. A troca é feita num carrossel horizontal no estilo das carteiras digitais, e o app lembra o último cartão usado.
+- O app aceita vários cartões, cada um com nome, cor, meses e compras próprios. A troca é feita numa fileira de botões, um por cartão, e o app lembra o último cartão usado. A aba Cartões mostra a fatura em texto grande e os gráficos "Ritmo do mês", "Para onde foi" e "Próximas faturas" ([`specs/redesign-opcao-d-cartoes.md`](specs/redesign-opcao-d-cartoes.md)).
 - Com 2 cartões ou mais, o histórico ganha, em cada mês, a linha "Todos os cartões" com o total das faturas.
 - `#/` mostra o mês corrente, `#/mes/AAAA-MM` mostra outro mês e `#/historico` lista todos os meses com seus totais. As rotas usam hash porque o bundle tem base relativa.
 - **O mês é o mesmo nas três abas** ([`specs/mes-compartilhado.md`](specs/mes-compartilhado.md)): o seletor de mês fica acima da barra de abas e trocar de aba mantém o mês (`#/entradas/mes/AAAA-MM`, `#/beneficios/mes/AAAA-MM`). Se a aba de destino não abre aquele mês, abre o mais próximo. O app **lembra o último mês aberto** (só um mês que não é o corrente) e abre a aba Cartões nele; "Voltar para o mês atual" apaga a lembrança, e um endereço com mês vale mais que ela.
@@ -156,8 +156,10 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── lib/format.ts       # formatação de valores, datas e meses; caminho de cada aba num mês
 │   ├── lib/last-month.ts   # último mês aberto (lembrado fora do estado)
 │   ├── lib/card-colors.ts  # paleta de cores dos cartões
-│   ├── components/snap-carousel.tsx # carrossel genérico (cartões e benefícios)
-│   ├── components/card-carousel.tsx # face dos cartões no carrossel
+│   ├── components/snap-carousel.tsx # carrossel (só os benefícios)
+│   ├── components/card-picker.tsx # fileira de botões dos cartões
+│   ├── components/card-menu.tsx # folha "⋯" (editar e excluir cartão ou benefício)
+│   ├── lib/card-series.ts  # séries dos gráficos de Cartões (funções puras)
 │   ├── components/app-tabs.tsx # abas Entradas | Cartões | Benefícios
 │   ├── components/month-nav.tsx # seletor de mês, acima das abas
 │   ├── pages/dashboard.tsx # painel de um mês
@@ -165,7 +167,7 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── pages/compras.tsx # todas as compras do cartão, de qualquer mês
 │   ├── pages/entradas.tsx  # saldo e gráfico "Entrou e saiu"
 │   ├── pages/entradas-resumo.tsx # tela "Resumo do mês" (aberta pelo rodapé)
-│   ├── components/charts/  # gráficos em SVG (barras divergentes, legenda, tabela de apoio)
+│   ├── components/charts/  # gráficos em SVG e barras (divergentes, degraus, colunas, horizontais, legenda, tabela de apoio)
 │   ├── pages/entradas-lista.tsx # listas de entradas, contas fixas e gastos
 │   ├── components/entry-dialogs.tsx # formulários de entrada, conta fixa e gasto
 │   ├── pages/beneficios.tsx # benefícios do mês

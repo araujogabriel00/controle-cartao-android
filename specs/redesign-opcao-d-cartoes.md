@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Proposta |
+| Status | Implementada |
 | Criada em | 26/10/2026 |
 | Escopo | `src/pages/dashboard.tsx` (face do cartão, gráficos e bloco Compras), `src/components/card-carousel.tsx` e `src/components/snap-carousel.tsx` (só o uso nesta aba), `src/components/charts/` (novos gráficos), `src/components/card-menu.tsx` (novo, se ainda não existir), `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`redesign-opcao-d-entradas.md`](redesign-opcao-d-entradas.md) (cores `chart-*`, componentes de gráfico, rodapé), [`redesign-entradas.md`](redesign-entradas.md), [`compras-e-categorias.md`](compras-e-categorias.md), [`cartao-sem-limite.md`](cartao-sem-limite.md), [`parcelamento.md`](parcelamento.md), [`compra-recorrente.md`](compra-recorrente.md), [`historico-no-cartao.md`](historico-no-cartao.md), [`multiplos-cartoes.md`](multiplos-cartoes.md) |
@@ -141,12 +141,12 @@ Reutiliza `src/components/charts/` da spec de Entradas e acrescenta: `step-line.
 
 ## 8. Critérios de aceite
 
-- A aba Cartões não mostra mais a face colorida; mostra fileira de cartões, fatura e os três gráficos.
-- Os números dos gráficos batem com a fatura, as categorias e as parcelas das telas que já existiam.
-- Trocar cartão, abrir histórico, editar e excluir cartão, filtrar por categoria e abrir uma compra continuam funcionando.
-- Mês passado, corrente, futuro e sem compras se comportam como nos cenários.
-- Texto ≥ 12 px, alvos ≥ 44 px, gráficos com `aria-label` e tabela de apoio.
-- `npm run typecheck` e `npm run build` passam; documentação atualizada; status "Implementada".
+- [x] A aba Cartões não mostra mais a face colorida; mostra fileira de cartões, fatura e os três gráficos.
+- [x] Os números dos gráficos batem com a fatura, as categorias e as parcelas das telas que já existiam.
+- [ ] Trocar cartão, abrir histórico, editar e excluir cartão, filtrar por categoria e abrir uma compra continuam funcionando. _Verificado no navegador: trocar cartão, abrir o histórico, abrir o menu "⋯" (editar e excluir presentes) e filtrar por categoria. Pendente: concluir uma edição e uma exclusão de cartão e abrir uma compra pela linha (o código dessas partes não mudou)._
+- [x] Mês passado, corrente, futuro e sem compras se comportam como nos cenários.
+- [ ] Texto ≥ 12 px, alvos ≥ 44 px, gráficos com `aria-label` e tabela de apoio. _Texto e alvos conferidos no código; Ritmo e Próximas faturas têm `aria-label` e tabela `sr-only`. "Para onde foi" é uma lista de botões com o texto "valor · percentual" (a barra é decorativa), sem tabela separada para não duplicar a leitura. TalkBack não testado._
+- [x] `npm run typecheck` e `npm run build` passam; documentação atualizada; status "Implementada".
 
 ## 9. Tarefas
 

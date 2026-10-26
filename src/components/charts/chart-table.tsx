@@ -3,6 +3,6 @@ export function ChartTable({ caption, head = ['Item', 'Valor'], rows }: { captio
   return <table className="sr-only">
     <caption>{caption}</caption>
     <thead><tr><th scope="col">{head[0]}</th><th scope="col">{head[1]}</th></tr></thead>
-    <tbody>{rows.map((row) => <tr key={row.label}><th scope="row">{row.label}</th><td>{row.value}</td></tr>)}</tbody>
+    <tbody>{rows.map((row, index) => <tr key={`${index}-${row.label}`}><th scope="row">{row.label}</th><td>{row.value}</td></tr>)}</tbody>
   </table>;
 }

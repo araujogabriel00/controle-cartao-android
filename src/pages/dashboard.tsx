@@ -8,24 +8,29 @@ import {
   useCreateCard, useUpdateCard, useDeleteCard, useSelectCard,
   useCreateMovement, useUpdateMovement, useDeleteMovement, useStartMonth,
   useCreatePurchase, useUpdatePurchase, useDeletePurchase, useGetLastFutureMonth, useGetMonthPreview,
-  useCreateRecurring, useUpdateRecurring, useDeleteRecurring,
-  getGetLastFutureMonthQueryKey, getGetMonthPreviewQueryKey,
+  useCreateRecurring, useUpdateRecurring, useDeleteRecurring, useGetMonthHistory, useGetFutureInstallments,
+  getGetLastFutureMonthQueryKey, getGetMonthPreviewQueryKey, getGetFutureInstallmentsQueryKey,
   type Cards, type Category, type Movement, type PlannedInstallment,
 } from '@workspace/api-client-react';
 import {
   ArrowDownLeft, ArrowUpRight, CalendarDays, Check, ChevronDown, CircleHelp, CreditCard,
-  LayoutDashboard, Plus, Tag, X,
+  LayoutDashboard, MoreHorizontal, Plus, X,
 } from 'lucide-react';
-import { CardCarousel, type CarouselCard } from '@/components/card-carousel';
+import { CardPicker, type CarouselCard } from '@/components/card-picker';
+import { CardMenu } from '@/components/card-menu';
+import { ChartLegend } from '@/components/charts/chart-legend';
+import { Columns } from '@/components/charts/columns';
+import { HBars } from '@/components/charts/hbars';
+import { StepLine } from '@/components/charts/step-line';
+import { invoiceColumns, paceSteps, topCategories } from '@/lib/card-series';
 import { AppTabs } from '@/components/app-tabs';
 import { MonthNav } from '@/components/month-nav';
 import { ScopeDialog } from '@/components/scope-dialog';
-import { Progress } from '@/components/progress';
 import { dialogOverlay, dialogPanel } from '@/lib/dialog-styles';
 import { useRememberMonth } from '@/lib/last-month';
 import { CARD_COLOR_KEYS, CARD_COLORS, type CardColor } from '@/lib/card-colors';
 import {
-  capitalize, currentMonth, dateLabel, defaultDateFor, firstDayOf, isFutureMonth, lastDayOf,
+  capitalize, currentMonth, dateLabel, today, defaultDateFor, firstDayOf, isFutureMonth, lastDayOf,
   money, monthLabel, monthName, monthOf, plural, shiftMonth, type MonthKey,
 } from '@/lib/format';
 
@@ -158,12 +163,16 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   const categories = categoriesQuery.data ?? [];
   const movementsQuery = useGetMovements(cardId, month, { query: { queryKey: getGetMovementsQueryKey(cardId, month), enabled: Boolean(card), refetchOnWindowFocus: true } });
   const summaryQuery = useGetCategorySummary(cardId, month, { query: { queryKey: getGetCategorySummaryQueryKey(cardId, month), enabled: Boolean(card), refetchOnWindowFocus: true } });
+  // RN-02: the charts read what the screen already fetches, plus the card's history and planned installments.
+  const history = useGetMonthHistory(cardId, { query: { queryKey: getGetMonthHistoryQueryKey(cardId), enabled: Boolean(card), refetchOnWindowFocus: true } }).data ?? [];
+  const futureInstallments = useGetFutureInstallments(cardId, { query: { queryKey: getGetFutureInstallmentsQueryKey(cardId), enabled: Boolean(card), refetchOnWindowFocus: true } }).data ?? [];
   const preview = useGetMonthPreview(cardId, month, { query: { queryKey: getGetMonthPreviewQueryKey(cardId, month), enabled: isFuture && Boolean(card), refetchOnWindowFocus: true } }).data;
   const summary = summaryQuery.data ?? [];
   const [filter, setFilter] = useState('all');
   const [dialog, setDialog] = useState<{ kind: DialogKind; initial: DialogRecord; onDelete?: () => void } | null>(null);
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   // RF-04 / RF-05: editing or deleting a charge of a recurring purchase asks for the scope first.
   const [scopeAsk, setScopeAsk] = useState<{ action: 'edit' | 'delete'; movement: Movement } | null>(null);
 
@@ -213,6 +222,17 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   const activeFilter = chips.some((chip) => chip.key === filter) ? filter : 'all';
   const visibleRows = rows.filter((row) => activeFilter === 'all' || filterKey(row.categoryId) === activeFilter);
   const visibleTotal = Math.round(visibleRows.reduce((total, row) => total + row.amount, 0) * 100) / 100;
+  const pace = paceSteps(rows.map((row) => ({ date: row.date, amount: row.amount, description: row.description })));
+  const columns = invoiceColumns(month, history, futureInstallments);
+  const nextInvoice = columns[1]?.amount ?? 0;
+  const categoryRows = topCategories(summary.map((item) => ({ key: filterKey(item.categoryId), label: item.name ?? 'Sem categoria', amount: item.amount, percent: item.percent })));
+  const daysInMonth = Number(lastDayOf(month).slice(8, 10));
+  const todayDay = isCurrentMonth ? Number(today().slice(8, 10)) : null;
+  // D7: tapping a category filters the purchases and scrolls to them; tapping it again clears the filter.
+  const pickCategory = (key: string) => {
+    setFilter(activeFilter === key ? 'all' : key);
+    document.getElementById('compras')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   const loading = cardsQuery.isLoading || movementsQuery.isLoading;
 
   const submitDialog = (values: DialogRecord) => {
@@ -277,7 +297,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   if (cardsQuery.isError || movementsQuery.isError) return <main className="flex min-h-safe items-center justify-center bg-[#f5f1e7] p-6"><div className="max-w-md text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#e9e3d7] text-[#315944]"><CircleHelp/></div><h1 className="mt-5 font-display text-3xl text-[#234638]">Vamos tentar de novo?</h1><p className="mt-3 text-sm leading-6 text-[#758075]">Não conseguimos abrir seu caderno agora. Sua informação continua segura.</p><button onClick={() => { void cardsQuery.refetch(); void movementsQuery.refetch(); }} className="mt-6 rounded-full bg-[#28513f] px-6 py-3 text-sm font-semibold text-[#fffaf0]">Tentar novamente</button></div></main>;
 
   return <main className="notebook-grain min-h-safe bg-[#f5f1e7] text-[#294438]">
-    <div className="relative z-10 mx-auto max-w-[1320px] px-4 pb-12 pt-5 sm:px-8 lg:px-12">
+    <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
       <header className="enter hidden items-center justify-between border-b border-[#ded8ca] pb-5 sm:flex">
         <div className="flex items-center gap-2 rounded-full border border-[#ddd7c9] bg-[#f9f6ee] px-3.5 py-2 text-[11px] text-[#64766a]"><span className={`h-1.5 w-1.5 rounded-full ${health.isError ? 'bg-[#d78470]' : 'bg-[#6d9d79]'}`}/>{health.isError ? 'Sincronização pausada' : 'Seu caderno está em dia'}</div>
       </header>
@@ -288,21 +308,49 @@ export default function Dashboard({ month }: { month: MonthKey }) {
 
 
 
-      {!cards.length ? <section className="enter mt-9 overflow-hidden rounded-[28px] bg-[#28513f] p-7 text-[#fffaf0] sm:p-10">
-        <div className="flex flex-col justify-between gap-8 md:flex-row md:items-center"><div className="max-w-xl"><div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-[#f1d68e]"><CreditCard size={22}/></div><p className="font-mono-data text-[10px] uppercase tracking-[.2em] text-[#d8c991]">Um bom começo</p><h2 className="mt-2 font-display text-3xl sm:text-4xl">Vamos anotar o seu cartão?</h2><p className="mt-3 text-sm leading-6 text-[#d0ded3]">Lance as compras e veja quanto deu a fatura de cada mês.</p></div><button data-testid="button-create-card" onClick={() => setDialog({ kind: 'card', initial: { color: cardsQuery.data?.nextColor } })} className="flex items-center gap-2 self-start rounded-full bg-[#f0d28b] px-5 py-3 text-sm font-semibold text-[#294438] transition hover:bg-[#f5dfa8]"><Plus size={16}/> Cadastrar cartão</button></div>
+      {!cards.length ? <section className="enter mt-6 rounded-2xl border border-line bg-surface p-6">
+        <div className="mb-4 grid h-11 w-11 place-items-center rounded-full bg-[#e4ece2] text-brand"><CreditCard size={20}/></div>
+        <h2 className="font-display text-[28px] leading-tight text-ink">Vamos anotar o seu cartão?</h2>
+        <p className="mt-2 text-[15px] text-ink-soft">Lance as compras e veja quanto deu a fatura de cada mês.</p>
+        <button data-testid="button-create-card" onClick={() => setDialog({ kind: 'card', initial: { color: cardsQuery.data?.nextColor } })} className="mt-5 flex h-12 items-center gap-2 rounded-full bg-brand px-6 text-[15px] font-semibold text-on-brand transition hover:bg-[#1f4333]"><Plus size={16}/> Cadastrar cartão</button>
       </section> : <>
-      <section className="mt-5">
-        <div className="enter min-w-0">
-          <CardCarousel cards={cards} month={month} onHistory={() => navigate('/historico')} selectedId={selectedCardId} onSelect={chooseCard}
-            onAdd={() => setDialog({ kind: 'card', initial: { color: cardsQuery.data?.nextColor } })}
-            onEdit={(item) => setDialog({ kind: 'card', initial: { id: item.id, name: item.name, color: item.color } })}
-            onDelete={(item) => { if (askDelete(`o cartão “${item.name}” e todos os seus registros`)) deleteCard.mutate({ cardId: item.id }); }}/>
+      <section className="enter mt-5"><CardPicker cards={cards} selectedId={selectedCardId} onSelect={chooseCard} onAdd={() => setDialog({ kind: 'card', initial: { color: cardsQuery.data?.nextColor } })}/></section>
+
+      {card && <section data-testid="section-invoice" aria-label="Fatura" className="enter mt-6" style={{ animationDelay: '.08s' }}>
+        <p className="text-sm font-medium text-ink-soft">{isFuture ? 'Fatura prevista de' : 'Fatura de'} {monthLabel(month)}</p>
+        <div className="flex items-start justify-between gap-3">
+          <p data-testid="text-invoice" className="min-w-0 font-display text-[44px] leading-[1.1] tracking-[-.02em] text-ink [overflow-wrap:anywhere] min-[380px]:text-[52px]">{money(card.invoiceAmount)}</p>
+          <button aria-label="Mais opções do cartão" data-testid="button-card-menu" onClick={() => setMenuOpen(true)} className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-soft transition hover:bg-[#ece7dc]"><MoreHorizontal size={22}/></button>
         </div>
-      </section>
+        <p className="mt-1 text-[15px] text-ink-soft">{card.movementCount === 0 ? 'Nenhuma compra neste mês.' : plural(card.movementCount, 'compra', 'compras')}{nextInvoice > 0 && <> · próxima fatura prevista {money(nextInvoice)}</>}</p>
+      </section>}
+
+      {card && <section data-testid="section-pace" aria-label="Ritmo do mês" className="enter mt-8" style={{ animationDelay: '.1s' }}>
+        <h2 className="font-display text-2xl text-ink">Ritmo do mês</h2>
+        <p className="mb-3 text-sm text-ink-soft">Gasto acumulado no cartão, dia a dia</p>
+        {pace.length ? <StepLine month={month} days={daysInMonth} points={pace} todayDay={todayDay} light={isFuture} endDay={todayDay ?? daysInMonth}/>
+          : <p data-testid="text-pace-empty" className="py-4 text-[15px] text-ink-soft">Nenhuma compra neste mês.</p>}
+      </section>}
+
+      {card && <section data-testid="section-where" aria-label="Para onde foi" className="enter mt-8" style={{ animationDelay: '.12s' }}>
+        <h2 className="font-display text-2xl text-ink">Para onde foi</h2>
+        <p className="mb-3 text-sm text-ink-soft">Por categoria, no mês</p>
+        {categoryRows.length ? <HBars rows={categoryRows} fill="bg-chart-violet" label="Gasto por categoria" activeKey={activeFilter} onSelect={pickCategory} testId="list-category-summary" rowTestId={(key) => `row-summary-${key}`}/>
+          : <p className="py-4 text-[15px] text-ink-soft">O resumo por categoria aparece quando houver compras no mês.</p>}
+      </section>}
+
+      {card && <section data-testid="section-next" aria-label="Próximas faturas" className="enter mt-8" style={{ animationDelay: '.14s' }}>
+        <div className="flex items-start justify-between gap-3">
+          <div><h2 className="font-display text-2xl text-ink">Próximas faturas</h2><p className="mb-3 text-sm text-ink-soft">Sete meses, a partir de {monthName(month)}</p></div>
+          <button data-testid="button-history" aria-label={`Ver histórico de ${card.name}`} onClick={() => navigate('/historico')} className="flex min-h-11 shrink-0 items-center text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Histórico</button>
+        </div>
+        <Columns columns={columns} caption="Fatura do cartão por mês" ariaLabel={`Fatura do cartão nos próximos sete meses: ${columns.map((col) => `${capitalize(monthName(col.month))} ${money(col.amount)}`).join(', ')}`}/>
+        <ChartLegend items={[{ label: 'Lançada', swatch: 'bg-chart-violet' }, { label: 'Prevista', swatch: 'bg-chart-violet/[.38]' }]}/>
+      </section>}
       </>}
 
-      <section className="mt-7 grid gap-7 lg:grid-cols-[1.08fr_.92fr]">
-        <div className="enter min-w-0" style={{ animationDelay: '.13s' }}>
+      <section id="compras" className="mt-8 scroll-mt-4">
+        <div className="enter min-w-0" style={{ animationDelay: '.16s' }}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-eyebrow"><ArrowDownLeft size={16}/><p className="font-mono-data text-[12px] uppercase tracking-[.14em]">Compras</p></div>
             {card && <button data-testid="button-all-purchases" onClick={() => navigate('/compras')} className="flex min-h-11 items-center text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Todas as compras</button>}
@@ -312,7 +360,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
             {[{ key: 'all', label: 'Todas' }, ...chips].map((chip) => <button key={chip.key} data-testid={`filter-${chip.key}`} aria-pressed={activeFilter === chip.key} onClick={() => setFilter(chip.key)} className={`h-11 shrink-0 rounded-full border px-4 text-[14px] font-semibold transition ${activeFilter === chip.key ? 'border-brand bg-brand text-on-brand' : 'border-[#cfc7b7] bg-surface text-ink-soft hover:bg-[#eee9dd]'}`}>{chip.label}</button>)}
           </div>}
           {activeFilter !== 'all' && <p data-testid="text-filter-total" className="mt-3 text-[13px] text-ink-soft">Total do filtro: <b className="font-mono-data font-medium text-ink">{money(visibleTotal)}</b></p>}
-          <div className="mt-5 overflow-hidden rounded-[24px] border border-line bg-surface">
+          <div className="mt-4 border-y border-line">
             {visibleRows.length ? <div data-testid="list-movements" className="divide-y divide-line">
               {(showAll ? visibleRows : visibleRows.slice(0, 8)).map((row) => {
                 // D3 / D4: a registered purchase or a planned installment opens its edit form; a planned recurring charge has no action.
@@ -335,21 +383,9 @@ export default function Dashboard({ month }: { month: MonthKey }) {
             </div> : <div className="px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#f0eadd] text-[#9b8c69]"><ArrowDownLeft size={18}/></div><h3 data-testid="text-movements-empty" className="mt-3 font-display text-[20px] text-ink">Ainda sem compras</h3><p className="mt-1 text-[13px] leading-5 text-ink-soft">{card ? `As compras de ${monthName(month)} aparecem aqui assim que você registrar.` : 'Cadastre um cartão para começar a registrar suas compras.'}</p>{card && <button onClick={() => setDialog({ kind: 'movement', initial: {} })} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Registrar a primeira compra</button>}</div>}
           </div>
         </div>
-
-        <aside className="enter min-w-0" style={{ animationDelay: '.18s' }}>
-          <div className="flex items-center gap-2 text-eyebrow"><Tag size={16}/><p className="font-mono-data text-[12px] uppercase tracking-[.14em]">Resumo</p></div>
-          <h2 className="mt-2 font-display text-[28px] leading-tight text-ink">Por categoria</h2>
-          <div className="mt-5 rounded-[24px] border border-line bg-surface p-5">
-            {summary.length ? <ul data-testid="list-category-summary" className="space-y-5">
-              {summary.map((item) => <li key={filterKey(item.categoryId)} data-testid={`row-summary-${filterKey(item.categoryId)}`}>
-                <div className="flex items-baseline justify-between gap-3"><span className="truncate text-[15px] font-semibold text-ink">{item.name ?? 'Sem categoria'}</span><span className="shrink-0 font-mono-data text-[15px] text-ink">{money(item.amount)}</span></div>
-                <div className="mt-2 flex items-center gap-3"><div className="flex-1"><Progress value={item.percent} tone="green"/></div><span className="w-10 text-right font-mono-data text-[13px] text-ink-soft">{Number(item.percent).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%</span></div>
-              </li>)}
-            </ul> : <p className="py-4 text-center text-[13px] leading-5 text-ink-soft">O resumo por categoria aparece quando houver compras no mês.</p>}
-          </div>
-        </aside>
       </section>
     </div>
+    {menuOpen && card && <CardMenu title={card.name} editLabel="Editar cartão" deleteLabel="Excluir cartão" onClose={() => setMenuOpen(false)} onEdit={() => setDialog({ kind: 'card', initial: { id: card.id, name: card.name, color: card.color } })} onDelete={() => { if (askDelete(`o cartão “${card.name}” e todos os seus registros`)) deleteCard.mutate({ cardId: card.id }); }}/>}
     {dialog && <Dialog kind={dialog.kind} initial={dialog.initial} month={month} categories={categories} busy={isMutating} onClose={() => setDialog(null)} onSave={submitDialog} onDelete={dialog.onDelete && (() => { const remove = dialog.onDelete!; setDialog(null); remove(); })}/>}
     {scopeAsk && <ScopeDialog subject="compra recorrente" action={scopeAsk.action} month={monthOf(scopeAsk.movement.date)} onChoose={chooseScope} onClose={() => setScopeAsk(null)}/>}
     {toast && <div role="status" data-testid="status-toast" className={`fixed bottom-5 left-4 right-4 z-[60] mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-full px-4 py-3 text-xs font-semibold text-white shadow-lg sm:left-auto sm:right-5 sm:mx-0 ${toast.error ? 'bg-[#a85e50]' : 'bg-[#28513f]'}`}><Check size={14} className="shrink-0"/><span className="min-w-0">{toast.text}</span></div>}
