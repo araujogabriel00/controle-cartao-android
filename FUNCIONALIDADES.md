@@ -50,6 +50,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 27. [Opção D: Entradas](#27-opção-d-entradas)
 28. [Opção D: Cartões](#28-opção-d-cartões)
 29. [Opção D: Benefícios](#29-opção-d-benefícios)
+30. [Opção D: telas de apoio](#30-opção-d-telas-de-apoio)
 
 ---
 
@@ -164,20 +165,20 @@ Funcionalidade: Categorias das compras
 
   Cenário: Renomear uma categoria
     Dado que existe a categoria "Transporte" com compras
-    Quando eu clico em "Renomear Transporte", mudo para "Uber e ônibus" e confirmo
+    Quando eu toco em "Mais opções de Transporte" e em "Renomear", mudo para "Uber e ônibus" e salvo
     Então vejo a mensagem "Categoria renomeada."
     E as compras dessa categoria passam a mostrar "Uber e ônibus"
     E as parcelas previstas da categoria também
     E ao voltar, a tela de onde vim já mostra o nome novo
 
   Cenário: Desistir de renomear
-    Quando eu clico em "Renomear Transporte" e depois em cancelar
+    Quando eu toco em "Mais opções de Transporte", em "Renomear" e depois em "Cancelar"
     Então o nome continua "Transporte"
 
   Cenário: Excluir uma categoria
     Dado que existe a categoria "Lazer" com 2 compras
-    Quando eu clico em "Excluir Lazer"
-    Então o sistema pede confirmação para "Excluir a categoria “Lazer”? 2 compras ficarão sem categoria. Esta ação não pode ser desfeita."
+    Quando eu toco em "Mais opções de Lazer" e em "Excluir"
+    Então o sistema abre a confirmação (seção 30) com "Excluir a categoria “Lazer”? 2 compras ficarão sem categoria. Esta ação não pode ser desfeita."
     Quando eu confirmo
     Então vejo a mensagem "Categoria removida."
     E as 2 compras continuam, agora "Sem categoria"
@@ -186,7 +187,7 @@ Funcionalidade: Categorias das compras
 
   Cenário: Excluir uma categoria sem uso
     Dado que existe a categoria "Viagem" sem compras
-    Quando eu clico em "Excluir Viagem"
+    Quando eu toco em "Mais opções de Viagem" e em "Excluir"
     Então o sistema pede confirmação sem falar de compras
 ```
 
@@ -1397,7 +1398,7 @@ Funcionalidade: Telas próprias de entradas, contas fixas e gastos do dia a dia
 
   Cenário: Editar na tela
     Dado que estou na tela "Contas fixas"
-    Quando eu toco em "Editar Aluguel"
+    Quando eu toco na linha "Aluguel" ou em "Mais opções de Aluguel" e em "Editar"
     Então o app pergunta "Só este mês" ou "Este e os próximos" e a lista se atualiza ao salvar
 
   Cenário: Criar pelo rodapé estando na tela
@@ -1809,4 +1810,61 @@ Funcionalidade: Aba Benefícios na Opção D
 
   Cenário: Sem nenhum benefício
     Então vejo "Nenhum benefício ainda. Crie o primeiro para registrar os gastos." e o botão "Novo benefício"
+```
+
+---
+
+## 30. Opção D: telas de apoio
+
+Resumo. A especificação completa está em [`specs/redesign-opcao-d-telas-de-apoio.md`](specs/redesign-opcao-d-telas-de-apoio.md). Nenhuma regra de dados muda: o que cada formulário grava, o que cada exclusão apaga e o que cada escopo afeta continuam como antes. As telas abertas a partir das abas ganham botão "Voltar", título de 28 px e linhas com hairline; os formulários, o diálogo de escopo e os menus abrem como folha de rodapé; as perguntas antes de apagar usam um diálogo próprio no lugar de `window.confirm`; e os avisos ficam acima do rodapé.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Telas de apoio na Opção D
+
+  Cenário: Voltar de uma lista
+    Dado que estou em "Gastos do dia a dia"
+    Quando eu toco em "Voltar"
+    Então volto para a aba Entradas, no mesmo mês
+
+  Cenário: Lista com total e "⋯" por linha
+    Então vejo o título, o total do mês em destaque e uma linha por item, com a linha inteira abrindo a edição
+    E cada linha tem o botão "⋯" (Mais opções) com "Editar" e "Excluir"
+    E o selo "Mensal" fica na linha de subtítulo, nunca ao lado do valor
+
+  Cenário: Excluir item recorrente
+    Quando eu toco em "⋯" e em "Excluir" numa entrada recorrente
+    Então vejo a folha com "Só este mês" e "Este e os próximos"
+    E ao escolher uma opção vejo a confirmação com o texto da consequência
+    E o item só é apagado se eu confirmar
+
+  Cenário: Cancelar confirmação
+    Quando a confirmação aparece e eu toco em "Cancelar"
+    Então nada é apagado
+    E "Cancelar" é o botão que já vem com o foco
+
+  Cenário: Formulário em folha
+    Quando eu toco em "Lançar" e em "Entrada"
+    Então o formulário sobe do rodapé, com o foco no primeiro campo, campos de 48 px e botão de 52 px
+    E fecha ao salvar, em "Cancelar", em "Fechar", com Esc ou ao tocar fora
+
+  Cenário: Formulário com erro
+    Quando eu salvo um formulário e o app recusa (por exemplo, renomear para um nome que já existe)
+    Então vejo a mensagem de erro dentro da folha, acima dos botões, avisada ao leitor de tela
+    E a folha continua aberta
+
+  Cenário: Avisos
+    Quando eu salvo ou apago algo
+    Então o aviso aparece acima do rodapé, com texto de 14 px, e some em 4 segundos
+    E erros fora de um formulário são avisados como alerta
+
+  Cenário: Categorias
+    Então criar continua num campo e um botão na própria tela
+    E renomear abre uma folha, e excluir pede confirmação, ambos pelo "⋯" da linha
+
+  Cenário: Histórico
+    Quando eu abro o histórico pela aba Cartões
+    Então vejo o gráfico de colunas "Fatura por mês" com os últimos 12 meses, os "Próximos meses" e a lista de todos os meses
+    E "Voltar" leva à aba Cartões
 ```
