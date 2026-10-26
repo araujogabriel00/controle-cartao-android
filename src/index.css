@@ -310,10 +310,12 @@ button { cursor: pointer; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 /* In a layer so Tailwind utilities on the same element (e.g. pl-12, text-[#a45e50]) still win. */
 @layer components {
-.field-label { display: block; margin: 0 0 7px; color: #637569; font-size: 11px; font-weight: 600; }
-.field-input { display: block; width: 100%; border: 1px solid #ded8ca; border-radius: 13px; background: #fffdf7; padding: 11px 14px; color: #294438; font-size: 13px; outline: none; transition: border-color .16s, box-shadow .16s; }
+.field-label { display: block; margin: 0 0 7px; color: #4f6256; font-size: 14px; font-weight: 600; }
+.field-input { display: block; width: 100%; border: 1px solid #ded8ca; border-radius: 13px; background: #fffdf7; min-height: 48px; padding: 12px 14px; color: #294438; font-size: 16px; outline: none; transition: border-color .16s, box-shadow .16s; }
 .field-input:focus { border-color: #78947e; box-shadow: 0 0 0 3px rgba(85,126,104,.12); }
-.field-input::placeholder { color: #a2a59a; }
+.field-input::placeholder { color: #8c9388; }
+/* Foco visível em todos os botões e campos (specs/redesign-opcao-d-telas-de-apoio.md RF-07). */
+button:focus-visible, a:focus-visible, [role=switch]:focus-visible { outline: 2px solid #28513f; outline-offset: 2px; }
 .menu-action { display: flex; width: 100%; align-items: center; gap: 9px; border-radius: 9px; padding: 9px 10px; text-align: left; font-size: 11px; color: #536a5b; transition: background .15s; }
 .menu-action:hover { background: #f1ede4; }
 }

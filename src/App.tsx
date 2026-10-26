@@ -6,6 +6,7 @@ import { getGetBenefitRangeQueryKey, getGetBenefitsQueryKey, getGetIncomeRangeQu
 import { areaPath, benefitSpendsPath, currentMonth, isFutureMonth, isMonthKey, listPath, summaryPath, type ListKind } from '@/lib/format';
 import { readLastMonth } from '@/lib/last-month';
 import { FooterMenu } from '@/components/quick-add';
+import { ConfirmProvider } from '@/components/confirm-dialog';
 import NotFound from '@/pages/not-found';
 import Dashboard from '@/pages/dashboard';
 import Historico from '@/pages/historico';
@@ -171,7 +172,7 @@ function App() {
         {/* Hash routes: the bundle uses a relative base, so nested paths would
             break asset URLs on reload. */}
         <WouterRouter hook={useHashLocation}>
-          <Bootstrap><Router /><FooterMenu /></Bootstrap>
+          <Bootstrap><ConfirmProvider><Router /><FooterMenu /></ConfirmProvider></Bootstrap>
         </WouterRouter>
       </TooltipProvider>
     </QueryClientProvider>
