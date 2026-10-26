@@ -85,7 +85,7 @@ export function SnapCarousel<T extends SnapItem>({ items, selectedId, onSelect, 
         const { background, accent } = CARD_COLORS[item.color];
         return <article key={item.id} ref={(el) => { slides.current[i] = el; }} data-testid={`${faceTestId}-${item.id}`} aria-current={active ? 'true' : undefined} aria-label={itemLabel(item)}
           onClick={() => { if (!active) onSelect(item.id); }}
-          className={`relative w-[86%] shrink-0 snap-center overflow-hidden rounded-[26px] p-6 text-[#fffaf0] shadow-[0_14px_32px_-24px_rgba(32,70,52,.6)] transition duration-300 sm:p-8 ${active ? 'scale-100 opacity-100' : 'scale-[.94] cursor-pointer opacity-70'}`}
+          className={`relative w-[86%] shrink-0 snap-center overflow-hidden rounded-[26px] p-5 text-[#fffaf0] shadow-[0_14px_32px_-24px_rgba(32,70,52,.6)] transition duration-300 sm:p-8 ${active ? 'scale-100 opacity-100' : 'scale-[.94] cursor-pointer opacity-70'}`}
           style={{ background }}>
           <div className="absolute -right-20 -top-28 h-72 w-72 rounded-full border border-white/10"/><div className="absolute -right-8 -top-16 h-52 w-52 rounded-full border border-white/10"/>
           {renderFace(item, active, accent)}

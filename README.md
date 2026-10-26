@@ -80,7 +80,7 @@ A especificação completa está em [`specs/beneficios.md`](specs/beneficios.md)
 - O valor mensal tem histórico: alterar o valor "a partir de um mês" vale daquele mês em diante, sem mexer nos anteriores. O mês inicial não muda depois de criado.
 - Os gastos são avulsos (descrição, valor, data) com categoria global opcional, e só aceitam datas dentro do período do benefício.
 - Um benefício pode ser **dividido por categoria**, como eram os envelopes: cada categoria reserva uma parte do valor mensal e tem a sua própria sobra, e o que não é dividido aparece como "Sem categoria". A divisão (livre, nunca acima do valor) repete todo mês e tem histórico, como o valor. Sem divisão, o benefício é um saldo só.
-- Dá para **fechar** uma categoria dentro do benefício: a sobra dela é liberada para "Sem categoria", a linha congela e não recebe mais gastos. Também dá para reabrir (a categoria volta com sobra zero).
+- Editar e excluir o benefício ficam no menu "⋯" da face do card, e "Fechar categoria" / "Reabrir categoria" ficam numa linha própria abaixo de cada categoria. Dá para **fechar** uma categoria dentro do benefício: a sobra dela é liberada para "Sem categoria", a linha congela e não recebe mais gastos. Também dá para reabrir (a categoria volta com sobra zero).
 - A navegação vai do mês do benefício mais antigo até 12 meses à frente.
 
 ### Regras de cálculo

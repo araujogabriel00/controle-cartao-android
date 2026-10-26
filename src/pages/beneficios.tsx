@@ -7,8 +7,9 @@ import {
   useGetBenefitRange, useGetBenefits, useGetCategories, useReopenBenefitCategory, useUpdateBenefit, useUpdateBenefitSpend,
   type BenefitCategoryRow, type BenefitItem, type BenefitSpend, type Category,
 } from '@workspace/api-client-react';
-import { Check, ChevronDown, ChevronRight, CircleHelp, FilePenLine, Plus, Repeat, Trash2, Utensils, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, CircleHelp, MoreHorizontal, Plus, Repeat, Trash2, Utensils, X } from 'lucide-react';
 import { AppTabs } from '@/components/app-tabs';
+import { CardMenu } from '@/components/card-menu';
 import { SnapCarousel } from '@/components/snap-carousel';
 import { CARD_COLOR_KEYS } from '@/lib/card-colors';
 import { MonthNav } from '@/components/month-nav';
@@ -121,6 +122,7 @@ export default function Beneficios({ month }: { month: MonthKey }) {
   const range = useGetBenefitRange({ query: { queryKey: getGetBenefitRangeQueryKey() } }).data;
   const categories = useGetCategories({ query: { queryKey: getGetCategoriesQueryKey() } }).data ?? [];
   const [benefitDialog, setBenefitDialog] = useState<{ benefit?: BenefitItem } | null>(null);
+  const [menuBenefit, setMenuBenefit] = useState<BenefitItem | null>(null);
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
   const items = benefitsQuery.data?.items ?? [];
   const [selectedId, setSelectedId] = useState<number | null>(lastSelectedBenefit);
@@ -172,7 +174,7 @@ export default function Beneficios({ month }: { month: MonthKey }) {
 
 
       {benefitsQuery.isLoading ? <div className="mt-6 space-y-3 animate-pulse"><div className="h-40 rounded-2xl bg-[#e9e3d7]"/><div className="h-40 rounded-2xl bg-[#e9e3d7]"/></div>
-      : benefitsQuery.isError ? <div className="mt-6 rounded-2xl border border-[#e1dbce] bg-[#fbf8f0] px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#e9e3d7] text-[#315944]"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-[#345443]">Não conseguimos abrir os benefícios.</h3><button onClick={() => void benefitsQuery.refetch()} className="mt-4 text-xs font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4">Tentar novamente</button></div>
+      : benefitsQuery.isError ? <div className="mt-6 rounded-2xl border border-[#e1dbce] bg-[#fbf8f0] px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#e9e3d7] text-[#315944]"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir os benefícios.</h3><button onClick={() => void benefitsQuery.refetch()} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
       : <div className="enter mt-6">
         <SnapCarousel items={carouselItems} selectedId={selected?.id ?? null} onSelect={chooseBenefit} onAdd={() => setBenefitDialog({})}
           region="Seus benefícios" faceTestId="benefit-face" itemLabel={(item) => `Benefício ${item.name}`}
@@ -180,36 +182,48 @@ export default function Beneficios({ month }: { month: MonthKey }) {
           renderFace={(item, active, accent) => {
             const benefit = item.benefit;
             return <>
-              <div className="relative flex items-start justify-between gap-3"><div className="min-w-0"><p className="flex items-center gap-1.5 font-mono-data text-[10px] uppercase tracking-[.18em] opacity-80" style={{ color: accent }}><Repeat size={10}/> Mensal</p><h2 className="mt-2 line-clamp-2 font-display text-2xl leading-tight [overflow-wrap:anywhere]">{benefit.name}</h2></div>
-                <div className={`flex shrink-0 gap-2 ${active ? '' : 'invisible'}`}>
-                  <button data-testid={`button-edit-benefit-${benefit.id}`} aria-label={`Editar ${benefit.name}`} tabIndex={active ? 0 : -1} onClick={() => setBenefitDialog({ benefit })} className="rounded-full border border-white/20 p-2 text-white/80 transition hover:bg-white/10"><FilePenLine size={15}/></button>
-                  <button data-testid={`button-delete-benefit-${benefit.id}`} aria-label={`Excluir ${benefit.name}`} tabIndex={active ? 0 : -1} onClick={() => removeBenefit(benefit)} className="rounded-full border border-white/20 p-2 text-white/80 transition hover:bg-white/10 hover:text-[#f1b5a5]"><Trash2 size={15}/></button>
-                </div></div>
-              <div className="relative mt-8 min-w-0"><p className="text-[11px] text-white/70">Disponível em {monthLabel(month)}</p><p data-testid={`text-benefit-available-${benefit.id}`} className="mt-1 font-display text-[clamp(26px,8vw,38px)] leading-tight tracking-[-.03em] [overflow-wrap:anywhere]">{money(benefit.availableAmount)}</p></div>
-              <p className="relative mt-4 text-[11px] leading-5 text-white/70">Crédito <span data-testid={`text-benefit-credit-${benefit.id}`}>{money(benefit.amount)}</span> · Sobra anterior <span data-testid={`text-benefit-carried-${benefit.id}`}>{money(benefit.carriedAmount)}</span> · Gasto <span data-testid={`text-benefit-spent-${benefit.id}`}>{money(benefit.spentAmount)}</span></p>
-              <div className="relative mt-4"><div className="mb-2 flex justify-between text-[10px] text-white/70"><span>Gasto do mês</span><span className="font-mono-data" style={{ color: accent }}>{Number(benefit.percentUsed).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%</span></div><div className="h-2 overflow-hidden rounded-full bg-white/15"><div className="progress-fill h-full rounded-full" style={{ background: accent, transform: `scaleX(${Math.min(100, Math.max(0, benefit.percentUsed)) / 100})` }}/></div></div>
+              <div className="relative flex items-start justify-between gap-3">
+                <div className="min-w-0"><p className="flex items-center gap-1.5 font-mono-data text-[12px] uppercase tracking-[.14em]" style={{ color: accent }}><Repeat size={12}/> Mensal</p><h2 className="mt-1 line-clamp-2 font-display text-[26px] leading-tight [overflow-wrap:anywhere]">{benefit.name}</h2></div>
+                <div className={`shrink-0 ${active ? '' : 'invisible'}`}>
+                  <button data-testid={`button-benefit-menu-${benefit.id}`} aria-label="Mais opções do benefício" tabIndex={active ? 0 : -1} onClick={() => setMenuBenefit(benefit)} className="grid h-11 w-11 place-items-center rounded-full border border-white/[.28] text-white/90 transition hover:bg-white/10"><MoreHorizontal size={20}/></button>
+                </div>
+              </div>
+              <div className="relative mt-5 min-w-0"><p className="text-[13px] text-[#fffaf0]/[.84]">Disponível em {monthLabel(month)}</p><p data-testid={`text-benefit-available-${benefit.id}`} className="mt-1 font-display text-[42px] leading-[1.15] tracking-[-.03em] [overflow-wrap:anywhere]">{money(benefit.availableAmount)}</p></div>
+              <dl className="relative mt-4 flex justify-between gap-1">
+                {[{ label: 'Crédito', id: 'credit', value: benefit.amount }, { label: 'Sobra anterior', id: 'carried', value: benefit.carriedAmount }, { label: 'Gasto', id: 'spent', value: benefit.spentAmount }].map((column) => <div key={column.id} className="min-w-0">
+                  <dt className="whitespace-nowrap text-[12px] text-[#fffaf0]/[.84]">{column.label}</dt>
+                  <dd data-testid={`text-benefit-${column.id}-${benefit.id}`} className="mt-0.5 font-mono-data text-[14px] max-[374px]:text-[13px] whitespace-nowrap">{money(column.value)}</dd>
+                </div>)}
+              </dl>
+              <div className="relative mt-4"><div className="mb-2 flex justify-between text-[13px] text-[#fffaf0]/[.84]"><span>Gasto do mês</span><span className="font-mono-data" style={{ color: accent }}>{Number(benefit.percentUsed).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%</span></div><div className="h-2 overflow-hidden rounded-full bg-white/[.18]"><div className="progress-fill h-full rounded-full" style={{ background: accent, transform: `scaleX(${Math.min(100, Math.max(0, benefit.percentUsed)) / 100})` }}/></div></div>
             </>;
           }}/>
-        {selected && <article key={selected.id} data-testid={`card-benefit-${selected.id}`} className="enter mt-6 overflow-hidden rounded-[22px] border border-[#e1dbce] bg-[#fbf8f0]">
-          {selected.categories.length > 0 && <div data-testid={`section-categories-${selected.id}`} className="mt-4 border-t border-[#ece6da] px-4 py-3 sm:px-5">
-            <p className="font-mono-data text-[10px] uppercase tracking-[.17em] text-[#9a8d71]">Por categoria</p>
-            <ul className="mt-3 space-y-4">{selected.categories.map((row) => <li key={row.categoryId ?? 'none'} data-testid={`row-category-${selected.id}-${row.categoryId ?? 'none'}`}>
-              <div className="flex items-center justify-between gap-2">
-                <button data-testid={`open-category-${selected.id}-${row.categoryId ?? 'none'}`} aria-label={`Ver lançamentos de ${row.name ?? 'Sem categoria'}`} onClick={() => navigate(benefitSpendsPath(selected.id, row.categoryId ?? 'sem', month))} className="flex min-w-0 flex-1 items-center gap-2 text-left"><span className="truncate text-[13px] font-semibold text-[#345443]">{row.name ?? 'Sem categoria'}</span>{row.closed && <span className="shrink-0 rounded-full bg-[#e9e5dc] px-2 py-0.5 text-[9px] font-medium text-[#82877e]">Fechada</span>}<ChevronRight size={13} className="shrink-0 text-[#9aa497]"/></button>
-                <span className="flex shrink-0 items-center gap-1"><span className={`font-mono-data text-[13px] ${row.availableAmount < 0 ? 'text-[#a55f50]' : 'text-[#315944]'}`}>{money(row.availableAmount)}</span>
-                  {row.categoryId !== null && (row.closed
-                    ? <button data-testid={`button-reopen-${selected.id}-${row.categoryId}`} onClick={() => reopenCategory.mutate({ benefitId: selected.id, categoryId: row.categoryId as number, month })} className="rounded-full px-2 py-1 text-[10px] font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4 hover:bg-[#eee9df]">Reabrir</button>
-                    : <button data-testid={`button-close-${selected.id}-${row.categoryId}`} onClick={() => closeRow(selected, row)} className="rounded-full px-2 py-1 text-[10px] font-semibold text-[#8c5a4c] underline decoration-[#d8b3a8] underline-offset-4 hover:bg-[#f5e9e1]">Fechar</button>)}</span>
-              </div>
-              <p className="mt-1 text-[10px] text-[#899186]">sobra {money(row.carriedAmount)} + crédito {money(row.amount)} − gasto {money(row.spentAmount)}{row.releasedAmount !== 0 && <> · <b data-testid={`text-released-${selected.id}-${row.categoryId}`} className="font-semibold text-[#52735c]">Liberado {money(row.releasedAmount)}</b></>}</p>
-              {!row.closed && <div className="mt-2 flex items-center gap-3"><div className="flex-1"><Progress value={row.percentUsed} tone={row.percentUsed > 85 ? 'peach' : 'green'}/></div><span className="w-9 text-right font-mono-data text-[9px] text-[#8c9388]">{Number(row.percentUsed).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%</span></div>}
+        {selected && <article key={selected.id} data-testid={`card-benefit-${selected.id}`} className="enter mt-3 overflow-hidden rounded-[24px] border border-line bg-surface">
+          {selected.categories.length > 0 && <div data-testid={`section-categories-${selected.id}`}>
+            <p className="px-5 pb-3 pt-4 font-mono-data text-[12px] uppercase tracking-[.14em] text-eyebrow">Por categoria</p>
+            <ul>{selected.categories.map((row) => <li key={row.categoryId ?? 'none'} data-testid={`row-category-${selected.id}-${row.categoryId ?? 'none'}`} className="border-t border-line px-5">
+              <button data-testid={`open-category-${selected.id}-${row.categoryId ?? 'none'}`} aria-label={`Ver lançamentos de ${row.name ?? 'Sem categoria'}`} onClick={() => navigate(benefitSpendsPath(selected.id, row.categoryId ?? 'sem', month))} className="flex w-full flex-col gap-1 py-3 text-left">
+                <span className="flex w-full items-center justify-between gap-3">
+                  <span className="flex min-w-0 items-center gap-2"><span className="truncate text-[15px] font-semibold text-ink">{row.name ?? 'Sem categoria'}</span>{row.closed && <span className="shrink-0 rounded-full bg-[#e9e5dc] px-2 py-0.5 text-[12px] font-medium text-ink-soft">Fechada</span>}<ChevronRight size={16} className="shrink-0 text-ink-soft"/></span>
+                  <span className={`shrink-0 font-mono-data text-[15px] ${row.availableAmount < 0 ? 'text-alert' : 'text-ink'}`}>{money(row.availableAmount)}</span>
+                </span>
+                <span className="block text-[13px] text-ink-soft">sobra {money(row.carriedAmount)} + crédito {money(row.amount)} − gasto {money(row.spentAmount)}{row.releasedAmount !== 0 && <> · <b data-testid={`text-released-${selected.id}-${row.categoryId}`} className="font-semibold text-[#2f5a44]">Liberado {money(row.releasedAmount)}</b></>}</span>
+                {!row.closed && <span className="mt-1 flex w-full items-center gap-3"><span className="block flex-1"><Progress value={row.percentUsed} tone={row.percentUsed > 85 ? 'peach' : 'green'}/></span><span className="w-10 text-right font-mono-data text-[13px] text-ink-soft">{Number(row.percentUsed).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%</span></span>}
+              </button>
+              {row.categoryId !== null && <div className="flex min-h-11 items-center justify-end">
+                {row.closed
+                  ? <button data-testid={`button-reopen-${selected.id}-${row.categoryId}`} onClick={() => reopenCategory.mutate({ benefitId: selected.id, categoryId: row.categoryId as number, month })} className="flex min-h-11 items-center px-1 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Reabrir categoria</button>
+                  : <button data-testid={`button-close-${selected.id}-${row.categoryId}`} onClick={() => closeRow(selected, row)} className="flex min-h-11 items-center px-1 text-[14px] font-semibold text-alert underline decoration-alert/40 underline-offset-4">Fechar categoria</button>}
+              </div>}
             </li>)}</ul>
           </div>}
-          <button data-testid={`button-all-spends-${selected.id}`} onClick={() => navigate(benefitSpendsPath(selected.id, 'todos', month))} className="flex w-full items-center justify-between gap-3 border-t border-[#ece6da] px-4 py-3.5 text-left text-[13px] font-semibold text-[#3d5948] transition hover:bg-[#f4f0e6] sm:px-5">Todos os lançamentos ({selected.spends.length})<ChevronRight size={16} className="shrink-0 text-[#9aa497]"/></button>
+          <button data-testid={`button-all-spends-${selected.id}`} onClick={() => navigate(benefitSpendsPath(selected.id, 'todos', month))} className={`flex min-h-14 w-full items-center justify-between gap-3 px-5 text-left text-[15px] font-semibold text-ink transition hover:bg-paper ${selected.categories.length > 0 ? 'border-t border-line' : ''}`}>Todos os lançamentos ({selected.spends.length})<ChevronRight size={18} className="shrink-0 text-ink-soft"/></button>
         </article>}
       </div>}
     </div>
 
+    {menuBenefit && <CardMenu title={menuBenefit.name} editLabel="Editar benefício" deleteLabel="Excluir benefício" editTestId={`button-edit-benefit-${menuBenefit.id}`} deleteTestId={`button-delete-benefit-${menuBenefit.id}`}
+      onClose={() => setMenuBenefit(null)} onEdit={() => setBenefitDialog({ benefit: menuBenefit })} onDelete={() => removeBenefit(menuBenefit)}/>}
     {benefitDialog && <BenefitDialog key={benefitDialog.benefit?.id ?? 'new'} month={month} benefit={benefitDialog.benefit} categories={categories} busy={busy} onClose={() => setBenefitDialog(null)} onSave={saveBenefit}/>}
     {toast && <div role="status" data-testid="status-toast" className={`fixed bottom-5 left-4 right-4 z-[60] mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-full px-4 py-3 text-xs font-semibold text-white shadow-lg sm:left-auto sm:right-5 sm:mx-0 ${toast.error ? 'bg-[#a85e50]' : 'bg-[#28513f]'}`}><Check size={14} className="shrink-0"/><span className="min-w-0">{toast.text}</span></div>}
   </main>;
