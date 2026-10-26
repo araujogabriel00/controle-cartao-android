@@ -66,6 +66,20 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Cores com nome (specs/redesign-entradas.md D8). Telas novas usam estas no lugar de hexadecimais soltos. */
+@theme {
+  --color-paper: #f5f1e7;
+  --color-surface: #fbf8f0;
+  --color-line: #e1dbce;
+  --color-ink: #1f3a2e;
+  --color-ink-soft: #4f6256;
+  --color-brand: #28513f;
+  --color-on-brand: #fffaf0;
+  --color-on-brand-soft: #d5ddd0;
+  --color-eyebrow: #7a6a45;
+  --color-alert: #8c4636;
+}
+
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(0, 0, 0, 0.1);
@@ -416,4 +430,4 @@ body { padding-top: var(--safe-area-inset-top, env(safe-area-inset-top)); paddin
 body::after { content: ""; position: fixed; inset: 0 0 auto 0; height: var(--safe-area-inset-top, env(safe-area-inset-top)); background: #f5f1e7; z-index: 40; pointer-events: none; }
 /* Full screen minus the body's safe-area padding, so short pages don't scroll. */
 .min-h-safe { min-height: calc(100dvh - var(--safe-area-inset-top, env(safe-area-inset-top)) - var(--safe-area-inset-bottom, env(safe-area-inset-bottom))); }
-[data-testid="status-toast"] { bottom: calc(5.5rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom))); }
+[data-testid="status-toast"] { bottom: calc(6rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom))); }

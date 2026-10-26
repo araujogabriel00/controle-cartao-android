@@ -71,12 +71,12 @@ function FooterBar({ month }: { month: MonthKey }) {
 
   return <>
     {/* Keeps the end of the page clear of the fixed bar (D10). */}
-    <div aria-hidden className="h-20"/>
-    <nav aria-label="Menu de lançamentos" className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e1dbce] bg-[#fbf8f0]/95 pb-[var(--safe-area-inset-bottom,env(safe-area-inset-bottom))] backdrop-blur">
-      <div className="mx-auto grid h-16 max-w-[860px] grid-cols-[1fr_auto_1fr] items-center px-4">
+    <div aria-hidden className="h-28"/>
+    <nav aria-label="Menu de lançamentos" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 pb-[var(--safe-area-inset-bottom,env(safe-area-inset-bottom))] backdrop-blur">
+      <div className="mx-auto grid h-20 max-w-[860px] grid-cols-[1fr_auto_1fr] items-center px-4">
         <div/>
-        <button data-testid="button-quick-add" aria-label="Lançar" onClick={() => setSheet(true)} className="grid h-12 w-12 place-items-center rounded-full bg-[#28513f] text-[#fffaf0] shadow-[0_8px_18px_-10px_rgba(38,80,61,.7)] transition hover:bg-[#1f4333]"><Plus size={22}/></button>
-        <div className="pl-3"><button data-testid="button-categories" aria-label="Categorias" onClick={() => navigate('/categorias')} className="grid h-11 w-11 place-items-center rounded-full border border-[#d9d2c4] bg-[#faf7ef] text-[#496754] transition hover:bg-[#eee9dd]"><Tag size={18}/></button></div>
+        <button data-testid="button-quick-add" onClick={() => setSheet(true)} className="flex h-[52px] items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand shadow-[0_8px_18px_-10px_rgba(38,80,61,.7)] transition hover:bg-[#1f4333]"><Plus size={20} strokeWidth={2.2}/>Lançar</button>
+        <div className="justify-self-end"><button data-testid="button-categories" onClick={() => navigate('/categorias')} className="flex h-[52px] min-w-[60px] flex-col items-center justify-center gap-0.5 rounded-[14px] px-1.5 text-xs font-semibold text-ink-soft transition hover:bg-[#eee9dd]"><Tag size={20}/>Categorias</button></div>
       </div>
     </nav>
 
