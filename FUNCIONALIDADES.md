@@ -51,6 +51,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 28. [Opção D: Cartões](#28-opção-d-cartões)
 29. [Opção D: Benefícios](#29-opção-d-benefícios)
 30. [Opção D: telas de apoio](#30-opção-d-telas-de-apoio)
+31. [Compras do cartão em qualquer mês](#31-compras-do-cartão-em-qualquer-mês)
 
 ---
 
@@ -623,15 +624,16 @@ Funcionalidade: Parcelamento
     E as parcelas 4 a 10 ficam previstas de novembro de 2026 a maio de 2027
 
   @regra
-  Cenário: Compra parcelada não aceita mês futuro
-    Quando eu registro uma compra parcelada com data em novembro de 2026
-    Então vejo a mensagem de erro "Compra parcelada não aceita data em mês futuro."
+  Cenário: Compra parcelada aceita mês futuro até 12 meses à frente
+    Quando eu registro uma compra parcelada com data em dezembro de 2027
+    Então vejo a mensagem de erro "A data deve ser de até 12 meses à frente."
+    Mas com data em novembro de 2026, as parcelas ficam todas previstas (seção 31)
 
   Cenário: Mês futuro com parcelas previstas e compras
     Dado que registrei "Fone" em 3x e uma compra "Presente" de R$ 100,00 com data em 20/11/2026
     Quando eu clico em "Próximo mês"
     Então vejo novembro com "Presente", que posso editar e excluir
-    E vejo "Fone" "2/3" com o selo "prevista", sem editar nem excluir
+    E vejo "Fone" "2/3" com o selo "prevista", que posso editar e excluir (seções 23 e 24)
     E a fatura de novembro soma a compra e a parcela
     E o botão "Próximo mês" para no último mês com parcela prevista ou compra registrada
 
@@ -1103,7 +1105,7 @@ Funcionalidade: Compra recorrente
   Cenário: Cobranças previstas nos meses seguintes
     Dado que "Streaming" é recorrente sem fim
     Quando eu abro novembro de 2026
-    Então vejo "Streaming" de R$ 40,00 com os selos "Mensal" e "prevista", sem editar nem excluir
+    Então vejo "Streaming" de R$ 40,00 com os selos "Mensal" e "prevista", que posso editar e excluir com a pergunta de escopo (seção 31)
     E a fatura de novembro inclui R$ 40,00
     E o botão "Próximo mês" avança até 12 meses à frente do mês corrente
 
@@ -1544,8 +1546,9 @@ Funcionalidade: Editar parcela prevista
     Quando mudo o valor total para "150" e salvo
     Então novembro de 2026 mostra "Fone" "2/3" de R$ 50,00
 
-  Cenário: Cobrança recorrente prevista não tem botão
+  Cenário: Cobrança recorrente prevista tem o próprio fluxo
     Então a cobrança recorrente prevista não mostra "Editar compra parcelada"
+    Mas ela pode ser editada e excluída com a pergunta de escopo (seção 31)
 ```
 
 ---
@@ -1625,7 +1628,7 @@ Funcionalidade: Aba Cartões redesenhada
   Cenário: Linhas previstas
     Dado que estou num mês futuro
     Então uma parcela prevista abre a edição da compra parcelada
-    E uma cobrança recorrente prevista não é um botão
+    E uma cobrança recorrente prevista abre a pergunta de escopo (seção 31)
 ```
 
 
@@ -1868,3 +1871,44 @@ Funcionalidade: Telas de apoio na Opção D
     Então vejo o gráfico de colunas "Fatura por mês" com os últimos 12 meses, os "Próximos meses" e a lista de todos os meses
     E "Voltar" leva à aba Cartões
 ```
+
+## 31. Compras do cartão em qualquer mês
+
+Resumo. A especificação completa está em [`specs/compras-em-qualquer-mes.md`](specs/compras-em-qualquer-mes.md). Qualquer compra do cartão, à vista, parcelada ou recorrente, pode ser registrada, editada e excluída em qualquer mês, passado, corrente ou futuro. A cobrança recorrente prevista passa a ter editar e excluir (com a pergunta "Só este mês" / "Este e os próximos"), aparece em "Todas as compras", e a compra parcelada aceita data até 12 meses à frente. O formato salvo não muda.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Compras do cartão em qualquer mês
+  Contexto:
+    Dado que hoje é 26/10/2026
+    E a compra recorrente "Academia" de R$ 100,00 todo dia 10, desde setembro de 2026
+
+  Cenário: Editar a cobrança prevista só neste mês
+    Quando abro dezembro de 2026, toco em "Academia" e escolho "Só este mês"
+    E mudo o valor para "120"
+    Então dezembro mostra R$ 120,00 e janeiro de 2027 continua R$ 100,00
+
+  Cenário: Editar a cobrança prevista deste mês em diante
+    Quando escolho "Este e os próximos" e mudo o valor para "120" em dezembro
+    Então novembro continua R$ 100,00 e dezembro em diante mostram R$ 120,00
+
+  Cenário: Excluir a cobrança prevista
+    Quando excluo "Academia" de dezembro e escolho "Só este mês"
+    Então dezembro não mostra "Academia" e janeiro de 2027 mostra
+
+  Cenário: Todas as compras lista a cobrança prevista
+    Quando abro "Todas as compras"
+    Então os meses futuros mostram "Academia" com "Mensal" e "prevista", com editar e excluir
+
+  Cenário: Registrar compra parcelada em mês futuro
+    Quando registro "Sofá" de R$ 300,00 em 3x com data 15/12/2026
+    Então "Sofá" "1/3", "2/3" e "3/3" aparecem como previstas de dezembro a fevereiro
+    E nenhuma parcela é gravada ainda
+
+  @regra
+  Cenário: Compra parcelada além de 12 meses
+    Quando registro uma compra parcelada com data em dezembro de 2027
+    Então vejo a mensagem de erro "A data deve ser de até 12 meses à frente."
+```
+

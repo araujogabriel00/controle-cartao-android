@@ -14,6 +14,7 @@ import { Notice, useNotice } from '@/components/notice';
 import { RowMenu } from '@/components/row-menu';
 import { Dialog, type DialogRecord } from '@/pages/dashboard';
 import { ScopeDialog } from '@/components/scope-dialog';
+import { chargeDialog, chargeOfMovement, chargeOfPlanned, type RecurringCharge } from '@/lib/recurring-charge';
 import { capitalize, currentMonth, dateLabel, money, monthLabel, monthOf, type MonthKey } from '@/lib/format';
 
 // One line of the list: a registered purchase or a planned installment.
@@ -38,7 +39,7 @@ export default function Compras() {
   const [category, setCategory] = useState('all');
   const [dialog, setDialog] = useState<DialogRecord | null>(null);
   // RF-04 / RF-05 of compra-recorrente: a charge of a recurring purchase asks for the scope first.
-  const [scopeAsk, setScopeAsk] = useState<{ action: 'edit' | 'delete'; movement: Movement } | null>(null);
+  const [scopeAsk, setScopeAsk] = useState<{ action: 'edit' | 'delete'; charge: RecurringCharge } | null>(null);
   const confirm = useConfirm();
   const askDelete = (label: string) => confirm(removeAsk(label));
   const { notice, notify, failed, formError } = useNotice(Boolean(dialog));
@@ -60,7 +61,7 @@ export default function Compras() {
 
   const rows: Row[] = [
     ...(all.data?.movements ?? []).map((movement): Row => ({ key: `m${movement.id}`, description: movement.description, date: movement.date, amount: movement.amount, categoryId: movement.categoryId, categoryName: movement.categoryName, installment: movement.installment, installmentCount: movement.purchase?.installmentCount ?? movement.installmentCount, recurring: movement.recurringId !== undefined, movement })),
-    ...(all.data?.planned ?? []).map((planned): Row => ({ key: `p${planned.purchaseId}-${planned.installment}`, description: planned.description, date: planned.date, amount: planned.amount, categoryId: planned.categoryId, categoryName: planned.categoryName, installment: planned.installment, installmentCount: planned.installmentCount, planned })),
+    ...(all.data?.planned ?? []).map((planned): Row => ({ key: `p${planned.kind}${planned.purchaseId ?? planned.recurringId}-${planned.installment ?? 0}`, description: planned.description, date: planned.date, amount: planned.amount, categoryId: planned.categoryId, categoryName: planned.categoryName, installment: planned.installment, installmentCount: planned.installmentCount, recurring: planned.kind === 'recurring', planned })),
   ];
   const term = search.trim().toLowerCase();
   const visible = rows
@@ -69,35 +70,40 @@ export default function Compras() {
   const groups = [...new Set(visible.map((row) => monthOf(row.date)))].map((month) => ({ month, rows: visible.filter((row) => monthOf(row.date) === month) }));
 
   const editMovement = (movement: Movement) => {
-    if (movement.recurring) { setScopeAsk({ action: 'edit', movement }); return; }
+    if (movement.recurring) { setScopeAsk({ action: 'edit', charge: chargeOfMovement(movement)! }); return; }
     setDialog(movement.purchase
       ? { id: movement.id, categoryId: movement.categoryId, description: movement.description, amount: movement.purchase.totalAmount, date: movement.date, isPurchase: true, purchaseId: movement.purchase.id, installmentCount: movement.purchase.installmentCount, installment: movement.installment, firstInstallment: movement.purchase.firstInstallment }
       : { id: movement.id, categoryId: movement.categoryId, description: movement.description, amount: movement.amount, date: movement.date });
   };
-  const editPlanned = (planned: PlannedInstallment) => planned.purchase && setDialog({
-    id: planned.purchase.id, categoryId: planned.categoryId, description: planned.description, amount: planned.purchase.totalAmount, date: planned.date, isPurchase: true, purchaseId: planned.purchase.id,
-    installmentCount: planned.purchase.installmentCount, installment: planned.installment, firstInstallment: planned.purchase.firstInstallment,
-  });
+  const editPlanned = (planned: PlannedInstallment) => {
+    const charge = chargeOfPlanned(planned);
+    if (charge) { setScopeAsk({ action: 'edit', charge }); return; }
+    if (planned.purchase) setDialog({
+      id: planned.purchase.id, categoryId: planned.categoryId, description: planned.description, amount: planned.purchase.totalAmount, date: planned.date, isPurchase: true, purchaseId: planned.purchase.id,
+      installmentCount: planned.purchase.installmentCount, installment: planned.installment, firstInstallment: planned.purchase.firstInstallment,
+    });
+  };
+  const removePlanned = (planned: PlannedInstallment) => {
+    const charge = chargeOfPlanned(planned);
+    if (charge) setScopeAsk({ action: 'delete', charge });
+    else if (planned.purchase) void removePurchase(planned.purchase.id, planned.description);
+  };
   const removePurchase = async (purchaseId: number, description: string) => {
     if (await askDelete(`a compra parcelada “${description}” e todas as suas parcelas`)) deletePurchase.mutate({ purchaseId });
   };
   const removeMovement = async (movement: Movement) => {
-    if (movement.recurring) setScopeAsk({ action: 'delete', movement });
+    if (movement.recurring) setScopeAsk({ action: 'delete', charge: chargeOfMovement(movement)! });
     else if (movement.purchase) await removePurchase(movement.purchase.id, movement.description);
     else if (await askDelete(`a compra “${movement.description}”`)) deleteMovement.mutate({ movementId: movement.id });
   };
   const chooseScope = async (scope: 'month' | 'forward') => {
-    if (!scopeAsk?.movement.recurring) return;
-    const { action, movement } = scopeAsk;
-    const recurring = movement.recurring!;
-    const chargeMonth = monthOf(movement.date);
+    if (!scopeAsk) return;
+    const { action, charge } = scopeAsk;
+    const chargeMonth = monthOf(charge.date);
     setScopeAsk(null);
-    if (action === 'edit') {
-      setDialog({ id: movement.id, categoryId: movement.categoryId, description: movement.description, amount: movement.amount, date: movement.date, isRecurring: true, recurringId: recurring.id, lastMonth: recurring.lastMonth, scope });
-      return;
-    }
-    const what = scope === 'month' ? `“${movement.description}” só em ${monthLabel(chargeMonth)}` : `“${movement.description}” de ${monthLabel(chargeMonth)} em diante`;
-    if (await askDelete(what)) deleteRecurring.mutate({ recurringId: recurring.id, month: chargeMonth, scope });
+    if (action === 'edit') { setDialog(chargeDialog(charge, scope)); return; }
+    const what = scope === 'month' ? `“${charge.description}” só em ${monthLabel(chargeMonth)}` : `“${charge.description}” de ${monthLabel(chargeMonth)} em diante`;
+    if (await askDelete(what)) deleteRecurring.mutate({ recurringId: charge.recurringId, month: chargeMonth, scope });
   };
   const submit = (values: DialogRecord) => {
     if (!dialog) return;
@@ -152,7 +158,7 @@ export default function Compras() {
                 </span>
                 <span className="shrink-0 font-mono-data text-[15px] text-ink">− {money(row.amount)}</span>
               </button>
-              <RowMenu title={row.description} editTestId={`button-edit-${row.key}`} deleteTestId={`button-delete-${row.key}`} onEdit={() => row.movement ? editMovement(row.movement) : editPlanned(row.planned!)} onDelete={() => void (row.movement ? removeMovement(row.movement) : removePurchase(row.planned!.purchase!.id, row.description))}/>
+              <RowMenu title={row.description} editTestId={`button-edit-${row.key}`} deleteTestId={`button-delete-${row.key}`} onEdit={() => row.movement ? editMovement(row.movement) : editPlanned(row.planned!)} onDelete={() => void (row.movement ? removeMovement(row.movement) : removePlanned(row.planned!))}/>
             </li>)}
           </ul>
         </section>)}
@@ -161,7 +167,7 @@ export default function Compras() {
     </div>
 
     {dialog && <Dialog key={dialog.id} kind="movement" initial={dialog} month={currentMonth()} categories={categories} busy={busy} error={formError} onClose={() => setDialog(null)} onSave={submit}/>}
-    {scopeAsk && <ScopeDialog subject="compra recorrente" action={scopeAsk.action} month={monthOf(scopeAsk.movement.date)} onChoose={chooseScope} onClose={() => setScopeAsk(null)}/>}
+    {scopeAsk && <ScopeDialog subject="compra recorrente" action={scopeAsk.action} month={monthOf(scopeAsk.charge.date)} onChoose={chooseScope} onClose={() => setScopeAsk(null)}/>}
     <Notice notice={notice}/>
   </main>;
 }

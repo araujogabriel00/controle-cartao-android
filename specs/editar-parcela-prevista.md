@@ -6,7 +6,7 @@
 | Criada em | 25/10/2026 |
 | Escopo | `src/data/store.ts`, `src/data/api.ts`, `src/pages/dashboard.tsx`, `FUNCIONALIDADES.md`, `specs/parcelamento.md` |
 | Depende de | [`parcelamento.md`](parcelamento.md), [`compras-e-categorias.md`](compras-e-categorias.md) |
-| Substituída em parte por | [`todas-as-compras.md`](todas-as-compras.md): a parcela prevista também pode ser excluída (D5 deixa de valer). |
+| Substituída em parte por | [`todas-as-compras.md`](todas-as-compras.md): a parcela prevista também pode ser excluída (D5 deixa de valer). [`compras-em-qualquer-mes.md`](compras-em-qualquer-mes.md): a cobrança recorrente prevista pode ser editada e excluída (D4 deixa de valer) e a compra parcelada aceita data futura na criação (RN-01 muda). |
 | Substitui em parte | A prévia de mês futuro só para leitura ([`parcelamento.md`](parcelamento.md), RF-09 e RN-14) e a data de compra parcelada sempre em mês passado ou corrente ([`parcelamento.md`](parcelamento.md), RN-05), apenas na **edição**. |
 
 > Mudanças de comportamento entram primeiro aqui e só depois no código.

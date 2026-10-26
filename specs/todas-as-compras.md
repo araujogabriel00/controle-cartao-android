@@ -5,6 +5,7 @@
 | Status | Implementada |
 | Criada em | 25/10/2026 |
 | Escopo | `src/data/store.ts`, `src/data/api.ts`, `src/pages/compras.tsx` (novo), `src/pages/dashboard.tsx`, `src/App.tsx`, `FUNCIONALIDADES.md`, `README.md`, `specs/parcelamento.md`, `specs/editar-parcela-prevista.md` |
+| Substituída em parte por | [`compras-em-qualquer-mes.md`](compras-em-qualquer-mes.md): a cobrança recorrente prevista passa a aparecer na lista (D5 deixa de valer). |
 | Depende de | [`compras-e-categorias.md`](compras-e-categorias.md), [`parcelamento.md`](parcelamento.md), [`compra-recorrente.md`](compra-recorrente.md), [`editar-parcela-prevista.md`](editar-parcela-prevista.md) |
 
 > Mudanças de comportamento entram primeiro aqui e só depois no código.

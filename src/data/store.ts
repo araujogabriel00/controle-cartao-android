@@ -146,6 +146,8 @@ export type PlannedInstallment = {
   description: string; installment?: number; installmentCount?: number; amount: number; date: string;
   categoryId: number | null; categoryName: string | null;
   purchase?: { id: number; totalAmount: number; installmentCount: number; firstInstallment: number };
+  // Set on a planned recurring charge: what the edit dialog needs (specs/compras-em-qualquer-mes.md RF-01).
+  recurring?: { id: number; lastMonth: MonthKey | null };
 };
 export type AllMovements = { movements: Movement[]; planned: PlannedInstallment[] };
 export type MonthPreview = { month: MonthKey; amount: number; installments: PlannedInstallment[] };
@@ -433,7 +435,7 @@ function plannedOf(state: State, cardId: number | null, month?: MonthKey): Plann
       for (let m = shiftMonth(current, 1); m <= cap && (!r.lastMonth || m <= r.lastMonth); m = shiftMonth(m, 1)) {
         if (m < r.firstMonth || (month && m !== month)) continue;
         const charge = recurringCharge(state, r, m);
-        if (charge) planned.push({ kind: 'recurring', cardId: r.cardId, month: m, recurringId: r.id, ...charge, categoryId: r.categoryId, categoryName: categoryNameOf(state, r.categoryId) });
+        if (charge) planned.push({ kind: 'recurring', cardId: r.cardId, month: m, recurringId: r.id, ...charge, categoryId: r.categoryId, categoryName: categoryNameOf(state, r.categoryId), recurring: { id: r.id, lastMonth: r.lastMonth } });
       }
       return planned;
     });
@@ -633,7 +635,7 @@ function requirePurchase(input: PurchaseInput, firstFallback?: number, editing =
   const totalAmount = Number(input.totalAmount);
   if (!Number.isFinite(totalAmount) || cents(totalAmount) < minimum) throw new Error(`Valor total deve ser de pelo menos ${money(minimum)}.`);
   const date = requireDate(input.date);
-  if (!editing && isFutureMonth(monthOf(date))) throw new Error('Compra parcelada não aceita data em mês futuro.');
+  if (!editing && date > lastDayOf(shiftMonth(currentMonth(), 12))) throw new Error('A data deve ser de até 12 meses à frente.');
   return {
     description: requireText(input.description, 'Descrição', 200),
     totalAmount: cents(totalAmount),
@@ -674,12 +676,12 @@ export async function getMovements(cardId: number, month: MonthKey): Promise<Mov
 }
 
 // specs/todas-as-compras.md RN-04: every purchase of the card in any month, plus the planned
-// installments of the future months (planned recurring charges are left out, D5).
+// installments and recurring charges of the future months (specs/compras-em-qualquer-mes.md RN-05).
 export async function getAllMovements(cardId: number): Promise<AllMovements> {
   const state = await load();
   return {
     movements: state.movements.filter((m) => m.cardId === cardId).sort(newestFirst).map((m) => toMovement(state, m)),
-    planned: plannedOf(state, cardId).filter((p) => p.kind === 'installment'),
+    planned: plannedOf(state, cardId),
   };
 }
 
