@@ -7,17 +7,20 @@ import {
   useSelectCard, useUpdateBill, useUpdateDailyExpense, useUpdateIncome,
   type BillOccurrence, type DailyExpense, type IncomeOccurrence, type IncomeScope,
 } from '@workspace/api-client-react';
-import { ArrowLeft, CalendarDays, Check, ChevronRight, CircleHelp, CreditCard, HandCoins, Pencil, Receipt, Repeat, ShoppingBasket, Trash2 } from 'lucide-react';
+import { CalendarDays, ChevronRight, CircleHelp, CreditCard, HandCoins, Receipt, Repeat, ShoppingBasket } from 'lucide-react';
+import { BackButton } from '@/components/back-button';
+import { HBars } from '@/components/charts/hbars';
+import { removeAsk, useConfirm } from '@/components/confirm-dialog';
+import { Notice, useNotice } from '@/components/notice';
+import { RowMenu } from '@/components/row-menu';
 import { BillDialog, DailyDialog, IncomeDialog, KIND_LABELS, type BillForm, type BillValues, type DailyValues, type IncomeForm } from '@/components/entry-dialogs';
-import { Progress } from '@/components/progress';
 import { ScopeDialog } from '@/components/scope-dialog';
 import { CARD_COLORS } from '@/lib/card-colors';
 import { areaPath, capitalize, dateLabel, money, monthLabel, type ListKind, type MonthKey } from '@/lib/format';
 import { useRememberMonth } from '@/lib/last-month';
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
-const rowIcon = 'grid h-10 w-10 shrink-0 place-items-center rounded-[14px] bg-[#e4ece2] text-[#52735c]';
-const emptyBox = (testid: string, icon: React.ReactNode, text: string) => <div className="mt-6 rounded-2xl border border-dashed border-[#d9d2c4] bg-[#f8f5ed] px-5 py-7 text-center"><div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[#e8e9df] text-[#63806a]">{icon}</div><p data-testid={testid} className="mt-3 text-xs text-[#7d887c]">{text}</p></div>;
+const emptyBox = (testid: string, icon: React.ReactNode, text: string) => <div className="mt-6 rounded-2xl border border-dashed border-line bg-surface px-5 py-7 text-center"><div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[#e8e9df] text-brand">{icon}</div><p data-testid={testid} className="mt-3 text-[14px] text-ink-soft">{text}</p></div>;
 
 type ScopeAsk = { kind: 'income'; action: 'edit' | 'delete'; item: IncomeOccurrence } | { kind: 'bill'; action: 'edit' | 'delete'; item: BillOccurrence };
 
@@ -43,7 +46,8 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
   const [billForm, setBillForm] = useState<BillForm | null>(null);
   const [dailyForm, setDailyForm] = useState<{ item?: DailyExpense } | null>(null);
   const [scopeAsk, setScopeAsk] = useState<ScopeAsk | null>(null);
-  const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
+  const confirm = useConfirm();
+  const { notice, notify, failed, formError } = useNotice(Boolean(incomeForm || billForm || dailyForm));
   const incomeItems = incomes.data?.items ?? [];
   const billItems = bills.data?.items ?? [];
   const dailyItems = daily.data?.items ?? [];
@@ -53,8 +57,6 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
       void client.invalidateQueries({ queryKey });
     }
   };
-  const notify = (text: string) => { setToast({ text }); window.setTimeout(() => setToast(null), 3200); };
-  const failed = (error?: Error) => { setToast({ text: error?.message || 'Não foi possível salvar. Tente novamente.', error: true }); window.setTimeout(() => setToast(null), 4200); };
   const closing = (text: string) => ({ onSuccess: () => { refresh(); setIncomeForm(null); setBillForm(null); setDailyForm(null); notify(text); }, onError: failed });
   const done = (text: string) => ({ onSuccess: () => { refresh(); notify(text); }, onError: failed });
   // D11: a card row opens the Cartões tab, in this month, with that card selected.
@@ -68,12 +70,12 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
 
   const incomeLabel = (item: IncomeOccurrence) => item.description || KIND_LABELS[item.kind];
   const scopeText = (name: string, scope: IncomeScope) => (scope === 'month' ? `“${name}” só em ${monthLabel(month)}` : `“${name}” de ${monthLabel(month)} em diante`);
-  const confirmDeleteIncome = (item: IncomeOccurrence, scope: IncomeScope) => {
+  const confirmDeleteIncome = async (item: IncomeOccurrence, scope: IncomeScope) => {
     const what = item.recurring ? scopeText(incomeLabel(item), scope) : `“${incomeLabel(item)}”`;
-    if (window.confirm(`Remover ${what}? Esta ação não pode ser desfeita.`)) deleteIncome.mutate({ incomeId: item.incomeId, month, scope });
+    if (await confirm(removeAsk(what))) deleteIncome.mutate({ incomeId: item.incomeId, month, scope });
   };
-  const confirmDeleteBill = (item: BillOccurrence, scope: IncomeScope) => {
-    if (window.confirm(`Remover ${scopeText(item.name, scope)}? Esta ação não pode ser desfeita.`)) deleteBill.mutate({ billId: item.billId, month, scope });
+  const confirmDeleteBill = async (item: BillOccurrence, scope: IncomeScope) => {
+    if (await confirm(removeAsk(scopeText(item.name, scope)))) deleteBill.mutate({ billId: item.billId, month, scope });
   };
   const chooseScope = (scope: IncomeScope) => {
     if (!scopeAsk) return;
@@ -94,93 +96,96 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
     if (dailyForm?.item) updateDaily.mutate({ expenseId: dailyForm.item.id, categoryId: values.categoryId, data });
   };
 
+  const removeDaily = async (item: DailyExpense) => {
+    if (await confirm(removeAsk(`o gasto “${item.description}”`))) deleteDaily.mutate({ expenseId: item.id });
+  };
   const cardItems = cards.data?.cards ?? [];
   const query = kind === 'entradas' ? incomes : kind === 'contas-fixas' ? bills : kind === 'cartoes' ? cards : daily;
   const total = kind === 'entradas' ? incomes.data?.totalAmount : kind === 'contas-fixas' ? bills.data?.totalAmount : kind === 'cartoes' ? Math.round(cardItems.reduce((sum, card) => sum + card.invoiceAmount, 0) * 100) / 100 : daily.data?.totalAmount;
   const busy = updateIncome.isPending || updateBill.isPending || updateDaily.isPending;
   const { kicker, title } = TITLES[kind];
-  const iconButtons = (testid: string, label: string, onEdit: () => void, onDelete: () => void) => <div className="flex shrink-0 items-center">
-    <button data-testid={`button-edit-${testid}`} aria-label={`Editar ${label}`} onClick={onEdit} className="rounded-full p-2 text-[#718076] transition hover:bg-[#eee9df]"><Pencil size={15}/></button>
-    <button data-testid={`button-delete-${testid}`} aria-label={`Excluir ${label}`} onClick={onDelete} className="rounded-full p-2 text-[#a36354] transition hover:bg-[#f5e9e1]"><Trash2 size={15}/></button>
-  </div>;
+  const subtitle = 'mt-0.5 flex flex-wrap items-center gap-2 text-[13px] text-ink-soft';
+  const tag = 'inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e4ece2] px-2 py-0.5 text-[12px] font-semibold text-[#2f5a44]';
+  const rowButton = 'flex min-h-16 min-w-0 flex-1 items-center gap-3 py-3 text-left transition hover:bg-surface';
 
-  return <main className="notebook-grain min-h-safe bg-[#f5f1e7] text-[#294438]">
+  return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
-      <header className="enter flex items-center justify-end border-b border-[#ded8ca] pb-5">
-        <button data-testid="button-back" onClick={() => navigate(areaPath('income', month))} className="flex items-center gap-2 rounded-full border border-[#ded8ca] px-3.5 py-2 text-xs font-semibold text-[#546b5d] transition hover:bg-[#ece7dc]"><ArrowLeft size={14}/> Voltar</button>
-      </header>
+      <BackButton onClick={() => navigate(areaPath('income', month))}/>
 
-      <section className="enter mt-8 flex items-end justify-between gap-3" style={{ animationDelay: '.06s' }}>
-        <div className="min-w-0">
-          <p className="font-mono-data text-[10px] uppercase tracking-[.2em] text-[#ac8f60]">{kicker} · {capitalize(monthLabel(month))}</p>
-          <h1 data-testid="text-list-title" className="mt-2 font-display text-[34px] leading-[1.05] tracking-[-.03em] text-[#234638] sm:text-[42px]">{title}</h1>
-        </div>
-        <p data-testid="text-list-total" className="shrink-0 font-mono-data text-[18px] text-[#315944]">{money(total)}</p>
+      <section className="enter mt-3" style={{ animationDelay: '.06s' }}>
+        <p className="font-mono-data text-xs uppercase tracking-[.08em] text-eyebrow">{kicker} · {capitalize(monthLabel(month))}</p>
+        <h1 data-testid="text-list-title" className="mt-1 font-display text-[28px] leading-tight text-ink">{title}</h1>
+        <p data-testid="text-list-total" className="mt-2 font-mono-data text-[28px] leading-tight text-ink">{money(total)}</p>
       </section>
 
-      {query.isLoading ? <div className="mt-6 space-y-3 animate-pulse"><div className="h-16 rounded-2xl bg-[#e9e3d7]"/><div className="h-16 rounded-2xl bg-[#e9e3d7]"/></div>
-      : query.isError ? <div className="mt-6 rounded-2xl border border-[#e1dbce] bg-[#fbf8f0] px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#e9e3d7] text-[#315944]"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-[#345443]">Não conseguimos abrir esta lista.</h3></div>
+      {query.isLoading ? <div className="mt-6 space-y-3 animate-pulse"><div className="h-16 rounded-2xl bg-line"/><div className="h-16 rounded-2xl bg-line"/></div>
+      : query.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#e9e3d7] text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir esta lista.</h3><button onClick={() => void query.refetch()} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
       : <>
-      {kind === 'entradas' && (incomeItems.length ? <ul data-testid="list-incomes" className="mt-6 space-y-3">
-        {incomeItems.map((item) => <li key={item.incomeId} data-testid={`row-income-${item.incomeId}`} className="flex items-center gap-3 rounded-2xl border border-[#e1dbce] bg-[#fbf8f0] p-4">
-          <span className={rowIcon}><HandCoins size={17}/></span>
-          <div className="min-w-0 flex-1">
-            <p className="flex items-center gap-2"><span className="truncate text-[14px] font-semibold text-[#2f4a3b]">{incomeLabel(item)}</span>{item.recurring && <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e4ece2] px-2 py-0.5 text-[9px] font-semibold text-[#52735c]"><Repeat size={9}/> Mensal</span>}</p>
-            <p className="mt-0.5 text-[10px] text-[#899186]">{item.description ? `${KIND_LABELS[item.kind]} · ` : ''}{dateLabel(item.date)}</p>
-          </div>
-          <span className="shrink-0 font-mono-data text-[15px] text-[#315944]">{money(item.amount)}</span>
-          {iconButtons(`income-${item.incomeId}`, incomeLabel(item), () => (item.recurring ? setScopeAsk({ kind: 'income', action: 'edit', item }) : setIncomeForm({ item })), () => (item.recurring ? setScopeAsk({ kind: 'income', action: 'delete', item }) : confirmDeleteIncome(item, 'forward')))}
-        </li>)}
+      {kind === 'entradas' && (incomeItems.length ? <ul data-testid="list-incomes" className="mt-5 divide-y divide-line border-y border-line">
+        {incomeItems.map((item) => {
+          const edit = () => (item.recurring ? setScopeAsk({ kind: 'income', action: 'edit', item }) : setIncomeForm({ item }));
+          return <li key={item.incomeId} data-testid={`row-income-${item.incomeId}`} className="flex items-center gap-1">
+            <button type="button" aria-label={`Editar ${incomeLabel(item)}`} onClick={edit} className={rowButton}>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15px] font-semibold text-ink">{incomeLabel(item)}</span>
+                <span className={subtitle}>{item.description ? <span>{KIND_LABELS[item.kind]}</span> : null}<span>{dateLabel(item.date)}</span>{item.recurring && <span className={tag}><Repeat size={11}/> Mensal</span>}</span>
+              </span>
+              <span className="shrink-0 font-mono-data text-[15px] text-brand">{money(item.amount)}</span>
+            </button>
+            <RowMenu title={incomeLabel(item)} editTestId={`button-edit-income-${item.incomeId}`} deleteTestId={`button-delete-income-${item.incomeId}`} onEdit={edit} onDelete={() => (item.recurring ? setScopeAsk({ kind: 'income', action: 'delete', item }) : void confirmDeleteIncome(item, 'forward'))}/>
+          </li>;
+        })}
       </ul> : emptyBox('text-income-empty', <HandCoins size={16}/>, 'Nenhuma entrada neste mês.'))}
 
-      {kind === 'contas-fixas' && (billItems.length ? <ul data-testid="list-bills" className="mt-6 space-y-3">
-        {billItems.map((item) => <li key={item.billId} data-testid={`row-bill-${item.billId}`} className="flex items-center gap-3 rounded-2xl border border-[#e1dbce] bg-[#fbf8f0] p-4">
-          <span className={rowIcon}><Receipt size={17}/></span>
-          <div className="min-w-0 flex-1">
-            <p className="flex items-center gap-2"><span className="truncate text-[14px] font-semibold text-[#2f4a3b]">{item.name}</span><span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e4ece2] px-2 py-0.5 text-[9px] font-semibold text-[#52735c]"><Repeat size={9}/> Mensal</span></p>
-            <p className="mt-0.5 text-[10px] text-[#899186]">dia {Number(item.date.slice(8))}</p>
-          </div>
-          <span className="shrink-0 font-mono-data text-[15px] text-[#a55f50]">{money(item.amount)}</span>
-          {iconButtons(`bill-${item.billId}`, item.name, () => setScopeAsk({ kind: 'bill', action: 'edit', item }), () => setScopeAsk({ kind: 'bill', action: 'delete', item }))}
+      {kind === 'contas-fixas' && (billItems.length ? <ul data-testid="list-bills" className="mt-5 divide-y divide-line border-y border-line">
+        {billItems.map((item) => <li key={item.billId} data-testid={`row-bill-${item.billId}`} className="flex items-center gap-1">
+          <button type="button" aria-label={`Editar ${item.name}`} onClick={() => setScopeAsk({ kind: 'bill', action: 'edit', item })} className={rowButton}>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[15px] font-semibold text-ink">{item.name}</span>
+              <span className={subtitle}><span>dia {Number(item.date.slice(8))}</span><span className={tag}><Repeat size={11}/> Mensal</span></span>
+            </span>
+            <span className="shrink-0 font-mono-data text-[15px] text-ink">− {money(item.amount)}</span>
+          </button>
+          <RowMenu title={item.name} editTestId={`button-edit-bill-${item.billId}`} deleteTestId={`button-delete-bill-${item.billId}`} onEdit={() => setScopeAsk({ kind: 'bill', action: 'edit', item })} onDelete={() => setScopeAsk({ kind: 'bill', action: 'delete', item })}/>
         </li>)}
       </ul> : emptyBox('text-bills-empty', <Receipt size={16}/>, 'Nenhuma conta fixa neste mês.'))}
 
-      {kind === 'cartoes' && (cardItems.length ? <ul data-testid="list-cards" className="mt-6 space-y-3">
-        {cardItems.map((card) => <li key={card.id}><button data-testid={`row-card-${card.id}`} onClick={() => selectCard.mutate({ cardId: card.id })} className="flex w-full items-center gap-3 rounded-2xl border border-[#e1dbce] bg-[#fbf8f0] p-4 text-left transition hover:bg-[#f4f0e6]">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] text-white" style={{ background: CARD_COLORS[card.color].background }}><CreditCard size={17}/></span>
-          <span className="min-w-0 flex-1"><span className="block truncate text-[14px] font-semibold text-[#2f4a3b]">{card.name}</span><span className="mt-0.5 block text-[10px] text-[#899186]">{plural(card.movementCount, 'compra', 'compras')}</span></span>
-          <span className="shrink-0 font-mono-data text-[15px] text-[#a55f50]">{money(card.invoiceAmount)}</span>
-          <ChevronRight size={16} className="shrink-0 text-[#9aa497]"/>
+      {kind === 'cartoes' && (cardItems.length ? <ul data-testid="list-cards" className="mt-5 divide-y divide-line border-y border-line">
+        {cardItems.map((card) => <li key={card.id}><button data-testid={`row-card-${card.id}`} onClick={() => selectCard.mutate({ cardId: card.id })} className="flex min-h-16 w-full items-center gap-3 py-3 text-left transition hover:bg-surface">
+          <span aria-hidden className="h-3 w-3 shrink-0 rounded-full" style={{ background: CARD_COLORS[card.color].background }}/>
+          <span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-semibold text-ink">{card.name}</span><span className="mt-0.5 block text-[13px] text-ink-soft">{plural(card.movementCount, 'compra', 'compras')}</span></span>
+          <span className="shrink-0 font-mono-data text-[15px] text-ink">{money(card.invoiceAmount)}</span>
+          <ChevronRight size={16} className="shrink-0 text-ink-soft"/>
         </button></li>)}
       </ul> : emptyBox('text-cards-empty', <CreditCard size={16}/>, 'Nenhum cartão cadastrado.'))}
 
       {kind === 'gastos' && <>
-        {dailyItems.length ? <ul data-testid="list-daily" className="mt-6 space-y-3">
-          {dailyItems.map((item) => <li key={item.id} data-testid={`row-daily-${item.id}`} className="flex items-center gap-3 rounded-2xl border border-[#e1dbce] bg-[#fbf8f0] p-4">
-            <span className={rowIcon}><ShoppingBasket size={17}/></span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[14px] font-semibold text-[#2f4a3b]">{item.description}</p>
-              <p className="mt-0.5 flex items-center gap-2 text-[10px] text-[#899186]"><span className="flex items-center gap-1"><CalendarDays size={11}/>{dateLabel(item.date)}</span>{item.categoryName && <span className="truncate rounded-full bg-[#e4ece2] px-2 py-0.5 text-[9px] font-medium text-[#52735c]">{item.categoryName}</span>}</p>
-            </div>
-            <span className="shrink-0 font-mono-data text-[15px] text-[#a55f50]">− {money(item.amount)}</span>
-            {iconButtons(`daily-${item.id}`, item.description, () => setDailyForm({ item }), () => { if (window.confirm(`Remover o gasto “${item.description}”? Esta ação não pode ser desfeita.`)) deleteDaily.mutate({ expenseId: item.id }); })}
+        {dailyItems.length ? <ul data-testid="list-daily" className="mt-5 divide-y divide-line border-y border-line">
+          {dailyItems.map((item) => <li key={item.id} data-testid={`row-daily-${item.id}`} className="flex items-center gap-1">
+            <button type="button" aria-label={`Editar ${item.description}`} onClick={() => setDailyForm({ item })} className={rowButton}>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15px] font-semibold text-ink">{item.description}</span>
+                <span className={subtitle}><span className="flex items-center gap-1"><CalendarDays size={13}/>{dateLabel(item.date)}</span>{item.categoryName && <span className="truncate rounded-full bg-[#e4ece2] px-2 py-0.5 text-[12px] font-medium text-[#2f5a44]">{item.categoryName}</span>}</span>
+              </span>
+              <span className="shrink-0 font-mono-data text-[15px] text-ink">− {money(item.amount)}</span>
+            </button>
+            <RowMenu title={item.description} editTestId={`button-edit-daily-${item.id}`} deleteTestId={`button-delete-daily-${item.id}`} onEdit={() => setDailyForm({ item })} onDelete={() => void removeDaily(item)}/>
           </li>)}
         </ul> : emptyBox('text-daily-empty', <ShoppingBasket size={16}/>, 'Nenhum gasto neste mês.')}
-        {(daily.data?.summary.length ?? 0) > 0 && <div className="mt-5 rounded-[22px] border border-[#e1dbce] bg-[#fbf8f0] p-5">
-          <p className="font-mono-data text-[10px] uppercase tracking-[.17em] text-[#9a8d71]">Por categoria · {plural(dailyItems.length, 'gasto', 'gastos')}</p>
-          <ul data-testid="list-daily-summary" className="mt-4 space-y-4">{daily.data?.summary.map((row) => <li key={row.categoryId ?? 'none'} data-testid={`row-daily-summary-${row.categoryId ?? 'none'}`}>
-            <div className="flex items-baseline justify-between gap-3"><span className="truncate text-[13px] font-semibold text-[#345443]">{row.name ?? 'Sem categoria'}</span><span className="shrink-0 font-mono-data text-[13px] text-[#a36354]">{money(row.amount)}</span></div>
-            <div className="mt-2 flex items-center gap-3"><div className="flex-1"><Progress value={row.percent} tone="green"/></div><span className="w-9 text-right font-mono-data text-[9px] text-[#8c9388]">{Number(row.percent).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%</span></div>
-          </li>)}</ul>
-        </div>}
+        {(daily.data?.summary.length ?? 0) > 0 && <section className="mt-8">
+          <h2 className="font-display text-2xl text-ink">Por categoria</h2>
+          <p className="mb-3 text-sm text-ink-soft">{plural(dailyItems.length, 'gasto', 'gastos')} no mês</p>
+          <HBars fill="bg-chart-out" label="Gastos por categoria" testId="list-daily-summary" rowTestId={(key) => `row-daily-summary-${key}`}
+            rows={(daily.data?.summary ?? []).map((row) => ({ key: String(row.categoryId ?? 'none'), label: row.name ?? 'Sem categoria', amount: row.amount, percent: row.percent }))}/>
+        </section>}
       </>}
       </>}
     </div>
 
-    {incomeForm && <IncomeDialog key={`${incomeForm.item?.incomeId ?? 'new'}-${incomeForm.scope ?? ''}`} month={month} item={incomeForm.item} scope={incomeForm.scope} busy={busy} onClose={() => setIncomeForm(null)} onSave={saveIncome}/>}
-    {billForm && <BillDialog key={`${billForm.item?.billId ?? 'new'}-${billForm.scope ?? ''}`} month={month} item={billForm.item} scope={billForm.scope} busy={busy} onClose={() => setBillForm(null)} onSave={saveBill}/>}
-    {dailyForm && <DailyDialog key={dailyForm.item?.id ?? 'new'} month={month} item={dailyForm.item} categories={categories} busy={busy} onClose={() => setDailyForm(null)} onSave={saveDaily}/>}
+    {incomeForm && <IncomeDialog key={`${incomeForm.item?.incomeId ?? 'new'}-${incomeForm.scope ?? ''}`} month={month} item={incomeForm.item} scope={incomeForm.scope} busy={busy} error={formError} onClose={() => setIncomeForm(null)} onSave={saveIncome}/>}
+    {billForm && <BillDialog key={`${billForm.item?.billId ?? 'new'}-${billForm.scope ?? ''}`} month={month} item={billForm.item} scope={billForm.scope} busy={busy} error={formError} onClose={() => setBillForm(null)} onSave={saveBill}/>}
+    {dailyForm && <DailyDialog key={dailyForm.item?.id ?? 'new'} month={month} item={dailyForm.item} categories={categories} busy={busy} error={formError} onClose={() => setDailyForm(null)} onSave={saveDaily}/>}
     {scopeAsk && <ScopeDialog subject={scopeAsk.kind === 'income' ? 'entrada' : 'conta fixa'} action={scopeAsk.action} month={month} onChoose={chooseScope} onClose={() => setScopeAsk(null)}/>}
-    {toast && <div role="status" data-testid="status-toast" className={`fixed left-4 right-4 z-[60] mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-full px-4 py-3 text-xs font-semibold text-white shadow-lg sm:left-auto sm:right-5 sm:mx-0 ${toast.error ? 'bg-[#a85e50]' : 'bg-[#28513f]'}`}><Check size={14}/>{toast.text}</div>}
+    <Notice notice={notice}/>
   </main>;
 }

@@ -7,17 +7,16 @@ import {
   useGetBenefits, useGetCards, useGetCategories,
   type BenefitItem,
 } from '@workspace/api-client-react';
-import { CreditCard, HandCoins, List, Plus, Receipt, ShoppingBasket, Tag, Utensils, X } from 'lucide-react';
-import { dialogOverlay } from '@/lib/dialog-styles';
+import { CreditCard, HandCoins, List, Plus, Receipt, ShoppingBasket, Tag, Utensils } from 'lucide-react';
+import { BottomSheet } from '@/components/bottom-sheet';
+import { Notice, useNotice } from '@/components/notice';
+import { hasFooter } from '@/lib/footer';
 import { defaultDateFor, monthInPath, monthLabel, monthOf, summaryPath, type MonthKey } from '@/lib/format';
 import { BillDialog, DailyDialog, IncomeDialog } from '@/components/entry-dialogs';
 import { Dialog as PurchaseDialog } from '@/pages/dashboard';
 import { SpendDialog } from '@/pages/beneficios';
 
 type Kind = 'income' | 'bill' | 'daily' | 'purchase' | 'spend';
-
-// Areas that have the footer (D9): Entradas, Cartões and Benefícios, never the history or the categories.
-const hasFooter = (location: string) => location === '/' || location.startsWith('/mes/') || location.startsWith('/entradas') || location.startsWith('/beneficios');
 
 // Footer menu with the "Lançar" button (specs/botao-lancar.md): any entry can be registered from any
 // area. It opens the forms the areas already have, in the open month, and stays on the same screen.
@@ -34,7 +33,7 @@ function FooterBar({ month, location }: { month: MonthKey; location: string }) {
   const [form, setForm] = useState<Kind | null>(null);
   const [pickBenefit, setPickBenefit] = useState(false);
   const [benefit, setBenefit] = useState<BenefitItem | null>(null);
-  const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
+  const { notice, notify, failed, formError } = useNotice(form !== null);
   const cardsQuery = useGetCards(month, { query: { queryKey: getGetCardsQueryKey(month) } });
   const benefits = useGetBenefits(month, { query: { queryKey: getGetBenefitsQueryKey(month) } }).data?.items ?? [];
   const categories = useGetCategories({ query: { queryKey: getGetCategoriesQueryKey() } }).data ?? [];
@@ -42,8 +41,6 @@ function FooterBar({ month, location }: { month: MonthKey; location: string }) {
 
   // Whatever an area shows may change, so everything is refreshed.
   const refresh = () => { void client.invalidateQueries(); };
-  const notify = (text: string, error = false) => { setToast({ text, error }); window.setTimeout(() => setToast(null), error ? 4200 : 3200); };
-  const failed = (error?: Error) => notify(error?.message || 'Não foi possível salvar. Tente novamente.', true);
   const closeAll = () => { setForm(null); setBenefit(null); setPickBenefit(false); };
   const saved = (text: string) => ({ onSuccess: () => { refresh(); closeAll(); notify(text); }, onError: failed });
   const createIncome = useCreateIncome({ mutation: saved('Entrada registrada.') });
@@ -83,36 +80,30 @@ function FooterBar({ month, location }: { month: MonthKey; location: string }) {
       </div>
     </nav>
 
-    {sheet && <div className={`${dialogOverlay} flex items-end`} onMouseDown={(event) => { if (event.target === event.currentTarget) setSheet(false); }}>
-      <div role="dialog" aria-label="Lançar" className="enter mx-auto w-full max-w-[440px] rounded-t-[24px] border border-[#e6dfd1] bg-[#fbf8f0] p-5 pb-6">
-        <div className="mb-3 flex items-center justify-between"><h2 className="font-display text-[22px] text-[#234638]">Lançar</h2><button aria-label="Fechar" onClick={() => setSheet(false)} className="rounded-full p-2 text-[#718076] transition hover:bg-[#eee9df]"><X size={18}/></button></div>
-        <div className="space-y-2">
-          {options.map(({ kind, label, icon: Icon, disabled }) => <button key={kind} data-testid={`quick-${kind}`} disabled={Boolean(disabled)} onClick={() => open(kind)} className="flex w-full items-center gap-3 rounded-2xl border border-[#e1dbce] bg-[#f8f5ed] px-4 py-3.5 text-left transition hover:bg-[#eee9dd] disabled:opacity-50 disabled:hover:bg-[#f8f5ed]">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#e4ece2] text-[#52735c]"><Icon size={17}/></span>
-            <span className="min-w-0"><span className="block text-[14px] font-semibold text-[#234638]">{label}</span>{disabled && <span className="block text-[11px] text-[#8c9388]">{disabled}</span>}</span>
-          </button>)}
-        </div>
+    {sheet && <BottomSheet title="Lançar" onClose={() => setSheet(false)}>
+      <div className="space-y-2">
+        {options.map(({ kind, label, icon: Icon, disabled }) => <button key={kind} data-testid={`quick-${kind}`} disabled={Boolean(disabled)} onClick={() => open(kind)} className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-line bg-paper px-4 py-3 text-left transition hover:bg-[#eee9dd] disabled:opacity-50 disabled:hover:bg-paper">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#e4ece2] text-[#52735c]"><Icon size={18}/></span>
+          <span className="min-w-0"><span className="block text-[15px] font-semibold text-ink">{label}</span>{disabled && <span className="block text-[13px] text-ink-soft">{disabled}</span>}</span>
+        </button>)}
       </div>
-    </div>}
+    </BottomSheet>}
 
-    {form === 'income' && <IncomeDialog month={month} busy={busy} onClose={closeAll} onSave={(values) => createIncome.mutate({ data: values })}/>}
-    {form === 'bill' && <BillDialog month={month} busy={busy} onClose={closeAll} onSave={(values) => createBill.mutate({ data: values })}/>}
-    {form === 'daily' && <DailyDialog month={month} categories={categories} busy={busy} onClose={closeAll} onSave={(values) => createDaily.mutate({ categoryId: values.categoryId, data: { description: values.description, amount: values.amount, date: values.date } })}/>}
-    {form === 'purchase' && cardId !== null && <PurchaseDialog kind="movement" initial={{}} month={month} categories={categories} busy={busy} onClose={closeAll} onSave={(values) => {
+    {form === 'income' && <IncomeDialog month={month} busy={busy} error={formError} onClose={closeAll} onSave={(values) => createIncome.mutate({ data: values })}/>}
+    {form === 'bill' && <BillDialog month={month} busy={busy} error={formError} onClose={closeAll} onSave={(values) => createBill.mutate({ data: values })}/>}
+    {form === 'daily' && <DailyDialog month={month} categories={categories} busy={busy} error={formError} onClose={closeAll} onSave={(values) => createDaily.mutate({ categoryId: values.categoryId, data: { description: values.description, amount: values.amount, date: values.date } })}/>}
+    {form === 'purchase' && cardId !== null && <PurchaseDialog kind="movement" initial={{}} month={month} categories={categories} busy={busy} error={formError} onClose={closeAll} onSave={(values) => {
       const categoryId = values.categoryId ?? null;
       const date = values.date ?? defaultDateFor(month);
       if (values.isRecurring) createRecurring.mutate({ cardId, categoryId, data: { description: values.description ?? '', amount: Number(values.amount), date, lastMonth: values.lastMonth ?? null } });
       else if (values.isPurchase) createPurchase.mutate({ cardId, categoryId, data: { description: values.description ?? '', totalAmount: Number(values.amount), installmentCount: Number(values.installmentCount), installment: Number(values.installment), firstInstallment: values.firstInstallment, date } });
       else createMovement.mutate({ cardId, categoryId, data: { description: values.description ?? '', amount: Number(values.amount), date } });
     }}/>}
-    {form === 'spend' && pickBenefit && !benefit && <div className={`${dialogOverlay} flex items-end`} onMouseDown={(event) => { if (event.target === event.currentTarget) closeAll(); }}>
-      <div role="dialog" aria-label="Qual benefício?" className="enter mx-auto w-full max-w-[440px] rounded-t-[24px] border border-[#e6dfd1] bg-[#fbf8f0] p-5 pb-6">
-        <div className="mb-3 flex items-center justify-between"><h2 className="font-display text-[22px] text-[#234638]">Qual benefício?</h2><button aria-label="Fechar" onClick={closeAll} className="rounded-full p-2 text-[#718076] transition hover:bg-[#eee9df]"><X size={18}/></button></div>
-        <div className="space-y-2">{benefits.map((item) => <button key={item.id} data-testid={`quick-benefit-${item.id}`} onClick={() => setBenefit(item)} className="flex w-full items-center rounded-2xl border border-[#e1dbce] bg-[#f8f5ed] px-4 py-3.5 text-left text-[14px] font-semibold text-[#234638] transition hover:bg-[#eee9dd]">{item.name}</button>)}</div>
-      </div>
-    </div>}
-    {form === 'spend' && benefit && <SpendDialog month={month} benefit={benefit} categories={categories} busy={busy} onClose={closeAll} onSave={(values) => createSpend.mutate({ benefitId: benefit.id, categoryId: values.categoryId, data: { description: values.description, amount: values.amount, date: values.date } })}/>}
+    {form === 'spend' && pickBenefit && !benefit && <BottomSheet title="Qual benefício?" onClose={closeAll}>
+      <div className="space-y-2">{benefits.map((item) => <button key={item.id} data-testid={`quick-benefit-${item.id}`} onClick={() => setBenefit(item)} className="flex min-h-14 w-full items-center rounded-2xl border border-line bg-paper px-4 py-3 text-left text-[15px] font-semibold text-ink transition hover:bg-[#eee9dd]">{item.name}</button>)}</div>
+    </BottomSheet>}
+    {form === 'spend' && benefit && <SpendDialog month={month} benefit={benefit} categories={categories} busy={busy} error={formError} onClose={closeAll} onSave={(values) => createSpend.mutate({ benefitId: benefit.id, categoryId: values.categoryId, data: { description: values.description, amount: values.amount, date: values.date } })}/>}
 
-    {toast && <div role="status" data-testid="status-toast" className={`fixed left-4 right-4 z-[60] mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-full px-4 py-3 text-xs font-semibold text-white shadow-lg ${toast.error ? 'bg-[#a85e50]' : 'bg-[#28513f]'}`}>{toast.text}</div>}
+    <Notice notice={notice}/>
   </>;
 }

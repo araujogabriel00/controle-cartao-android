@@ -159,6 +159,11 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── components/snap-carousel.tsx # carrossel genérico (sem uso no momento)
 │   ├── components/card-picker.tsx # fileira de botões dos cartões e dos benefícios
 │   ├── components/card-menu.tsx # folha "⋯" (editar e excluir cartão ou benefício)
+│   ├── components/bottom-sheet.tsx # folha de rodapé, moldura dos formulários e botões de salvar
+│   ├── components/confirm-dialog.tsx # confirmação antes de apagar (`useConfirm`)
+│   ├── components/notice.tsx # avisos acima do rodapé (`useNotice`)
+│   ├── components/row-menu.tsx # "⋯" de 44 px por linha das listas
+│   ├── components/back-button.tsx # botão Voltar das telas secundárias
 │   ├── lib/card-series.ts  # séries dos gráficos de Cartões (funções puras)
 │   ├── components/app-tabs.tsx # abas Entradas | Cartões | Benefícios
 │   ├── components/month-nav.tsx # seletor de mês, acima das abas

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Proposta |
+| Status | Implementada |
 | Criada em | 26/10/2026 |
 | Escopo | Telas de lista (`/entradas/lista/...`, `/beneficios/...`), `/historico`, `/categorias`, diálogos de formulário, `ScopeDialog`, confirmações, toasts, `src/components/` compartilhados, `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`redesign-opcao-d-entradas.md`](redesign-opcao-d-entradas.md), [`redesign-opcao-d-cartoes.md`](redesign-opcao-d-cartoes.md), [`redesign-opcao-d-beneficios.md`](redesign-opcao-d-beneficios.md) |
@@ -104,10 +104,13 @@ Componentes novos ou ajustados: `back-button`, `bottom-sheet`, `confirm-dialog`,
 
 ## 8. Critérios de aceite
 
-- Toda tela secundária tem voltar e segue o visual da Opção D.
-- Formulários, escopo e confirmações funcionam como nos cenários e não há mais `window.confirm` (se D5 for aceito).
-- Rotas e `data-testid` preservados; nenhum dado é gravado de forma diferente.
-- `npm run typecheck` e `npm run build` passam; documentação atualizada; status "Implementada".
+- [x] Toda tela secundária tem voltar e segue o visual da Opção D (listas, histórico, categorias, todas as compras e lançamentos do benefício).
+- [x] Formulários, escopo e confirmações funcionam como nos cenários e não há mais `window.confirm`.
+- [x] Rotas e `data-testid` preservados; nenhum dado é gravado de forma diferente. Os `button-edit-*` e `button-delete-*` das listas passaram a ser os itens da folha "⋯".
+- [ ] Verificação completa dos fluxos. _Verificado no navegador por asserções no DOM: lista de gastos (⋯, confirmação com foco em "Cancelar", cancelar, confirmar e aviso `role="status"`), entrada recorrente (folha de escopo e confirmação), formulário em folha (foco no primeiro campo, campos de 48 px, botão de 52 px, Esc), erro dentro da folha com `role="alert"` (renomear categoria para nome repetido), "Lançar" e "Qual benefício?" (fecham com Esc e ao tocar fora), histórico com gráfico e fechar categoria com confirmação. Pendente: conferência visual por captura de tela (a janela do navegador de teste ficou sem renderizar em primeiro plano), TalkBack e os formulários de compra, cartão e benefício abertos até o salvar._
+- [x] `npm run typecheck` e `npm run build` passam; documentação atualizada; status "Implementada".
+
+**Decisões na implementação:** o botão destrutivo usa o token `alert` (não existe `danger`); a criação de categoria continua inline e o renomear virou folha; o erro de formulário aparece dentro da folha (os erros do store não são por campo); o texto do selo é "Mensal", como no código; avisos de erro usam `role="alert"`.
 
 ## 9. Tarefas
 

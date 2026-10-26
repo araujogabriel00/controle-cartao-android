@@ -1,4 +1,4 @@
-import { type FormEvent, type MouseEvent, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import {
@@ -15,7 +15,10 @@ import { ChartLegend } from '@/components/charts/chart-legend';
 import { HBars, type HBarRow } from '@/components/charts/hbars';
 import { StackedBar } from '@/components/charts/stacked-bar';
 import { MonthNav } from '@/components/month-nav';
-import { dialogOverlay, dialogPanel } from '@/lib/dialog-styles';
+import { FormActions, FormSheet, SheetHeader } from '@/components/bottom-sheet';
+import { removeAsk, useConfirm } from '@/components/confirm-dialog';
+import { Notice, useNotice } from '@/components/notice';
+import { dialogPanel } from '@/lib/dialog-styles';
 import { useRememberMonth } from '@/lib/last-month';
 import { benefitSpendsPath, firstDayOf, lastDayOf, money, monthLabel, plural, today, type MonthKey } from '@/lib/format';
 
@@ -23,8 +26,8 @@ type BenefitValues = { name: string; amount: number; firstMonth: MonthKey; from:
 
 // RF-04 / RF-05: the first month is fixed once the benefit exists (D6); an edit
 // says from which month the new monthly value counts (D4).
-function BenefitDialog({ month, benefit, categories, busy, onClose, onSave }: {
-  month: MonthKey; benefit?: BenefitItem; categories: Category[]; busy: boolean; onClose: () => void; onSave: (values: BenefitValues) => void;
+function BenefitDialog({ month, benefit, categories, busy, error, onClose, onSave }: {
+  month: MonthKey; benefit?: BenefitItem; categories: Category[]; busy: boolean; error?: string | null; onClose: () => void; onSave: (values: BenefitValues) => void;
 }) {
   const isEdit = Boolean(benefit);
   const [name, setName] = useState(benefit?.name ?? '');
@@ -42,43 +45,38 @@ function BenefitDialog({ month, benefit, categories, busy, onClose, onSave }: {
     const split = lines.filter((line) => line.categoryId && line.amount).map((line) => ({ categoryId: Number(line.categoryId), amount: Number(line.amount) }));
     onSave({ name, amount: Number(amount), firstMonth, from, lastMonth: lastMonth || null, split });
   };
-  const closeOnBackdrop = (event: MouseEvent<HTMLDivElement>) => { if (event.target === event.currentTarget) onClose(); };
-  return <div className={dialogOverlay} onMouseDown={closeOnBackdrop}>
-    <div className="h-full overflow-y-auto overscroll-contain" onMouseDown={closeOnBackdrop}>
-    <div className="flex min-h-full p-4" onMouseDown={closeOnBackdrop}>
+  return <FormSheet onClose={onClose}>
     <form onSubmit={submit} className={dialogPanel}>
-      <div className="mb-5 flex items-start justify-between sm:mb-7"><div><span className="font-mono-data text-[10px] uppercase tracking-[.18em] text-[#8a8e78]">Saldo mensal</span><h2 className="mt-2 font-display text-[30px] leading-tight text-[#234638]">{isEdit ? 'Editar benefício' : 'Novo benefício'}</h2></div><button type="button" aria-label="Fechar" onClick={onClose} className="rounded-full p-2 text-[#718076] transition hover:bg-[#eee9df]"><X size={18}/></button></div>
+      <SheetHeader kicker="Saldo mensal" title={isEdit ? 'Editar benefício' : 'Novo benefício'} onClose={onClose}/>
       <label htmlFor="input-benefit-name" className="field-label">Nome</label>
       <input id="input-benefit-name" data-testid="input-benefit-name" required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: VR" className="field-input mb-4"/>
       <label htmlFor="input-benefit-amount" className="field-label">Valor mensal</label>
-      <div className="relative mb-4"><span className="absolute left-4 top-3 text-[#7d887d]">R$</span><input id="input-benefit-amount" data-testid="input-benefit-amount" required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="field-input pl-12"/></div>
+      <div className="relative mb-4"><span className="absolute left-4 top-[13px] text-[#7d887d]">R$</span><input id="input-benefit-amount" data-testid="input-benefit-amount" required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="field-input pl-12"/></div>
       <label htmlFor="input-benefit-first-month" className="field-label">Mês inicial</label>
       <input id="input-benefit-first-month" data-testid="input-benefit-first-month" required type="month" disabled={isEdit} value={firstMonth} onChange={(e) => setFirstMonth(e.target.value)} className="field-input mb-4 disabled:opacity-60"/>
-      {isEdit && <div className="mb-4"><label htmlFor="input-benefit-from" className="field-label">Vale a partir de</label><input id="input-benefit-from" data-testid="input-benefit-from" required type="month" min={benefit?.firstMonth} value={from} onChange={(e) => setFrom(e.target.value)} className="field-input"/><p className="mt-1.5 text-[10px] text-[#8c9388]">O valor mensal e a divisão novos contam deste mês em diante; os meses anteriores não mudam.</p></div>}
+      {isEdit && <div className="mb-4"><label htmlFor="input-benefit-from" className="field-label">Vale a partir de</label><input id="input-benefit-from" data-testid="input-benefit-from" required type="month" min={benefit?.firstMonth} value={from} onChange={(e) => setFrom(e.target.value)} className="field-input"/><p className="mt-1.5 text-[13px] text-[#8c9388]">O valor mensal e a divisão novos contam deste mês em diante; os meses anteriores não mudam.</p></div>}
       <label htmlFor="input-benefit-last-month" className="field-label">Mês final (opcional)</label>
       <input id="input-benefit-last-month" data-testid="input-benefit-last-month" type="month" value={lastMonth} onChange={(e) => setLastMonth(e.target.value)} className="field-input mb-1"/>
-      <p className="mb-4 text-[10px] text-[#8c9388]">Deixe em branco para repetir sem data final.</p>
+      <p className="mb-4 text-[13px] text-[#8c9388]">Deixe em branco para repetir sem data final.</p>
       <div data-testid="section-split" className="mb-6 rounded-2xl border border-[#e6dfd1] bg-[#f4f0e6] p-4">
-        <div className="flex items-center justify-between gap-3"><span className="text-[13px] font-semibold text-[#3d5948]">Dividir por categoria</span><button type="button" data-testid="button-add-split" disabled={lines.length >= categories.length} onClick={() => setLines([...lines, { categoryId: '', amount: '' }])} className="flex items-center gap-1 rounded-full border border-[#d9d2c4] bg-[#faf7ef] px-3 py-1.5 text-[11px] font-semibold text-[#496754] transition hover:bg-[#eee9dd] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={12}/> Adicionar categoria</button></div>
+        <div className="flex items-center justify-between gap-3"><span className="text-[13px] font-semibold text-[#3d5948]">Dividir por categoria</span><button type="button" data-testid="button-add-split" disabled={lines.length >= categories.length} onClick={() => setLines([...lines, { categoryId: '', amount: '' }])} className="flex items-center gap-1 rounded-full border border-[#d9d2c4] bg-[#faf7ef] px-3 py-1.5 text-[13px] font-semibold text-[#496754] transition hover:bg-[#eee9dd] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={12}/> Adicionar categoria</button></div>
         {lines.length > 0 && <ul className="mt-3 space-y-2">{lines.map((line, index) => <li key={index} data-testid={`split-line-${index}`} className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1"><select aria-label="Categoria da divisão" data-testid={`select-split-category-${index}`} required value={line.categoryId} onChange={(e) => setLine(index, { categoryId: e.target.value })} className="field-input appearance-none py-2 pr-8"><option value="">Categoria</option>{categories.filter((item) => String(item.id) === line.categoryId || !lines.some((other) => other.categoryId === String(item.id))).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-3 text-[#768579]" size={14}/></div>
           <div className="relative w-28 shrink-0"><span className="absolute left-3 top-2.5 text-xs text-[#7d887d]">R$</span><input aria-label="Valor da divisão" data-testid={`input-split-amount-${index}`} required type="number" min="0.01" step="0.01" value={line.amount} onChange={(e) => setLine(index, { amount: e.target.value })} className="field-input py-2 pl-8"/></div>
           <button type="button" aria-label="Remover categoria da divisão" onClick={() => setLines(lines.filter((_, i) => i !== index))} className="rounded-full p-1.5 text-[#a36354] transition hover:bg-[#f5e9e1]"><Trash2 size={14}/></button>
         </li>)}</ul>}
-        <p data-testid="text-split-rest" className={`mt-3 text-[11px] ${rest < 0 ? 'font-semibold text-[#a55f50]' : 'text-[#6e7a6f]'}`}>{rest < 0 ? `A divisão passa do valor mensal em ${money(-rest)}.` : `Sem categoria: ${money(Number.isFinite(rest) ? rest : 0)}`}</p>
+        <p data-testid="text-split-rest" className={`mt-3 text-[13px] ${rest < 0 ? 'font-semibold text-[#a55f50]' : 'text-[#6e7a6f]'}`}>{rest < 0 ? `A divisão passa do valor mensal em ${money(-rest)}.` : `Sem categoria: ${money(Number.isFinite(rest) ? rest : 0)}`}</p>
       </div>
-      <div className="flex gap-3"><button type="button" onClick={onClose} className="flex-1 rounded-full border border-[#dcd5c8] px-4 py-3 text-sm font-semibold text-[#546b5d] transition hover:bg-[#f1ede3]">Cancelar</button><button disabled={busy} type="submit" className="flex-1 rounded-full bg-[#28513f] px-4 py-3 text-sm font-semibold text-[#fffaf0] transition hover:bg-[#1f4333] disabled:opacity-60">{busy ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Adicionar'}</button></div>
+      <FormActions busy={busy} isEdit={isEdit} onClose={onClose} error={error}/>
     </form>
-    </div>
-    </div>
-  </div>;
+  </FormSheet>;
 }
 
 type SpendValues = { description: string; amount: number; date: string; categoryId: number | null };
 
 // RF-07: the date stays inside the benefit's active period (RN-07).
-export function SpendDialog({ month, benefit, spend, categories, busy, onClose, onSave }: {
-  month: MonthKey; benefit: BenefitItem; spend?: BenefitSpend; categories: Category[]; busy: boolean;
+export function SpendDialog({ month, benefit, spend, categories, busy, error, onClose, onSave }: {
+  month: MonthKey; benefit: BenefitItem; spend?: BenefitSpend; categories: Category[]; busy: boolean; error?: string | null;
   onClose: () => void; onSave: (values: SpendValues) => void;
 }) {
   const isEdit = Boolean(spend);
@@ -90,25 +88,20 @@ export function SpendDialog({ month, benefit, spend, categories, busy, onClose, 
     event.preventDefault();
     onSave({ description, amount: Number(amount), date, categoryId: categoryId ? Number(categoryId) : null });
   };
-  const closeOnBackdrop = (event: MouseEvent<HTMLDivElement>) => { if (event.target === event.currentTarget) onClose(); };
-  return <div className={dialogOverlay} onMouseDown={closeOnBackdrop}>
-    <div className="h-full overflow-y-auto overscroll-contain" onMouseDown={closeOnBackdrop}>
-    <div className="flex min-h-full p-4" onMouseDown={closeOnBackdrop}>
+  return <FormSheet onClose={onClose}>
     <form onSubmit={submit} className={dialogPanel}>
-      <div className="mb-5 flex items-start justify-between sm:mb-7"><div><span className="font-mono-data text-[10px] uppercase tracking-[.18em] text-[#8a8e78]">{benefit.name}</span><h2 className="mt-2 font-display text-[30px] leading-tight text-[#234638]">{isEdit ? 'Editar gasto' : 'Novo gasto'}</h2></div><button type="button" aria-label="Fechar" onClick={onClose} className="rounded-full p-2 text-[#718076] transition hover:bg-[#eee9df]"><X size={18}/></button></div>
+      <SheetHeader kicker={benefit.name} title={isEdit ? 'Editar gasto' : 'Novo gasto'} onClose={onClose}/>
       <label htmlFor="input-spend-description" className="field-label">O que foi?</label>
       <input id="input-spend-description" data-testid="input-spend-description" required maxLength={200} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex.: almoço" className="field-input mb-4"/>
       <label htmlFor="select-spend-category" className="field-label">Categoria</label>
-      <div className="relative mb-4"><select id="select-spend-category" data-testid="select-spend-category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="field-input appearance-none"><option value="">Sem categoria</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}{benefit.categories.some((row) => row.categoryId === item.id && row.closed) ? ' (fechada)' : ''}</option>)}</select><ChevronDown className="pointer-events-none absolute right-4 top-3.5 text-[#768579]" size={16}/></div>
+      <div className="relative mb-4"><select id="select-spend-category" data-testid="select-spend-category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="field-input appearance-none"><option value="">Sem categoria</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}{benefit.categories.some((row) => row.categoryId === item.id && row.closed) ? ' (fechada)' : ''}</option>)}</select><ChevronDown className="pointer-events-none absolute right-4 top-4 text-[#768579]" size={16}/></div>
       <label htmlFor="input-spend-amount" className="field-label">Valor</label>
-      <div className="relative mb-4"><span className="absolute left-4 top-3 text-[#7d887d]">R$</span><input id="input-spend-amount" data-testid="input-spend-amount" required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="field-input pl-12"/></div>
+      <div className="relative mb-4"><span className="absolute left-4 top-[13px] text-[#7d887d]">R$</span><input id="input-spend-amount" data-testid="input-spend-amount" required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="field-input pl-12"/></div>
       <label htmlFor="input-spend-date" className="field-label">Data</label>
       <input id="input-spend-date" data-testid="input-spend-date" required type="date" min={firstDayOf(benefit.firstMonth)} max={benefit.lastMonth ? lastDayOf(benefit.lastMonth) : undefined} value={date} onChange={(e) => setDate(e.target.value)} className="field-input mb-6"/>
-      <div className="flex gap-3"><button type="button" onClick={onClose} className="flex-1 rounded-full border border-[#dcd5c8] px-4 py-3 text-sm font-semibold text-[#546b5d] transition hover:bg-[#f1ede3]">Cancelar</button><button disabled={busy} type="submit" className="flex-1 rounded-full bg-[#28513f] px-4 py-3 text-sm font-semibold text-[#fffaf0] transition hover:bg-[#1f4333] disabled:opacity-60">{busy ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Adicionar'}</button></div>
+      <FormActions busy={busy} isEdit={isEdit} onClose={onClose} error={error}/>
     </form>
-    </div>
-    </div>
-  </div>;
+  </FormSheet>;
 }
 
 // D6: the selected benefit is kept while the app is open (the page remounts on every month), never saved.
@@ -124,7 +117,8 @@ export default function Beneficios({ month }: { month: MonthKey }) {
   const categories = useGetCategories({ query: { queryKey: getGetCategoriesQueryKey() } }).data ?? [];
   const [benefitDialog, setBenefitDialog] = useState<{ benefit?: BenefitItem } | null>(null);
   const [menuBenefit, setMenuBenefit] = useState<BenefitItem | null>(null);
-  const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
+  const confirm = useConfirm();
+  const { notice, notify, failed, formError } = useNotice(Boolean(benefitDialog));
   const items = benefitsQuery.data?.items ?? [];
   const [selectedId, setSelectedId] = useState<number | null>(lastSelectedBenefit);
   const selected = items.find((item) => item.id === selectedId) ?? items[0];
@@ -146,8 +140,6 @@ export default function Beneficios({ month }: { month: MonthKey }) {
       void client.invalidateQueries({ queryKey });
     }
   };
-  const notify = (text: string) => { setToast({ text }); window.setTimeout(() => setToast(null), 3200); };
-  const failed = (error?: Error) => { setToast({ text: error?.message || 'Não foi possível salvar. Tente novamente.', error: true }); window.setTimeout(() => setToast(null), 4200); };
   const closing = (text: string) => ({ onSuccess: () => { refresh(); setBenefitDialog(null); notify(text); }, onError: failed });
   const done = (text: string) => ({ onSuccess: () => { refresh(); notify(text); }, onError: failed });
   const createBenefit = useCreateBenefit({ mutation: closing('Benefício criado.') });
@@ -160,14 +152,14 @@ export default function Beneficios({ month }: { month: MonthKey }) {
     if (benefitDialog?.benefit) updateBenefit.mutate({ benefitId: benefitDialog.benefit.id, month: values.from, data: { name: values.name, amount: values.amount, lastMonth: values.lastMonth, split: values.split } });
     else createBenefit.mutate({ data: { name: values.name, amount: values.amount, firstMonth: values.firstMonth, lastMonth: values.lastMonth, split: values.split } });
   };
-  const removeBenefit = (benefit: BenefitItem) => {
+  const removeBenefit = async (benefit: BenefitItem) => {
     const spends = benefit.spendCount === 0 ? '' : benefit.spendCount === 1 ? ' e seu 1 gasto' : ` e seus ${benefit.spendCount} gastos`;
-    if (window.confirm(`Remover o benefício “${benefit.name}”${spends}? Esta ação não pode ser desfeita.`)) deleteBenefit.mutate({ benefitId: benefit.id });
+    if (await confirm(removeAsk(`o benefício “${benefit.name}”${spends}`))) deleteBenefit.mutate({ benefitId: benefit.id });
   };
   // RF-15: closing frees what the category has left, so say how much.
-  const closeRow = (benefit: BenefitItem, row: BenefitCategoryRow) => {
+  const closeRow = async (benefit: BenefitItem, row: BenefitCategoryRow) => {
     const freed = row.availableAmount > 0 ? ` ${money(row.availableAmount)} que sobram vão para “Sem categoria”.` : '';
-    if (row.categoryId !== null && window.confirm(`Fechar “${row.name}” em ${benefit.name}?${freed}`)) closeCategory.mutate({ benefitId: benefit.id, categoryId: row.categoryId, month });
+    if (row.categoryId !== null && await confirm({ title: `Fechar “${row.name}” em ${benefit.name}?`, text: freed.trim() || undefined, confirmLabel: 'Fechar categoria' })) closeCategory.mutate({ benefitId: benefit.id, categoryId: row.categoryId, month });
   };
 
   const canGoPrevious = !range || month > range.first;
@@ -241,7 +233,7 @@ export default function Beneficios({ month }: { month: MonthKey }) {
 
     {menuBenefit && <CardMenu title={menuBenefit.name} editLabel="Editar benefício" deleteLabel="Excluir benefício" editTestId={`button-edit-benefit-${menuBenefit.id}`} deleteTestId={`button-delete-benefit-${menuBenefit.id}`}
       onClose={() => setMenuBenefit(null)} onEdit={() => setBenefitDialog({ benefit: menuBenefit })} onDelete={() => removeBenefit(menuBenefit)}/>}
-    {benefitDialog && <BenefitDialog key={benefitDialog.benefit?.id ?? 'new'} month={month} benefit={benefitDialog.benefit} categories={categories} busy={busy} onClose={() => setBenefitDialog(null)} onSave={saveBenefit}/>}
-    {toast && <div role="status" data-testid="status-toast" className={`fixed bottom-5 left-4 right-4 z-[60] mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-full px-4 py-3 text-xs font-semibold text-white shadow-lg sm:left-auto sm:right-5 sm:mx-0 ${toast.error ? 'bg-[#a85e50]' : 'bg-[#28513f]'}`}><Check size={14} className="shrink-0"/><span className="min-w-0">{toast.text}</span></div>}
+    {benefitDialog && <BenefitDialog key={benefitDialog.benefit?.id ?? 'new'} month={month} benefit={benefitDialog.benefit} categories={categories} busy={busy} error={formError} onClose={() => setBenefitDialog(null)} onSave={saveBenefit}/>}
+    <Notice notice={notice}/>
   </main>;
 }
