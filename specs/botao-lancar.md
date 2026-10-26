@@ -6,6 +6,7 @@
 | Criada em | 18/10/2026 |
 | Escopo | `src/components/footer-menu.tsx` (novo), `src/components/quick-add.tsx` (novo), `src/pages/entradas.tsx`, `src/pages/dashboard.tsx`, `src/pages/beneficios.tsx`, `src/App.tsx`, `src/index.css`, `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`entradas.md`](entradas.md), [`contas-e-gastos.md`](contas-e-gastos.md), [`compras-e-categorias.md`](compras-e-categorias.md), [`beneficios.md`](beneficios.md), [`mes-compartilhado.md`](mes-compartilhado.md) |
+| Substituída em parte por | [`redesign-entradas.md`](redesign-entradas.md): o "+" e o ícone de categorias do rodapé passam a ter texto ("Lançar" e "Categorias"). D12, RF-11 e os cenários "sem texto" valem com essa mudança. |
 | Substitui em parte | Os botões "Registrar compra" (Cartões) e "Registrar gasto" (cada benefício): ficam só no rodapé. Também o botão "Categorias" das abas Entradas, Cartões e Benefícios ([`tela-de-categorias.md`](tela-de-categorias.md)): o acesso passa para o rodapé. Os botões de lançar de cada aba continuam. |
 
 > Mudanças de comportamento entram primeiro aqui e só depois no código.

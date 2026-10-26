@@ -10,6 +10,7 @@ As funcionalidades estão descritas em BDD em [`FUNCIONALIDADES.md`](FUNCIONALID
 - O pacote `@workspace/api-client-react`, que no app web chama a API, aqui é um **alias** para `src/data/api.ts`. Esse módulo exporta os mesmos hooks (`useGetCard`, `useCreateMovement`, …), mas lê e grava localmente.
 - `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 10`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
 - As fontes (Fraunces, DM Sans e DM Mono) vêm junto com o app via `@fontsource`, então funcionam offline.
+- As cores novas têm nome no tema do Tailwind (`paper`, `surface`, `line`, `ink`, `ink-soft`, `brand`, `on-brand`, `on-brand-soft`, `eyebrow`, `alert`, em `src/index.css`). A tela Entradas, o seletor de mês, as abas e o menu de rodapé já as usam; as demais telas ainda têm hexadecimais e vão migrar aos poucos ([`specs/redesign-entradas.md`](specs/redesign-entradas.md)).
 
 ### Compras e categorias
 
@@ -21,7 +22,7 @@ A especificação completa está em [`specs/compras-e-categorias.md`](specs/comp
 
 ### Botão Lançar
 
-- Um **menu de rodapé** (nas abas Entradas, Cartões e Benefícios) tem o ícone de **categorias** (abre `#/categorias`) e o botão **"+"**, só com o ícone, que abre os formulários de entrada, conta fixa, gasto do dia a dia, compra no cartão e gasto de benefício no mês aberto, sem trocar de aba ([`specs/botao-lancar.md`](specs/botao-lancar.md)).
+- Um **menu de rodapé** (nas abas Entradas, Cartões e Benefícios) tem o botão **"Categorias"** (ícone e texto, abre `#/categorias`) e o botão **"Lançar"** (ícone "+" e texto) que abre os formulários de entrada, conta fixa, gasto do dia a dia, compra no cartão e gasto de benefício no mês aberto, sem trocar de aba ([`specs/botao-lancar.md`](specs/botao-lancar.md)).
 
 ### Histórico mensal
 

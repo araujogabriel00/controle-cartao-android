@@ -42,6 +42,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 20. [Telas de entradas, contas fixas, gastos e cartões](#20-telas-de-entradas-contas-fixas-gastos-e-cartões)
 21. [Benefícios em carrossel](#21-benefícios-em-carrossel)
 22. [Lançamentos do benefício](#22-lançamentos-do-benefício)
+23. [Redesign da tela Entradas](#23-redesign-da-tela-entradas)
 23. [Editar parcela prevista](#23-editar-parcela-prevista)
 24. [Todas as compras do cartão](#24-todas-as-compras-do-cartão)
 
@@ -1330,7 +1331,7 @@ Funcionalidade: Botão Lançar no menu de rodapé
 
   Cenário: O rodapé aparece nas três abas
     Quando eu abro as abas "Entradas", "Cartões" e "Benefícios"
-    Então vejo o menu de rodapé com o ícone de categorias e o botão "+" (nome acessível "Lançar"), sem texto
+    Então vejo o menu de rodapé com o botão "Lançar" (ícone "+" e texto) e o botão "Categorias" (ícone e texto)
     Mas no Histórico e em Categorias ele não aparece
 
   Cenário: As opções do menu
@@ -1492,6 +1493,9 @@ Funcionalidade: Lançamentos do benefício em tela própria
 
 ---
 
+## 23. Redesign da tela Entradas
+
+Resumo. A especificação completa está em [`specs/redesign-entradas.md`](specs/redesign-entradas.md). Nenhuma regra de cálculo muda.
 ## 23. Editar parcela prevista
 
 Resumo. A especificação completa está em [`specs/editar-parcela-prevista.md`](specs/editar-parcela-prevista.md). A prévia de mês futuro (seção 11) deixa de ser só leitura para as parcelas: elas podem ser editadas.
@@ -1499,6 +1503,33 @@ Resumo. A especificação completa está em [`specs/editar-parcela-prevista.md`]
 ```gherkin
 # language: pt
 
+Funcionalidade: Tela Entradas redesenhada
+
+  Cenário: O saldo é o primeiro bloco
+    Quando eu abro a aba "Entradas"
+    Então o card "Saldo" aparece logo abaixo das abas
+    E mostra "Saldo anterior" e "Resultado do mês" em duas colunas
+
+  Cenário: Origens do mês como linhas
+    Dado que o mês tem entradas de R$ 4.527,00 e faturas de R$ 520,14
+    Quando eu olho o "Resumo do mês"
+    Então vejo "Entradas" com "+ R$ 4.527,00"
+    E "Cartões" com "− R$ 520,14"
+    E "Contas fixas" e "Gastos do dia a dia" com "R$ 0,00", sem sinal e sem vermelho
+
+  Cenário: Abrir uma lista
+    Quando eu toco na linha "Cartões"
+    Então abre a tela de faturas por cartão do mês
+
+  Cenário: Saldo negativo
+    Dado que as saídas passam das entradas e do saldo anterior
+    Então o card de saldo aparece na cor de alerta
+    E mostra "As saídas passaram das entradas e do saldo anterior."
+
+  Cenário: Rodapé com texto
+    Quando eu abro as abas "Entradas", "Cartões" e "Benefícios"
+    Então vejo o botão "Lançar" com texto e o botão "Categorias" com texto
+    E tocar em "Lançar" abre as mesmas cinco opções de antes
 Funcionalidade: Editar parcela prevista
   Contexto:
     Dado que hoje é 25/10/2026
