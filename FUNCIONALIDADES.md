@@ -47,6 +47,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 24. [Todas as compras do cartão](#24-todas-as-compras-do-cartão)
 25. [Redesign da aba Cartões](#25-redesign-da-aba-cartões)
 26. [Redesign da aba Benefícios](#26-redesign-da-aba-benefícios)
+27. [Opção D: Entradas](#27-opção-d-entradas)
 
 ---
 
@@ -1379,13 +1380,13 @@ Funcionalidade: Telas próprias de entradas, contas fixas e gastos do dia a dia
   Contexto:
     Dado que outubro tem a entrada "Salário" de R$ 5.000,00, a conta fixa "Aluguel" de R$ 1.500,00 e o gasto "Mercado" de R$ 300,00
 
-  Cenário: A aba Entradas só tem o resumo
+  Cenário: A aba Entradas não tem as listas
     Quando eu abro a aba "Entradas"
-    Então vejo o "Resumo do mês" com o saldo
+    Então vejo o saldo e o gráfico "Entrou e saiu"
     E não vejo as listas nem botões de criar
 
   Cenário: Abrir a tela de cada bloco
-    Quando eu toco no bloco "Entradas", "Contas fixas", "Gastos do dia a dia" ou "Cartões" do resumo
+    Quando eu toco no bloco "Entradas", "Contas fixas", "Gastos do dia a dia" ou "Cartões" da tela "Resumo do mês"
     Então abre a tela dele no mês aberto, com "Voltar", o total do mês e a lista
     E a de gastos traz o resumo "Por categoria"
     E a de cartões lista cada cartão com a fatura e o nº de compras, sem botões de criar
@@ -1409,7 +1410,7 @@ Funcionalidade: Telas próprias de entradas, contas fixas e gastos do dia a dia
   Cenário: Voltar mantém o mês
     Dado que estou na tela "Contas fixas" de novembro de 2026
     Quando eu toco em "Voltar"
-    Então vejo o resumo da aba "Entradas" de novembro de 2026
+    Então vejo a aba "Entradas" de novembro de 2026
 
   Cenário: Mês fora do alcance
     Quando eu abro uma tela com um mês depois do último que a aba abre
@@ -1509,12 +1510,12 @@ Funcionalidade: Tela Entradas redesenhada
 
   Cenário: O saldo é o primeiro bloco
     Quando eu abro a aba "Entradas"
-    Então o card "Saldo" aparece logo abaixo das abas
-    E mostra "Saldo anterior" e "Resultado do mês" em duas colunas
+    Então o "Saldo" aparece logo abaixo das abas, sem card
+    E "Saldo anterior" e "Resultado do mês" ficam na tela "Resumo do mês" (seção 27)
 
   Cenário: Origens do mês como linhas
     Dado que o mês tem entradas de R$ 4.527,00 e faturas de R$ 520,14
-    Quando eu olho o "Resumo do mês"
+    Quando eu olho a tela "Resumo do mês"
     Então vejo "Entradas" com "+ R$ 4.527,00"
     E "Cartões" com "− R$ 520,14"
     E "Contas fixas" e "Gastos do dia a dia" com "R$ 0,00", sem sinal e sem vermelho
@@ -1668,4 +1669,41 @@ Funcionalidade: Aba Benefícios redesenhada
     Dado uma categoria com mais de 85% usado e outra com disponível negativo
     Então a barra da primeira aparece no tom quente
     E o valor da segunda aparece na cor de alerta
+```
+
+---
+
+## 27. Opção D: Entradas
+
+Resumo. A especificação completa está em [`specs/redesign-opcao-d-entradas.md`](specs/redesign-opcao-d-entradas.md). Nenhuma regra de cálculo muda. A aba Entradas mostra o saldo sem card e o gráfico "Entrou e saiu"; o resumo em quatro linhas virou a tela "Resumo do mês", aberta pelo botão "Resumo" do rodapé (`#/entradas/resumo`, com `/mes/AAAA-MM` no fim para outro mês).
+
+```gherkin
+# language: pt
+
+Funcionalidade: Aba Entradas na Opção D
+  Contexto:
+    Dado que em outubro de 2026 as entradas são R$ 4.527,00, os cartões R$ 520,14 e contas fixas e gastos R$ 0,00
+
+  Cenário: Saldo e gráfico
+    Quando eu abro a aba "Entradas"
+    Então vejo "Saldo" e "R$ 4.006,86" sem card
+    E no gráfico "Entrou e saiu" vejo "+4.527" à direita do eixo em Entradas e "−520" à esquerda em Cartões
+    E "0" em Contas fixas e em Gastos do dia a dia, sem barra
+    E "+4.007" à direita em "Resultado do mês"
+
+  Cenário: Abrir o resumo pelo rodapé
+    Quando eu toco em "Resumo" no rodapé
+    Então abre a tela "Resumo do mês" com "Saldo anterior", "Resultado do mês" e as quatro linhas
+    E o botão "Resumo" aparece destacado
+
+  Cenário: O botão Resumo só existe em Entradas
+    Quando eu abro as abas "Cartões" e "Benefícios"
+    Então o rodapé mostra só "Lançar" e "Categorias"
+
+  Cenário: Resultado negativo
+    Dado que o resultado do mês é − R$ 300,00
+    Então a barra de "Resultado do mês" fica à esquerda do eixo, em laranja, e o valor em cor de alerta
+
+  Cenário: Acessibilidade do gráfico
+    Então o gráfico tem descrição com os cinco valores por extenso e uma tabela de apoio visível só para leitor de tela
 ```

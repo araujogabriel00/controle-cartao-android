@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { getGetBenefitRangeQueryKey, getGetBenefitsQueryKey, getGetIncomeRangeQueryKey, getGetLastFutureMonthQueryKey, useGetBenefitRange, useGetBenefits, useGetIncomeRange, useGetLastFutureMonth } from '@workspace/api-client-react';
-import { areaPath, benefitSpendsPath, currentMonth, isFutureMonth, isMonthKey, listPath, type ListKind } from '@/lib/format';
+import { areaPath, benefitSpendsPath, currentMonth, isFutureMonth, isMonthKey, listPath, summaryPath, type ListKind } from '@/lib/format';
 import { readLastMonth } from '@/lib/last-month';
 import { FooterMenu } from '@/components/quick-add';
 import NotFound from '@/pages/not-found';
@@ -11,6 +11,7 @@ import Dashboard from '@/pages/dashboard';
 import Historico from '@/pages/historico';
 import Compras from '@/pages/compras';
 import Entradas from '@/pages/entradas';
+import EntradasResumo from '@/pages/entradas-resumo';
 import EntradasLista from '@/pages/entradas-lista';
 import Beneficios from '@/pages/beneficios';
 import BeneficioLancamentos, { type SpendFilter } from '@/pages/beneficio-lancamentos';
@@ -57,6 +58,19 @@ function RangedMonthRoute({ area, month, range, children }: {
 function IncomeMonthRoute({ month }: { month: string }) {
   const range = useGetIncomeRange({ query: { queryKey: getGetIncomeRangeQueryKey() } });
   return <RangedMonthRoute area="income" month={month} range={range}><Entradas key={month} month={month} /></RangedMonthRoute>;
+}
+
+// Tela Resumo do mês (specs/redesign-opcao-d-entradas.md RN-03): mês inválido volta ao corrente e
+// mês fora do intervalo de Entradas vai para o mais próximo, como as listas.
+function SummaryRoute({ month }: { month?: string }) {
+  const range = useGetIncomeRange({ query: { queryKey: getGetIncomeRangeQueryKey() } });
+  if (month === undefined) return <EntradasResumo key={currentMonth()} month={currentMonth()} />;
+  if (!isMonthKey(month) || month === currentMonth()) return <Redirect to={summaryPath(currentMonth())} replace />;
+  if (range.isLoading) return null;
+  if (!range.data) return <Redirect to={summaryPath(currentMonth())} replace />;
+  const target = month < range.data.first ? range.data.first : month > range.data.last ? range.data.last : month;
+  if (target !== month) return <Redirect to={summaryPath(target)} replace />;
+  return <EntradasResumo key={month} month={month} />;
 }
 
 // Lists of the Entradas tab (specs/telas-de-entradas.md RF-06): an unknown list goes back to the
@@ -111,6 +125,8 @@ function Router() {
         <Route path="/historico" component={Historico} />
         <Route path="/compras" component={Compras} />
         <Route path="/entradas">{() => <Entradas key={currentMonth()} month={currentMonth()} />}</Route>
+        <Route path="/entradas/resumo">{() => <SummaryRoute />}</Route>
+        <Route path="/entradas/resumo/mes/:month">{(params) => <SummaryRoute month={params.month} />}</Route>
         <Route path="/entradas/lista/:kind">{(params) => <ListRoute kind={params.kind} />}</Route>
         <Route path="/entradas/lista/:kind/mes/:month">{(params) => <ListRoute kind={params.kind} month={params.month} />}</Route>
         <Route path="/entradas/mes/:month">{(params) => <IncomeMonthRoute month={params.month} />}</Route>

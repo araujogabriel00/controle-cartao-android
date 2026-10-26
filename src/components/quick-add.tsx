@@ -7,9 +7,9 @@ import {
   useGetBenefits, useGetCards, useGetCategories,
   type BenefitItem,
 } from '@workspace/api-client-react';
-import { CreditCard, HandCoins, Plus, Receipt, ShoppingBasket, Tag, Utensils, X } from 'lucide-react';
+import { CreditCard, HandCoins, List, Plus, Receipt, ShoppingBasket, Tag, Utensils, X } from 'lucide-react';
 import { dialogOverlay } from '@/lib/dialog-styles';
-import { defaultDateFor, monthInPath, monthLabel, monthOf, type MonthKey } from '@/lib/format';
+import { defaultDateFor, monthInPath, monthLabel, monthOf, summaryPath, type MonthKey } from '@/lib/format';
 import { BillDialog, DailyDialog, IncomeDialog } from '@/components/entry-dialogs';
 import { Dialog as PurchaseDialog } from '@/pages/dashboard';
 import { SpendDialog } from '@/pages/beneficios';
@@ -24,10 +24,10 @@ const hasFooter = (location: string) => location === '/' || location.startsWith(
 export function FooterMenu() {
   const [location] = useLocation();
   if (!hasFooter(location)) return null;
-  return <FooterBar month={monthInPath(location)}/>;
+  return <FooterBar month={monthInPath(location)} location={location}/>;
 }
 
-function FooterBar({ month }: { month: MonthKey }) {
+function FooterBar({ month, location }: { month: MonthKey; location: string }) {
   const [, navigate] = useLocation();
   const client = useQueryClient();
   const [sheet, setSheet] = useState(false);
@@ -74,7 +74,10 @@ function FooterBar({ month }: { month: MonthKey }) {
     <div aria-hidden className="h-28"/>
     <nav aria-label="Menu de lançamentos" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 pb-[var(--safe-area-inset-bottom,env(safe-area-inset-bottom))] backdrop-blur">
       <div className="mx-auto grid h-20 max-w-[860px] grid-cols-[1fr_auto_1fr] items-center px-4">
-        <div/>
+        {/* specs/redesign-opcao-d-entradas.md D8: o "Resumo" só existe nas telas de Entradas. */}
+        {location.startsWith('/entradas')
+          ? <div className="justify-self-start"><button data-testid="button-summary" aria-current={location.startsWith('/entradas/resumo') ? 'page' : undefined} onClick={() => navigate(summaryPath(month))} className={`flex h-[52px] min-w-[60px] flex-col items-center justify-center gap-0.5 rounded-[14px] px-1.5 text-xs font-semibold transition hover:bg-[#eee9dd] ${location.startsWith('/entradas/resumo') ? 'bg-[#e4ece2] text-brand' : 'text-ink-soft'}`}><List size={20}/>Resumo</button></div>
+          : <div/>}
         <button data-testid="button-quick-add" onClick={() => setSheet(true)} className="flex h-[52px] items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand shadow-[0_8px_18px_-10px_rgba(38,80,61,.7)] transition hover:bg-[#1f4333]"><Plus size={20} strokeWidth={2.2}/>Lançar</button>
         <div className="justify-self-end"><button data-testid="button-categories" onClick={() => navigate('/categorias')} className="flex h-[52px] min-w-[60px] flex-col items-center justify-center gap-0.5 rounded-[14px] px-1.5 text-xs font-semibold text-ink-soft transition hover:bg-[#eee9dd]"><Tag size={20}/>Categorias</button></div>
       </div>
