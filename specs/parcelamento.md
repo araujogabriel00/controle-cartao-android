@@ -6,6 +6,7 @@
 | Criada em | 12/10/2026 |
 | Escopo | `src/data/store.ts`, `src/data/api.ts`, `src/App.tsx`, `src/pages/dashboard.tsx`, `src/pages/historico.tsx`, `FUNCIONALIDADES.md`, `specs/historico-mensal.md`, `README.md` |
 | Depende de | [`historico-mensal.md`](historico-mensal.md), [`multiplos-cartoes.md`](multiplos-cartoes.md) |
+| Substituída em parte por | [`editar-parcela-prevista.md`](editar-parcela-prevista.md): as parcelas previstas da prévia podem ser editadas, e a edição aceita data em mês futuro. |
 | Substituída em parte por | [`compras-e-categorias.md`](compras-e-categorias.md): as parcelas caem na categoria global da compra parcelada (sem criar categoria por mês nem orçamento), não existe mais parcela fixa em categoria fechada, e o mês futuro passa a mostrar também compras registradas. |
 
 > Esta spec é a fonte da verdade da funcionalidade. A implementação segue a seção [Tarefas](#11-tarefas) e só termina quando todos os [Critérios de aceite](#10-critérios-de-aceite) forem atendidos. Mudanças de comportamento entram primeiro aqui e só depois no código.

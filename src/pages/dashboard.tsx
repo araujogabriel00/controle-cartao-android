@@ -30,7 +30,7 @@ import {
 } from '@/lib/format';
 
 type DialogKind = 'card' | 'movement';
-type DialogRecord = {
+export type DialogRecord = {
   id?: number; categoryId?: number | null; name?: string; amount?: number; color?: CardColor; description?: string; date?: string;
   // Installment purchases: `amount` is the purchase total and `installment` the one in this month.
   isPurchase?: boolean; purchaseId?: number; installmentCount?: number; installment?: number; firstInstallment?: number;
@@ -244,6 +244,13 @@ export default function Dashboard({ month }: { month: MonthKey }) {
       ? { id: movement.id, categoryId: movement.categoryId, description: movement.description, amount: movement.purchase.totalAmount, date: movement.date, isPurchase: true, purchaseId: movement.purchase.id, installmentCount: movement.purchase.installmentCount, installment: movement.installment, firstInstallment: movement.purchase.firstInstallment }
       : { id: movement.id, categoryId: movement.categoryId, description: movement.description, amount: movement.amount, date: movement.date },
   });
+  const editPlanned = (planned: PlannedInstallment) => planned.purchase && setDialog({
+    kind: 'movement',
+    initial: { id: planned.purchase.id, categoryId: planned.categoryId, description: planned.description, amount: planned.purchase.totalAmount, date: planned.date, isPurchase: true, purchaseId: planned.purchase.id, installmentCount: planned.purchase.installmentCount, installment: planned.installment, firstInstallment: planned.purchase.firstInstallment },
+  });
+  const removePlanned = (planned: PlannedInstallment) => {
+    if (planned.purchase && window.confirm(`Remover a compra parcelada “${planned.description}” e todas as suas parcelas? Esta ação não pode ser desfeita.`)) deletePurchase.mutate({ purchaseId: planned.purchase.id });
+  };
   const chooseScope = (scope: 'month' | 'forward') => {
     if (!scopeAsk?.movement.recurring) return;
     const { action, movement } = scopeAsk;
@@ -293,7 +300,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
       <section className="mt-10 grid gap-8 lg:grid-cols-[1.08fr_.92fr]">
         <div className="enter min-w-0" style={{ animationDelay: '.13s' }}>
           <div className="flex items-center gap-2 text-[#ac8f60]"><ArrowDownLeft size={14}/><p className="font-mono-data text-[10px] uppercase tracking-[.2em]">Compras</p></div>
-          <h2 className="mt-2 font-display text-[30px] text-[#234638]">O que já aconteceu</h2>
+          <h2 className="mt-2 font-display text-[30px] text-[#234638]">O que já aconteceu</h2>{card && <button data-testid="button-all-purchases" onClick={() => navigate('/compras')} className="mt-2 text-xs font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4">Todas as compras</button>}
           {chips.length > 0 && <div data-testid="filter-categories" role="group" aria-label="Filtrar por categoria" className="mt-4 flex flex-wrap gap-2">
             {[{ key: 'all', label: 'Todas' }, ...chips].map((chip) => <button key={chip.key} data-testid={`filter-${chip.key}`} aria-pressed={activeFilter === chip.key} onClick={() => setFilter(chip.key)} className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${activeFilter === chip.key ? 'border-[#28513f] bg-[#28513f] text-[#fffaf0]' : 'border-[#d9d2c4] bg-[#faf7ef] text-[#496754] hover:bg-[#eee9dd]'}`}>{chip.label}</button>)}
           </div>}
@@ -306,7 +313,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
                   <p className="flex items-center gap-2 text-[12px] font-semibold text-[#3d5948]"><span className="truncate">{row.description}</span>{row.installment && <span data-testid={row.movement ? `badge-installment-${row.movement.id}` : undefined} className="shrink-0 rounded-full bg-[#ece6da] px-2 py-0.5 font-mono-data text-[9px] font-medium text-[#6f7a6e]">{row.installment}/{row.installmentCount}</span>}{row.recurring && <span data-testid="badge-recurring" className="shrink-0 rounded-full bg-[#e4ece2] px-2 py-0.5 text-[9px] font-semibold text-[#52735c]">Mensal</span>}{row.planned && <span className="shrink-0 rounded-full bg-[#f8efd9] px-2 py-0.5 text-[9px] font-medium text-[#7a6a45]">prevista</span>}</p>
                   <p className="mt-1 flex items-center gap-2 text-[10px] text-[#8b9185]"><span className="flex items-center gap-1"><CalendarDays size={11}/>{dateLabel(row.date)}</span>{row.categoryName && <span data-testid="text-movement-category" className="truncate rounded-full bg-[#e4ece2] px-2 py-0.5 text-[9px] font-medium text-[#52735c]">{row.categoryName}</span>}</p>
                 </div>
-                <div className="text-right"><p className="font-mono-data text-[12px] text-[#a36354]">− {money(row.amount)}</p>{row.movement && <div className="mt-1 flex justify-end gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100"><button aria-label="Editar compra" onClick={() => editMovement(row.movement!)} className="rounded p-1 text-[#7c897e] hover:bg-[#eee9df]"><FilePenLine size={12}/></button><button aria-label="Excluir compra" onClick={() => removeMovement(row.movement!)} className="rounded p-1 text-[#ad6a5a] hover:bg-[#f4e8e1]"><Trash2 size={12}/></button></div>}</div>
+                <div className="text-right"><p className="font-mono-data text-[12px] text-[#a36354]">− {money(row.amount)}</p>{row.planned?.purchase && <div className="mt-1 flex justify-end gap-1"><button aria-label="Editar compra parcelada" onClick={() => editPlanned(row.planned!)} className="rounded p-1 text-[#7c897e] hover:bg-[#eee9df]"><FilePenLine size={12}/></button><button aria-label="Excluir compra parcelada" onClick={() => removePlanned(row.planned!)} className="rounded p-1 text-[#ad6a5a] hover:bg-[#f4e8e1]"><Trash2 size={12}/></button></div>}{row.movement && <div className="mt-1 flex justify-end gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100"><button aria-label="Editar compra" onClick={() => editMovement(row.movement!)} className="rounded p-1 text-[#7c897e] hover:bg-[#eee9df]"><FilePenLine size={12}/></button><button aria-label="Excluir compra" onClick={() => removeMovement(row.movement!)} className="rounded p-1 text-[#ad6a5a] hover:bg-[#f4e8e1]"><Trash2 size={12}/></button></div>}</div>
               </div>)}
               {visibleRows.length > 8 && <button onClick={() => setShowAll(!showAll)} className="w-full border-t border-[#ece6da] py-3 text-[10px] font-semibold text-[#567360] hover:bg-[#f7f3e9]">{showAll ? 'Mostrar menos' : `Ver mais ${visibleRows.length - 8} compras`}</button>}
             </div> : <div className="px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#f0eadd] text-[#9b8c69]"><ArrowDownLeft size={18}/></div><h3 data-testid="text-movements-empty" className="mt-3 font-display text-[20px] text-[#345443]">Ainda sem compras</h3><p className="mt-1 text-xs leading-5 text-[#7d887c]">{card ? `As compras de ${monthName(month)} aparecem aqui assim que você registrar.` : 'Cadastre um cartão para começar a registrar suas compras.'}</p>{card && <button onClick={() => setDialog({ kind: 'movement', initial: {} })} className="mt-4 text-xs font-semibold text-[#42654e] underline decoration-[#a6b69f] underline-offset-4">Registrar a primeira compra</button>}</div>}
