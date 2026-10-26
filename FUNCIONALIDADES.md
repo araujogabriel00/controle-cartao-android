@@ -46,6 +46,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 23. [Editar parcela prevista](#23-editar-parcela-prevista)
 24. [Todas as compras do cartão](#24-todas-as-compras-do-cartão)
 25. [Redesign da aba Cartões](#25-redesign-da-aba-cartões)
+26. [Redesign da aba Benefícios](#26-redesign-da-aba-benefícios)
 
 ---
 
@@ -863,7 +864,7 @@ Funcionalidade: Benefícios
 
   Cenário: Fechar uma categoria libera a sobra
     Dado que "Mercado" tem R$ 380,00 sobrando em "VR"
-    Quando eu toco em "Fechar" na linha "Mercado"
+    Quando eu toco em "Fechar categoria" na linha "Mercado"
     Então o sistema pede confirmação para "Fechar “Mercado” em VR? R$ 380,00 que sobram vão para “Sem categoria”."
     E depois de confirmar, "Mercado" mostra o selo "Fechada", disponível R$ 0,00 e "Liberado R$ 380,00"
     E o valor liberado soma ao "Sem categoria", sem mudar o disponível do benefício
@@ -883,12 +884,12 @@ Funcionalidade: Benefícios
   @regra
   Cenário: Fechar com gastos em meses seguintes
     Dado que "Mercado" tem gasto num mês depois do mês aberto
-    Quando eu toco em "Fechar" e confirmo
+    Quando eu toco em "Fechar categoria" e confirmo
     Então vejo "Há gastos desta categoria depois de ‹mês›. Exclua-os antes de fechar."
 
   Cenário: Reabrir uma categoria
     Dado que "Mercado" foi fechada
-    Quando eu abro um mês seguinte e toco em "Reabrir"
+    Quando eu abro um mês seguinte e toco em "Reabrir categoria"
     Então os meses antes dele continuam fechados
     E dele em diante "Mercado" volta a receber a parte dela, com sobra zero
     Mas se eu reabrir no mês em que fechei, o fechamento é desfeito e a sobra volta
@@ -1435,7 +1436,7 @@ Funcionalidade: Benefícios em carrossel
 
   Cenário: O que o card mostra
     Então cada card mostra o nome com "Mensal", o Disponível do mês, "Crédito · Sobra anterior · Gasto" e a barra de percentual
-    E editar e excluir aparecem só no card ativo
+    E o botão "⋯" (Editar e Excluir benefício) aparece só no card ativo
 
   Cenário: Trocar de benefício
     Quando eu deslizo até o "VA" ou toco no pontinho "VA"
@@ -1470,7 +1471,7 @@ Funcionalidade: Lançamentos do benefício em tela própria
   Cenário: Abrir uma categoria
     Quando eu toco em "Mercado" no "Por categoria"
     Então abre a tela "Mercado" do "VR" com o total R$ 380,00, "Almoço" e "Jantar"
-    Mas "Fechar" e "Reabrir" continuam na linha e não abrem a tela
+    Mas "Fechar categoria" e "Reabrir categoria" ficam numa linha própria e não abrem a tela
 
   Cenário: Abrir sem categoria e todos
     Quando eu toco em "Sem categoria"
@@ -1625,4 +1626,46 @@ Funcionalidade: Aba Cartões redesenhada
     Dado que estou num mês futuro
     Então uma parcela prevista abre a edição da compra parcelada
     E uma cobrança recorrente prevista não é um botão
+```
+
+
+---
+
+## 26. Redesign da aba Benefícios
+
+Resumo. A especificação completa está em [`specs/redesign-beneficios.md`](specs/redesign-beneficios.md). Nenhuma regra de crédito, sobra, gasto, divisão por categoria ou fechamento muda; só o visual e o lugar dos botões.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Aba Benefícios redesenhada
+  Cenário: Face do benefício
+    Dado que o benefício "FLASH" tem crédito de R$ 800,00, sobra anterior de R$ 0,00 e gasto de R$ 580,00 em outubro de 2026
+    Quando eu abro a aba "Benefícios"
+    Então vejo "FLASH", "Disponível em outubro de 2026" e "R$ 220,00"
+    E vejo três colunas: "Crédito", "Sobra anterior" e "Gasto" com os valores
+    E vejo "Gasto do mês" com "73%"
+    E vejo o botão "Mais opções do benefício"
+
+  Cenário: Editar ou excluir o benefício pelo menu
+    Quando eu toco em "Mais opções do benefício"
+    Então vejo "Editar benefício" e "Excluir benefício"
+    E excluir só apaga depois da confirmação
+
+  Cenário: Abrir os lançamentos de uma categoria
+    Quando eu toco em qualquer parte da linha da categoria "Mercado"
+    Então abre a tela de lançamentos de "Mercado"
+
+  Cenário: Fechar e reabrir uma categoria
+    Quando eu toco em "Fechar categoria", na linha própria abaixo de "Mercado"
+    Então vejo a confirmação com o valor que será liberado
+    E depois de confirmar "Mercado" mostra "Fechada", sem barra, e o botão "Reabrir categoria"
+
+  Cenário: Sem categoria não fecha
+    Então a linha "Sem categoria" não tem "Fechar categoria" nem "Reabrir categoria"
+
+  Cenário: Alertas de cor
+    Dado uma categoria com mais de 85% usado e outra com disponível negativo
+    Então a barra da primeira aparece no tom quente
+    E o valor da segunda aparece na cor de alerta
 ```
