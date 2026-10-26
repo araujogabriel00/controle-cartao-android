@@ -45,6 +45,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 23. [Redesign da tela Entradas](#23-redesign-da-tela-entradas)
 23. [Editar parcela prevista](#23-editar-parcela-prevista)
 24. [Todas as compras do cartão](#24-todas-as-compras-do-cartão)
+25. [Redesign da aba Cartões](#25-redesign-da-aba-cartões)
 
 ---
 
@@ -1583,4 +1584,45 @@ Funcionalidade: Todas as compras do cartão
   Cenário: Excluir pela prévia de mês futuro
     Quando abro novembro de 2026 e excluo a parcela "Fone" "2/3"
     Então "Fone" é removido de todos os meses
+```
+
+
+---
+
+## 25. Redesign da aba Cartões
+
+Resumo. A especificação completa está em [`specs/redesign-cartoes.md`](specs/redesign-cartoes.md). Nenhuma regra de compra, parcela, recorrência, categoria, fatura ou histórico muda; só o visual e o lugar das ações de editar e excluir.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Aba Cartões redesenhada
+  Cenário: Face do cartão
+    Dado que o cartão "Nubank" tem fatura de R$ 490,50 em outubro de 2026 com 4 compras
+    Quando eu abro a aba "Cartões"
+    Então vejo "Nubank", "Fatura de outubro de 2026", "R$ 490,50" e "4 compras"
+    E vejo os botões "Ver histórico de Nubank" e "Mais opções do cartão"
+
+  Cenário: Editar ou excluir o cartão pelo menu
+    Quando eu toco em "Mais opções do cartão"
+    Então vejo "Editar cartão" e "Excluir cartão"
+    E excluir só apaga o cartão e os registros dele depois da confirmação
+
+  Cenário: Editar uma compra tocando na linha
+    Quando eu toco na linha da compra "Cabo"
+    Então abre o formulário de edição, que tem o botão "Excluir compra"
+    E a linha não tem lápis nem lixeira
+
+  Cenário: Excluir pelo formulário
+    Quando eu toco em "Excluir compra" numa compra comum, parcelada ou recorrente
+    Então vejo a confirmação da compra, a da compra parcelada inteira ou a pergunta "Só este mês" / "Este e os próximos"
+
+  Cenário: Criar uma compra não mostra "Excluir compra"
+    Quando eu toco em "Lançar" e em "Compra no cartão"
+    Então o formulário não tem o botão "Excluir compra"
+
+  Cenário: Linhas previstas
+    Dado que estou num mês futuro
+    Então uma parcela prevista abre a edição da compra parcelada
+    E uma cobrança recorrente prevista não é um botão
 ```

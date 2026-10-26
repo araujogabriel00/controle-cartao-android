@@ -100,13 +100,13 @@ export function SnapCarousel<T extends SnapItem>({ items, selectedId, onSelect, 
       <div aria-hidden className="w-[calc(7%-12px)] shrink-0"/>
     </div>
 
-    <div className="mt-4 flex items-center justify-center gap-2">
+    <div className="mt-1 flex items-center justify-center">
       {items.map((item) => {
         const active = item.id === selectedId;
         return <button key={item.id} aria-label={itemLabel(item)} aria-current={active ? 'true' : undefined} onClick={() => onSelect(item.id)}
-          className="grid h-6 place-items-center px-0.5"><span className={`block h-2 rounded-full transition-all duration-300 ${active ? 'w-5' : 'w-2 opacity-40'}`} style={{ background: CARD_COLORS[item.color].background }}/></button>;
+          className="grid h-11 min-w-11 place-items-center"><span className={`block h-2 rounded-full transition-all duration-300 ${active ? 'w-5' : 'w-2 opacity-40'}`} style={{ background: CARD_COLORS[item.color].background }}/></button>;
       })}
-      <button aria-label={add.ariaLabel} onClick={() => scrollToIndex(items.length, 'smooth')} className="grid h-6 w-6 place-items-center rounded-full text-[#7d887c] transition hover:bg-[#ece7dc]"><Plus size={13}/></button>
+      <button aria-label={add.ariaLabel} onClick={() => scrollToIndex(items.length, 'smooth')} className="grid h-11 w-11 place-items-center rounded-full text-[#7d887c] transition hover:bg-[#ece7dc]"><Plus size={16}/></button>
     </div>
   </div>;
 }
