@@ -52,6 +52,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 29. [Opção D: Benefícios](#29-opção-d-benefícios)
 30. [Opção D: telas de apoio](#30-opção-d-telas-de-apoio)
 31. [Compras do cartão em qualquer mês](#31-compras-do-cartão-em-qualquer-mês)
+32. [Nova versão (v2): fundação](#32-nova-versão-v2-fundação)
 
 ---
 
@@ -1179,15 +1180,15 @@ Funcionalidade: Mês compartilhado entre as abas
   Contexto:
     Dado que hoje é 18/10/2026
 
-  Cenário: O seletor de mês fica acima das abas
-    Dado que estou na aba "Entradas", "Cartões" ou "Benefícios"
-    Então o seletor de mês aparece acima da barra de abas, e o conteúdo abaixo dela
-    Mas em "Cartões" o aviso "Seu caderno está em dia" continua acima do seletor, só em telas largas
+  Cenário: O seletor de mês fica no cabeçalho
+    Dado que estou no "Início", em "Entradas", "Cartões" ou "Benefícios"
+    Então o seletor de mês aparece no cabeçalho, entre o olho e o "⋯", e o conteúdo abaixo dele (seção 32)
+    Mas em "Cartões" o aviso "Seu caderno está em dia" continua acima do cabeçalho, só em telas largas
 
   Cenário: Trocar de aba mantém o mês
     Dado que estou na aba "Entradas" em dezembro de 2026
-    Quando eu toco na aba "Cartões"
-    Então vejo "Cartões" em dezembro de 2026, com o endereço "#/mes/2026-12"
+    Quando eu toco em "Cartões" na barra inferior
+    Então vejo "Cartões" em dezembro de 2026, com o endereço "#/cartoes/mes/2026-12"
     Quando eu toco na aba "Benefícios"
     Então vejo "Benefícios" em dezembro de 2026, com o endereço "#/beneficios/mes/2026-12"
 
@@ -1218,13 +1219,13 @@ Funcionalidade: Mês compartilhado entre as abas
   Cenário: Abrir o app no último mês
     Dado que eu estava vendo dezembro de 2026 e fechei o app
     Quando eu abro o app de novo
-    Então vejo "Cartões" em dezembro de 2026, com o link "Voltar para o mês atual"
+    Então vejo o "Início" em dezembro de 2026, com o link "Voltar para o mês atual"
 
   @regra
   Cenário: O mês corrente não é lembrado
     Dado que eu estava vendo o mês corrente quando fechei o app
     Quando eu abro o app num mês novo
-    Então vejo "Cartões" no mês de hoje, e não no mês em que fechei
+    Então vejo o "Início" no mês de hoje, e não no mês em que fechei
 
   Cenário: Voltar para o mês atual apaga a lembrança
     Dado que o app abriu em dezembro de 2026 por causa da lembrança
@@ -1242,7 +1243,7 @@ Funcionalidade: Mês compartilhado entre as abas
   Cenário: Lembrança fora do alcance ou com falha
     Dado que o mês lembrado é março de 2027 e Cartões só abre até dezembro de 2026
     Quando eu abro o app
-    Então vejo "Cartões" em dezembro de 2026
+    Então vejo o "Início" em dezembro de 2026, o último mês que ele abre
     Mas se a lembrança não puder ser lida ou for inválida, o app abre no mês corrente, sem mensagem
 ```
 
@@ -1331,12 +1332,13 @@ Resumo. A especificação completa está em [`specs/botao-lancar.md`](specs/bota
 ```gherkin
 # language: pt
 
-Funcionalidade: Botão Lançar no menu de rodapé
+Funcionalidade: Botão Lançar
 
-  Cenário: O rodapé aparece nas três abas
-    Quando eu abro as abas "Entradas", "Cartões" e "Benefícios"
-    Então vejo o menu de rodapé com o botão "Lançar" (ícone "+" e texto) e o botão "Categorias" (ícone e texto)
-    Mas no Histórico e em Categorias ele não aparece
+  Cenário: O botão aparece nas quatro áreas
+    Quando eu abro o "Início", "Entradas", "Cartões" e "Benefícios"
+    Então vejo a barra inferior e, sobre ela, o botão flutuante "Lançar" (ícone "+" e texto) no canto direito
+    E o botão "Categorias" não está mais no rodapé: ele passou para o menu "⋯" do cabeçalho (seção 32)
+    Mas no Histórico e em Categorias nem a barra nem o botão aparecem
 
   Cenário: As opções do menu
     Quando eu toco no botão "+"
@@ -1405,7 +1407,7 @@ Funcionalidade: Telas próprias de entradas, contas fixas e gastos do dia a dia
 
   Cenário: Criar pelo rodapé estando na tela
     Dado que estou na tela "Contas fixas"
-    Quando eu toco no "+" do rodapé, em "Conta fixa" e salvo "Internet" de R$ 100,00
+    Quando eu toco no botão "Lançar", em "Conta fixa" e salvo "Internet" de R$ 100,00
     Então a lista mostra "Internet" e o total sobe R$ 100,00
 
   Cenário: Voltar mantém o mês
@@ -1597,6 +1599,8 @@ Funcionalidade: Todas as compras do cartão
 
 Resumo. A especificação completa está em [`specs/redesign-cartoes.md`](specs/redesign-cartoes.md). Nenhuma regra de compra, parcela, recorrência, categoria, fatura ou histórico muda; só o visual e o lugar das ações de editar e excluir.
 
+> Na v2 as abas viraram a barra inferior (Início, Entradas, Cartões, Benefícios); o conteúdo desta seção não mudou (seção 32).
+
 ```gherkin
 # language: pt
 
@@ -1637,6 +1641,8 @@ Funcionalidade: Aba Cartões redesenhada
 ## 26. Redesign da aba Benefícios
 
 Resumo. A especificação completa está em [`specs/redesign-beneficios.md`](specs/redesign-beneficios.md). Nenhuma regra de crédito, sobra, gasto, divisão por categoria ou fechamento muda; só o visual e o lugar dos botões.
+
+> Na v2 as abas viraram a barra inferior (Início, Entradas, Cartões, Benefícios); o conteúdo desta seção não mudou (seção 32).
 
 ```gherkin
 # language: pt
@@ -1692,14 +1698,13 @@ Funcionalidade: Aba Entradas na Opção D
     E "0" em Contas fixas e em Gastos do dia a dia, sem barra
     E "+4.007" à direita em "Resultado do mês"
 
-  Cenário: Abrir o resumo pelo rodapé
-    Quando eu toco em "Resumo" no rodapé
+  Cenário: Abrir o resumo pelo link de Entradas
+    Quando eu toco em "Resumo do mês" no topo da aba "Entradas"
     Então abre a tela "Resumo do mês" com "Saldo anterior", "Resultado do mês" e as quatro linhas
-    E o botão "Resumo" aparece destacado
 
-  Cenário: O botão Resumo só existe em Entradas
+  Cenário: O link Resumo só existe em Entradas
     Quando eu abro as abas "Cartões" e "Benefícios"
-    Então o rodapé mostra só "Lançar" e "Categorias"
+    Então não há link "Resumo do mês" e o rodapé não tem botão de resumo
 
   Cenário: Resultado negativo
     Dado que o resultado do mês é − R$ 300,00
@@ -1776,6 +1781,8 @@ Funcionalidade: Aba Cartões na Opção D
 ## 29. Opção D: Benefícios
 
 Resumo. A especificação completa está em [`specs/redesign-opcao-d-beneficios.md`](specs/redesign-opcao-d-beneficios.md). Nenhuma regra de saldo, período ou categoria muda. A face colorida saiu: a aba mostra a fileira de benefícios, o disponível em texto grande, a barra "Uso do crédito" e o "Uso por categoria". Os lançamentos continuam em tela própria, aberta pelas categorias e por "Todos os lançamentos".
+
+> Na v2 as abas viraram a barra inferior (Início, Entradas, Cartões, Benefícios); o conteúdo desta seção não mudou (seção 32).
 
 ```gherkin
 # language: pt
@@ -1912,3 +1919,71 @@ Funcionalidade: Compras do cartão em qualquer mês
     Então vejo a mensagem de erro "A data deve ser de até 12 meses à frente."
 ```
 
+---
+
+## 32. Nova versão (v2): fundação
+
+Resumo. A especificação completa está em [`specs/redesign-v2-fundacao.md`](specs/redesign-v2-fundacao.md). Nenhuma regra de cálculo muda. O app ganha o tema claro/escuro, a barra inferior, o cabeçalho único, a tela Início e o botão de esconder valores. As cores de todas as telas passaram a ter nome, com valor claro e escuro.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Fundação da nova versão
+
+  Cenário: Abrir o app
+    Dado que o endereço está vazio
+    Quando eu abro o app
+    Então vejo o Início do mês corrente
+    E a barra inferior mostra "Início" como ativo
+
+  Cenário: Abrir o app num mês lembrado
+    Dado que eu fechei o app em outro mês
+    Quando eu abro o app
+    Então vejo o Início nesse mês
+
+  Cenário: Navegar pela barra
+    Dado que estou no Início em um mês diferente do atual
+    Quando eu toco em "Cartões" na barra inferior
+    Então abre a aba Cartões no mesmo mês
+    E tocar no item já ativo volta à tela raiz da área
+
+  Cenário: Endereço antigo de Cartões
+    Quando eu abro "#/mes/2026-08"
+    Então sou levado para "#/cartoes/mes/2026-08"
+
+  Cenário: Lançar de qualquer lugar
+    Quando eu toco em "Lançar"
+    Então vejo as cinco opções de lançamento
+    E o formulário escolhido abre no mês aberto
+
+  Cenário: Menu do cabeçalho
+    Quando eu toco no botão "⋯"
+    Então vejo "Categorias", "Histórico" e "Aparência"
+
+  Cenário: Tema escuro automático
+    Dado que a aparência está em "Auto"
+    Quando o celular troca para o modo escuro
+    Então o app troca para o tema escuro sem recarregar
+
+  Cenário: Escolher o tema
+    Quando eu escolho "Escuro" em Aparência
+    Então o app fica escuro
+    E continua escuro quando eu fecho e abro o app
+
+  Cenário: Esconder valores
+    Quando eu toco no olho
+    Então todos os valores em reais aparecem como "R$ ••••"
+    E tocar de novo mostra os valores
+
+  Cenário: Início vazio
+    Dado que não há cartão, entrada nem benefício
+    Quando eu abro o Início
+    Então vejo os 3 passos de primeiro uso
+    E o botão "Lançar" continua disponível
+
+  Cenário: Resumo a partir de Entradas
+    Quando eu toco em "Resumo do mês" na aba Entradas
+    Então abre a tela de resumo do mês aberto
+```
+
+Endereços: `#/` (Início), `#/inicio/mes/AAAA-MM`, `#/cartoes`, `#/cartoes/mes/AAAA-MM`. O Início só lê os dados das outras áreas e não grava nada.

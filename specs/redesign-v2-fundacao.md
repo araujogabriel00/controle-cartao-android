@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Proposta |
+| Status | Implementada |
 | Criada em | 29/10/2026 |
 | Escopo | `src/index.css`, `src/App.tsx`, `src/lib/format.ts`, `src/lib/footer.ts`, `src/components/app-tabs.tsx` (vira barra inferior), `src/components/month-nav.tsx`, `src/components/quick-add.tsx` (botão Lançar), novos `src/components/app-header.tsx`, `src/lib/theme.ts`, `src/lib/hide-values.ts`, `src/pages/inicio.tsx`, troca de hexadecimais por cores com nome em `src/**/*.tsx`, `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`mes-compartilhado.md`](mes-compartilhado.md), [`botao-lancar.md`](botao-lancar.md), [`redesign-opcao-d-entradas.md`](redesign-opcao-d-entradas.md), [`redesign-opcao-d-cartoes.md`](redesign-opcao-d-cartoes.md), [`redesign-opcao-d-beneficios.md`](redesign-opcao-d-beneficios.md), [`redesign-opcao-d-telas-de-apoio.md`](redesign-opcao-d-telas-de-apoio.md) |
@@ -174,17 +174,19 @@ Sem mudança no formato salvo, na camada de dados nem na API. Duas chaves novas 
 
 ## 8. Critérios de aceite
 
-- [ ] `npm run typecheck` e `npm run build` passam.
-- [ ] Barra inferior de 4 itens nas telas de área; `aria-current` correto.
-- [ ] `/` abre o Início; `/cartoes` abre Cartões; `/mes/AAAA-MM` redireciona.
-- [ ] O app abre no mês lembrado, no Início.
-- [ ] "Lançar" abre as cinco opções e cada formulário, nas quatro áreas.
-- [ ] ⋯ abre Categorias, Histórico e Aparência.
-- [ ] Tema Auto, Claro e Escuro funcionam e são lembrados; nenhuma tela mostra bloco claro no escuro nem o contrário.
-- [ ] O olho esconde e mostra os valores em todas as telas e é lembrado.
-- [ ] Nenhum hexadecimal solto sobra nos `.tsx` (verificação por busca).
-- [ ] Todos os `data-testid` antigos continuam existindo.
-- [ ] `FUNCIONALIDADES.md` (nova seção 32) e `README.md` atualizados.
+Verificado no navegador (`npm run dev`, tema escuro do sistema e depois Claro) com dados de teste. A janela do navegador não encolheu para 390 px de largura: o layout foi conferido na largura que o navegador deu, com o conteúdo limitado a 860 px.
+
+- [x] `npm run typecheck` e `npm run build` passam.
+- [x] Barra inferior de 4 itens nas telas de área; `aria-current` correto (conferido no Início, e o item muda ao abrir Cartões, Entradas e Benefícios).
+- [x] `/` abre o Início; `/cartoes` abre Cartões; `/mes/AAAA-MM` redireciona (`#/mes/2026-08` virou `#/cartoes/mes/2026-08`).
+- [ ] O app abre no mês lembrado, no Início. Implementado em `Bootstrap`, **não exercitado** no navegador.
+- [ ] "Lançar" abre as cinco opções e cada formulário, nas quatro áreas. Conferido só o menu e o formulário de Entrada, a partir do Início; as outras áreas e formulários não foram percorridos.
+- [x] ⋯ mostra Categorias, Histórico e Aparência (os itens de Categorias e Histórico não foram tocados para abrir as telas).
+- [ ] Tema Auto, Claro e Escuro funcionam e são lembrados; nenhuma tela mostra bloco claro no escuro nem o contrário. Conferido: Auto segue o sistema, Claro e Escuro trocam na hora, a escolha é gravada em `Preferences`, e uma varredura de fundos claros no escuro (Início, Cartões, Entradas, Resumo, Benefícios) só achou o chip do cartão selecionado, que é invertido de propósito. **Não conferido:** reabrir o app com a escolha, o Auto reagindo à troca do sistema com o app aberto, e as telas de listas, Histórico, Categorias e Compras.
+- [ ] O olho esconde e mostra os valores em todas as telas e é lembrado. Conferido (texto, `aria-label` e HTML) em Início, Cartões, Entradas, Resumo, Lista de entradas, Benefícios e Histórico, e o estado é gravado. **Não conferido:** reabrir o app com o olho fechado, e Categorias e Compras.
+- [x] Nenhum hexadecimal solto sobra nos `.tsx` (busca vazia). Os hexadecimais de `src/lib/card-colors.ts` (cores de fundo dos cartões, escolhidas pela pessoa) ficaram, porque são identidade do cartão e já têm texto claro fixo.
+- [x] Todos os `data-testid` antigos continuam existindo, com uma exceção: `button-categories` saiu junto com o botão do rodapé e foi substituído por `menu-categories`.
+- [x] `FUNCIONALIDADES.md` (nova seção 32) e `README.md` atualizados.
 
 ## 9. Tarefas
 

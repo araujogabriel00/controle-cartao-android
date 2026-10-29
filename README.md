@@ -10,7 +10,7 @@ As funcionalidades estão descritas em BDD em [`FUNCIONALIDADES.md`](FUNCIONALID
 - O pacote `@workspace/api-client-react`, que no app web chama a API, aqui é um **alias** para `src/data/api.ts`. Esse módulo exporta os mesmos hooks (`useGetCard`, `useCreateMovement`, …), mas lê e grava localmente.
 - `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 10`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
 - As fontes (Fraunces, DM Sans e DM Mono) vêm junto com o app via `@fontsource`, então funcionam offline.
-- As cores novas têm nome no tema do Tailwind (`paper`, `surface`, `line`, `ink`, `ink-soft`, `brand`, `on-brand`, `on-brand-soft`, `eyebrow`, `alert`, em `src/index.css`). A tela Entradas, o seletor de mês, as abas e o menu de rodapé já as usam; as cores `chart-*` (`chart-in`, `chart-out`, `chart-neutral`, `chart-track`, `chart-violet`, `chart-rose`, `chart-rose-tint`) são só dos gráficos ([`specs/redesign-opcao-d-entradas.md`](specs/redesign-opcao-d-entradas.md)); as demais telas ainda têm hexadecimais e vão migrar aos poucos ([`specs/redesign-entradas.md`](specs/redesign-entradas.md)).
+- Todas as cores das telas têm nome no tema do Tailwind (`paper`, `surface`, `raise`, `line`, `ink`, `ink-soft`, `brand`, `tint`, `alert` e outras, em `src/index.css`), cada uma com valor **claro e escuro** nas variáveis de `:root` e `.dark`; as cores `chart-*` são dos gráficos. **Não use hexadecimais soltos nos `.tsx`**: `grep -rnE "#[0-9a-fA-F]{6}" src --include=*.tsx` deve voltar vazio ([`specs/redesign-v2-fundacao.md`](specs/redesign-v2-fundacao.md)). A aparência (Auto, Claro, Escuro) e o botão de esconder valores ficam em `Preferences`, fora do estado do app (`src/lib/theme.ts`, `src/lib/hide-values.ts`); `money()` devolve `R$ ••••` com o olho fechado.
 
 ### Compras e categorias
 
@@ -22,7 +22,7 @@ A especificação completa está em [`specs/compras-e-categorias.md`](specs/comp
 
 ### Botão Lançar
 
-- Um **menu de rodapé** (nas abas Entradas, Cartões e Benefícios) tem o botão **"Categorias"** (ícone e texto, abre `#/categorias`) e o botão **"Lançar"** (ícone "+" e texto) que abre os formulários de entrada, conta fixa, gasto do dia a dia, compra no cartão e gasto de benefício no mês aberto, sem trocar de aba ([`specs/botao-lancar.md`](specs/botao-lancar.md)).
+- Uma **barra inferior** (Início, Entradas, Cartões, Benefícios) e o botão flutuante **"Lançar"** (ícone "+" e texto; "Categorias" e "Histórico" ficam no menu "⋯" do cabeçalho) que abre os formulários de entrada, conta fixa, gasto do dia a dia, compra no cartão e gasto de benefício no mês aberto, sem trocar de aba ([`specs/botao-lancar.md`](specs/botao-lancar.md)).
 
 ### Histórico mensal
 
@@ -32,8 +32,8 @@ Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês 
 
 - O app aceita vários cartões, cada um com nome, cor, meses e compras próprios. A troca é feita numa fileira de botões, um por cartão, e o app lembra o último cartão usado. A aba Cartões mostra a fatura em texto grande e os gráficos "Ritmo do mês", "Para onde foi" e "Próximas faturas" ([`specs/redesign-opcao-d-cartoes.md`](specs/redesign-opcao-d-cartoes.md)).
 - Com 2 cartões ou mais, o histórico ganha, em cada mês, a linha "Todos os cartões" com o total das faturas.
-- `#/` mostra o mês corrente, `#/mes/AAAA-MM` mostra outro mês e `#/historico` lista todos os meses com seus totais. As rotas usam hash porque o bundle tem base relativa.
-- **O mês é o mesmo nas três abas** ([`specs/mes-compartilhado.md`](specs/mes-compartilhado.md)): o seletor de mês fica acima da barra de abas e trocar de aba mantém o mês (`#/entradas/mes/AAAA-MM`, `#/beneficios/mes/AAAA-MM`). Se a aba de destino não abre aquele mês, abre o mais próximo. O app **lembra o último mês aberto** (só um mês que não é o corrente) e abre a aba Cartões nele; "Voltar para o mês atual" apaga a lembrança, e um endereço com mês vale mais que ela.
+- `#/` abre o **Início** do mês corrente e `#/inicio/mes/AAAA-MM` o de outro mês; Cartões fica em `#/cartoes` e `#/cartoes/mes/AAAA-MM` (o antigo `#/mes/AAAA-MM` redireciona); `#/historico` lista todos os meses com seus totais. As rotas usam hash porque o bundle tem base relativa.
+- **O mês é o mesmo nas áreas** ([`specs/mes-compartilhado.md`](specs/mes-compartilhado.md)): o seletor de mês fica no cabeçalho e trocar de área na barra inferior mantém o mês (`#/entradas/mes/AAAA-MM`, `#/beneficios/mes/AAAA-MM`). Se a aba de destino não abre aquele mês, abre o mais próximo. O app **lembra o último mês aberto** (só um mês que não é o corrente) e abre o Início nele; "Voltar para o mês atual" apaga a lembrança, e um endereço com mês vale mais que ela.
 - Na virada do mês, o mês novo começa sozinho, sem perguntar nada.
 - Meses passados continuam editáveis. Um mês futuro abre até o último mês que tenha parcela prevista ou compra registrada: mostra as parcelas e cobranças previstas e as compras já registradas, e aceita "Registrar compra", editar e excluir, mas não é iniciado até chegar.
 - Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, a `version: 4` acrescenta a lista vazia de compras parceladas, a `version: 5` acrescenta as listas vazias de entradas, a `version: 6` troca as categorias-envelope por categorias globais (os lançamentos viram compras no cartão em que estavam; orçamentos e o estado aberto/fechado são descartados), a `version: 7` acrescenta as listas vazias de benefícios, a `version: 8` acrescenta as listas vazias de contas fixas e de gastos do dia a dia, a `version: 9` acrescenta as listas vazias de compras recorrentes, e a `version: 10` apaga o limite dos cartões e dos meses.
@@ -155,6 +155,8 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   │   └── api.ts          # hooks compatíveis com @workspace/api-client-react
 │   ├── lib/format.ts       # formatação de valores, datas e meses; caminho de cada aba num mês
 │   ├── lib/last-month.ts   # último mês aberto (lembrado fora do estado)
+│   ├── lib/theme.ts        # aparência Auto/Claro/Escuro (classe `dark` em <html>)
+│   ├── lib/hide-values.ts  # esconder valores (olho do cabeçalho)
 │   ├── lib/card-colors.ts  # paleta de cores dos cartões
 │   ├── components/snap-carousel.tsx # carrossel genérico (sem uso no momento)
 │   ├── components/card-picker.tsx # fileira de botões dos cartões e dos benefícios
@@ -165,13 +167,15 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── components/row-menu.tsx # "⋯" de 44 px por linha das listas
 │   ├── components/back-button.tsx # botão Voltar das telas secundárias
 │   ├── lib/card-series.ts  # séries dos gráficos de Cartões (funções puras)
-│   ├── components/app-tabs.tsx # abas Entradas | Cartões | Benefícios
-│   ├── components/month-nav.tsx # seletor de mês, acima das abas
+│   ├── components/app-tabs.tsx # barra inferior Início | Entradas | Cartões | Benefícios
+│   ├── components/app-header.tsx # cabeçalho: olho, mês e menu "⋯"
+│   ├── components/month-nav.tsx # seletor de mês, dentro do cabeçalho
+│   ├── pages/inicio.tsx    # Início: resumo das áreas (só leitura)
 │   ├── pages/dashboard.tsx # painel de um mês
 │   ├── pages/historico.tsx # lista de meses
 │   ├── pages/compras.tsx # todas as compras do cartão, de qualquer mês
 │   ├── pages/entradas.tsx  # saldo e gráfico "Entrou e saiu"
-│   ├── pages/entradas-resumo.tsx # tela "Resumo do mês" (aberta pelo rodapé)
+│   ├── pages/entradas-resumo.tsx # tela "Resumo do mês" (aberta por um link em Entradas)
 │   ├── components/charts/  # gráficos em SVG e barras (divergentes, degraus, colunas, horizontais, legenda, tabela de apoio)
 │   ├── pages/entradas-lista.tsx # listas de entradas, contas fixas e gastos
 │   ├── components/entry-dialogs.tsx # formulários de entrada, conta fixa e gasto
