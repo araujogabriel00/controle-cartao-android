@@ -53,6 +53,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 30. [Opção D: telas de apoio](#30-opção-d-telas-de-apoio)
 31. [Compras do cartão em qualquer mês](#31-compras-do-cartão-em-qualquer-mês)
 32. [Nova versão (v2): fundação](#32-nova-versão-v2-fundação)
+33. [Início com mini-gráficos](#33-início-com-mini-gráficos)
 
 ---
 
@@ -1987,3 +1988,76 @@ Funcionalidade: Fundação da nova versão
 ```
 
 Endereços: `#/` (Início), `#/inicio/mes/AAAA-MM`, `#/cartoes`, `#/cartoes/mes/AAAA-MM`. O Início só lê os dados das outras áreas e não grava nada.
+
+> O corpo do Início (saldo, entrou/saiu, próxima fatura e lista de benefícios) foi trocado por painéis com mini-gráfico na seção 33. O estado vazio, os 3 passos do primeiro uso e os atalhos seguem como aqui.
+
+---
+
+## 33. Início com mini-gráficos
+
+Resumo. A especificação completa está em [`specs/inicio-com-minigraficos.md`](specs/inicio-com-minigraficos.md). Nenhuma regra de cálculo muda e nada é gravado. O Início mostra três painéis, cada um com o valor em texto e um mini-gráfico, e a lista dos gastos recentes. Cada painel inteiro é um botão que abre a área no mês aberto.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Início com mini-gráficos
+
+  Cenário: Painéis do Início
+    Dado que há saldo, uma fatura e um benefício
+    Quando eu abro o Início
+    Então vejo os painéis "Saldo", "Cartões" e "Benefícios", nessa ordem
+    E cada painel mostra o valor e um mini-gráfico
+
+  Cenário: Tendência do saldo
+    Dado que o app tem dados desde 6 meses atrás
+    Quando eu olho o painel "Saldo"
+    Então vejo uma linha com 6 pontos e o último destacado
+    E a legenda "últimos 6 meses"
+
+  Cenário: Saldo com pouco histórico
+    Dado que só existe o mês corrente
+    Quando eu olho o painel "Saldo"
+    Então vejo o valor e o texto "Ainda sem histórico", sem linha
+
+  Cenário: Faturas dos próximos meses
+    Dado que há uma compra parcelada em 7 vezes
+    Quando eu olho o painel "Cartões"
+    Então vejo 7 colunas, a primeira mais forte
+    E a legenda "próximas 7 faturas"
+
+  Cenário: Uso do benefício
+    Dado um benefício de R$ 600,00 com R$ 120,00 gastos
+    Quando eu olho o painel "Benefícios"
+    Então vejo "disponível de R$ 600,00", "R$ 480,00" e "20% usado"
+    E uma barra com 20% preenchida
+
+  Cenário: Abrir a área pelo painel
+    Dado que estou no Início de agosto de 2026
+    Quando eu toco no painel "Cartões"
+    Então abre a aba Cartões em agosto de 2026
+
+  Cenário: Lançamentos recentes
+    Dado que o mês tem 5 gastos até hoje
+    Quando eu olho "Lançamentos recentes"
+    Então vejo os 3 mais recentes, com valor precedido de "−"
+    E "Ver todos" abre o Resumo do mês
+
+  Cenário: Valores escondidos
+    Quando eu toco no olho
+    Então os valores aparecem como "R$ ••••"
+    E os gráficos viram barras neutras sem formato
+    E o percentual de uso aparece como "••% usado"
+
+  Cenário: Leitor de tela
+    Quando um leitor de tela chega ao painel "Saldo"
+    Então lê o valor, o resultado e a descrição do gráfico
+    E há uma tabela de apoio com o saldo de cada mês
+
+  Cenário: Falha numa leitura
+    Dado que a leitura das faturas dos próximos meses falha
+    Quando eu abro o Início
+    Então o painel "Cartões" mostra o valor e "Gráfico indisponível"
+    E os outros painéis aparecem normalmente
+```
+
+O que mudou em relação à seção 32 (Início da fundação): os blocos "Entrou", "Saiu", "Próxima fatura" e a lista de benefícios saíram (`card-home-in`, `card-home-out` e `row-home-benefit-N`). "Entrou" e "Saiu" continuam na aba Entradas e no Resumo do mês. O painel Saldo mostra o resultado do mês ("+ R$ X neste mês"), o painel Cartões mostra a fatura total do mês aberto e o Benefícios soma todos os benefícios.

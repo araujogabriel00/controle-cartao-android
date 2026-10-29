@@ -32,6 +32,7 @@ Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês 
 
 - O app aceita vários cartões, cada um com nome, cor, meses e compras próprios. A troca é feita numa fileira de botões, um por cartão, e o app lembra o último cartão usado. A aba Cartões mostra a fatura em texto grande e os gráficos "Ritmo do mês", "Para onde foi" e "Próximas faturas" ([`specs/redesign-opcao-d-cartoes.md`](specs/redesign-opcao-d-cartoes.md)).
 - Com 2 cartões ou mais, o histórico ganha, em cada mês, a linha "Todos os cartões" com o total das faturas.
+- O **Início** ([`specs/inicio-com-minigraficos.md`](specs/inicio-com-minigraficos.md)) lê três séries de `src/data/store.ts` que só repetem as contas existentes para outros meses: `getBalanceSeries` (saldo ao fim de cada um dos últimos 6 meses, sem meses antes do início do saldo), `getInvoiceSeries` (fatura total do mês aberto e dos 6 seguintes) e `getRecentSpends` (3 últimos gastos do mês). Com o olho fechado os gráficos viram barras neutras.
 - `#/` abre o **Início** do mês corrente e `#/inicio/mes/AAAA-MM` o de outro mês; Cartões fica em `#/cartoes` e `#/cartoes/mes/AAAA-MM` (o antigo `#/mes/AAAA-MM` redireciona); `#/historico` lista todos os meses com seus totais. As rotas usam hash porque o bundle tem base relativa.
 - **O mês é o mesmo nas áreas** ([`specs/mes-compartilhado.md`](specs/mes-compartilhado.md)): o seletor de mês fica no cabeçalho e trocar de área na barra inferior mantém o mês (`#/entradas/mes/AAAA-MM`, `#/beneficios/mes/AAAA-MM`). Se a aba de destino não abre aquele mês, abre o mais próximo. O app **lembra o último mês aberto** (só um mês que não é o corrente) e abre o Início nele; "Voltar para o mês atual" apaga a lembrança, e um endereço com mês vale mais que ela.
 - Na virada do mês, o mês novo começa sozinho, sem perguntar nada.
@@ -170,13 +171,13 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── components/app-tabs.tsx # barra inferior Início | Entradas | Cartões | Benefícios
 │   ├── components/app-header.tsx # cabeçalho: olho, mês e menu "⋯"
 │   ├── components/month-nav.tsx # seletor de mês, dentro do cabeçalho
-│   ├── pages/inicio.tsx    # Início: resumo das áreas (só leitura)
+│   ├── pages/inicio.tsx    # Início: painéis Saldo, Cartões e Benefícios com mini-gráfico e gastos recentes (só leitura)
 │   ├── pages/dashboard.tsx # painel de um mês
 │   ├── pages/historico.tsx # lista de meses
 │   ├── pages/compras.tsx # todas as compras do cartão, de qualquer mês
 │   ├── pages/entradas.tsx  # saldo e gráfico "Entrou e saiu"
 │   ├── pages/entradas-resumo.tsx # tela "Resumo do mês" (aberta por um link em Entradas)
-│   ├── components/charts/  # gráficos em SVG e barras (divergentes, degraus, colunas, horizontais, legenda, tabela de apoio)
+│   ├── components/charts/  # gráficos em SVG e barras (divergentes, degraus, colunas, horizontais, legenda, tabela de apoio; do Início: sparkline, mini-colunas, barra de uso)
 │   ├── pages/entradas-lista.tsx # listas de entradas, contas fixas e gastos
 │   ├── components/entry-dialogs.tsx # formulários de entrada, conta fixa e gasto
 │   ├── pages/beneficios.tsx # benefícios do mês

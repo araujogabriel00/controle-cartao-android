@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Proposta |
+| Status | Implementada |
 | Criada em | 29/10/2026 |
 | Escopo | `src/pages/inicio.tsx`, novos `src/components/charts/{sparkline,mini-columns,usage-bar}.tsx`, `src/data/store.ts` e `src/data/api.ts` (três leituras novas), `src/lib/format.ts` (só se faltar um auxiliar), `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`redesign-v2-fundacao.md`](redesign-v2-fundacao.md) (tela Início, tema, esconder valores), [`contas-e-gastos.md`](contas-e-gastos.md), [`beneficios.md`](beneficios.md), [`parcelamento.md`](parcelamento.md) |
@@ -34,6 +34,11 @@ O Início da fundação mostra números, mas não mostra **para onde eles estão
 | D9 | Sem histórico suficiente (menos de 2 meses com movimento), o painel Saldo mostra só o valor e o texto "Ainda sem histórico". Sem fatura, o painel Cartões mostra "Nenhuma fatura neste mês." Sem benefício, o painel Benefícios mostra "Nenhum benefício cadastrado." | Nunca mostrar gráfico vazio ou enganoso. |
 | D10 | Cores: Saldo `chart-in`, Cartões `chart-violet`, Benefícios `chart-rose` com trilho `chart-rose-tint`/`chart-track`. Todas já têm valor claro e escuro. | Reaproveita as cores com nome da fundação. |
 | D11 | Sem tooltip nem ponto tocável nos mini-gráficos. Os gráficos completos continuam nas áreas. | O painel todo é um botão; um alvo dentro de outro alvo atrapalha o toque. |
+| D12 | **Como o painel é um botão (ajuste da implementação):** o botão cobre o painel inteiro (`absolute inset-0`) e o conteúdo (valor, gráfico, tabela de apoio) fica ao lado dele, não dentro. | Os filhos de um `<button>` não são expostos ao leitor de tela; dentro dele o `role="img"` e a tabela de apoio (RF-08) ficariam inalcançáveis. Continua um alvo e um botão por painel. |
+| D13 | **Com o olho fechado o percentual "N% usado" também é mascarado ("••% usado").** | A proporção entrega o que a D8 quer esconder. |
+| D14 | **Telas estreitas:** o valor do painel é de 22 px até 419 px, 26 px até 479 px e 30 px a partir daí; no seletor de mês, abaixo de 420 px entram "Out 2026" e "Mês atual" no lugar das formas longas. | Em 360 px, "R$ 25.836,50" a 30 px quebrava no meio, e "Setembro de 2026" passava por cima das setas (defeito da fundação, achado na verificação). |
+| D15 | **Cartões sem fatura no mês aberto:** o painel mostra "Nenhuma fatura neste mês." no lugar do valor; as colunas só somem se as 7 faturas forem zero. **Lançamentos recentes sem gasto:** "Nenhum gasto neste mês até agora." | Não deixar o painel ou a lista em branco. |
+| D16 | As três leituras novas não tentam de novo ao falhar (`retry: false`). | Leitura local que falha falha de novo; o aviso "Gráfico indisponível" aparece na hora em vez de depois de ~7 s de esqueleto. |
 
 ## 3. Requisitos
 
@@ -60,7 +65,7 @@ O Início da fundação mostra números, mas não mostra **para onde eles estão
 | RN-03 | O mês do ponto do Saldo anterior ao primeiro mês com dados não entra (o gráfico começa no primeiro mês de `cashStart`). |
 | RN-04 | A coluna de fatura de um mês sem fatura tem altura zero (um traço), nunca some, para as 7 colunas ficarem alinhadas. |
 | RN-05 | A escala do gráfico de colunas vai de zero ao maior valor; a do Saldo vai do menor ao maior valor dos 6 pontos, com folga de 10%. Escalas não aparecem escritas nos mini-gráficos. |
-| RN-06 | Os `data-testid` `card-home-balance`, `text-home-balance`, `card-home-invoice` e `card-home-benefits` são mantidos (agora nos painéis). `card-home-in`, `card-home-out` e `row-home-benefit-N` saem (D6, D5) e isso fica registrado no `FUNCIONALIDADES.md`. Novos: `chart-home-balance`, `chart-home-invoices`, `chart-home-benefits`, `list-home-recent`, `row-home-recent-N`, `link-home-recent-all`. |
+| RN-06 | Os `data-testid` `card-home-balance`, `text-home-balance`, `card-home-invoice` e `card-home-benefits` são mantidos (agora nos painéis). `card-home-in`, `card-home-out` e `row-home-benefit-N` saem (D6, D5) e isso fica registrado no `FUNCIONALIDADES.md`. Novos: `chart-home-balance`, `chart-home-invoices`, `chart-home-benefits`, `list-home-recent`, `row-home-recent-N` (N a partir de 0), `link-home-recent-all`, e ainda `text-home-result`, `text-home-invoice`, `text-home-benefits`, `text-chart-note` e `text-home-recent-empty`. |
 | RN-07 | Texto de no mínimo 14 px nos painéis (13 px só na legenda do gráfico); painéis com no mínimo 120 px de altura e alvo de 48 px. Nada depende só de cor: o valor, o "+"/"−" e o texto de cada gráfico dizem o mesmo que a cor. |
 | RN-08 | Se uma das leituras novas falhar, o painel afetado mostra o valor e a legenda "Gráfico indisponível", e os outros painéis seguem normais. |
 | RN-09 | `prefers-reduced-motion`: sem animação de entrada nos gráficos. Fora disso, a linha e as colunas entram com a animação curta que o app já usa (`enter`). |
@@ -175,17 +180,21 @@ O painel de Benefícios usa `useGetBenefits(month)` que o Início já usa: `spen
 
 ## 8. Critérios de aceite
 
-- [ ] `npm run typecheck` e `npm run build` passam.
-- [ ] Painéis Saldo, Cartões e Benefícios aparecem com gráfico e valor, nos temas claro e escuro.
-- [ ] Os números dos painéis batem com Entradas, Cartões e Benefícios do mesmo mês.
-- [ ] Cada painel abre a área certa no mês aberto.
-- [ ] Os estados vazios (sem histórico, sem fatura, sem benefício) aparecem em vez de gráfico.
-- [ ] "Lançamentos recentes" mostra os 3 gastos conforme D7 e "Ver todos" abre o Resumo.
-- [ ] Com o olho fechado, nenhum valor e nenhum formato de gráfico aparece.
-- [ ] Leitor de tela: `aria-label` e tabela de apoio presentes nos três gráficos.
-- [ ] Falha numa leitura derruba só o painel afetado.
-- [ ] Layout sem scroll horizontal em 360 px de largura.
-- [ ] `FUNCIONALIDADES.md` (nova seção 33 e ajuste da seção 32) e `README.md` atualizados.
+Verificado no navegador (`npm run dev`) com dados de teste, em janelas de 377 px e de desktop e num `<iframe>` de 360 px; tema escuro e, no mesmo cenário, o claro. Não conferi com um leitor de tela de verdade: a acessibilidade foi conferida pelo DOM (`role`, `aria-label`, tabelas).
+
+- [x] `npm run typecheck` e `npm run build` passam.
+- [x] Painéis Saldo, Cartões e Benefícios aparecem com gráfico e valor, nos temas claro e escuro.
+- [x] Os números dos painéis batem com Entradas, Cartões e Benefícios do mesmo mês (saldo R$ 25.836,50, fatura R$ 150,50 e disponível R$ 480,00, conferidos nas três abas e o saldo também à mão). Em agosto (passado) e dezembro (futuro) o saldo e as 7 faturas bateram com o esperado.
+- [x] Cada painel abre a área certa no mês aberto (Entradas e Cartões em agosto de 2026 abriram `#/entradas/mes/2026-08` e `#/cartoes/mes/2026-08`). Benefícios em agosto abriu `#/beneficios`, porque o benefício de teste só existe a partir de outubro e a aba abre o mês mais próximo (regra já existente).
+- [x] Os estados vazios aparecem em vez de gráfico: "Ainda sem histórico", "Nenhuma fatura neste mês.", "Nenhum benefício cadastrado." e "Nenhum gasto neste mês até agora.". O estado de primeiro uso da fundação não foi reaberto nesta rodada.
+- [x] "Lançamentos recentes" mostra os 3 gastos conforme D7 (inclusive o gasto de benefício, na ordem certa); em mês futuro mostra a parcela prevista; as linhas abrem a área do gasto e "Ver todos" abre o Resumo do mês.
+- [x] Com o olho fechado, nenhum valor e nenhum formato de gráfico aparece: texto, HTML e `aria-label` sem valor em reais, os 3 gráficos viraram barra neutra e não restou nenhum `<svg>` de gráfico.
+- [x] Leitor de tela: `role="img"` com `aria-label` e tabela de apoio presentes nos três gráficos (6, 7 e 3 linhas). Só pelo DOM.
+- [x] Falha numa leitura derruba só o painel afetado (com um erro temporário em `getInvoiceSeries`: Cartões mostrou o valor e "Gráfico indisponível"; Saldo, Benefícios e Lançamentos seguiram normais). O erro de teste foi revertido.
+- [x] Layout sem scroll horizontal em 360 px de largura (documento de 345 px num iframe de 360 px; saldo em uma linha).
+- [x] `FUNCIONALIDADES.md` (nova seção 33 e ajuste da seção 32) e `README.md` atualizados.
+
+Não conferido: `prefers-reduced-motion` (RN-09, que usa a regra global de `index.css` e não foi tocada); a animação de entrada das colunas e da linha; escala de 10% do Saldo vista só a olho; e as cores de gráfico escuras com daltonismo (fora de escopo, seção 7).
 
 ## 9. Tarefas
 
