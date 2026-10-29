@@ -11,6 +11,7 @@ import { MiniColumns } from '@/components/charts/mini-columns';
 import { Sparkline } from '@/components/charts/sparkline';
 import { UsageBar } from '@/components/charts/usage-bar';
 import { type Area, areaPath, dateLabel, money, monthLabel, monthName, summaryPath, type MonthKey } from '@/lib/format';
+import { isHidden } from '@/lib/hide-values';
 import { useRememberMonth } from '@/lib/last-month';
 
 // specs/redesign-v2-fundacao.md RF-04 e specs/inicio-com-minigraficos.md: o Início só lê o que as áreas já leem (RN-02) e
@@ -38,7 +39,8 @@ function Panel({ testId, dot, title, label, onOpen, delay, children }: {
   </section>;
 }
 
-const value = 'block font-display text-[26px] leading-[1.1] tracking-[-.02em] [overflow-wrap:anywhere] min-[400px]:text-[30px]';
+// 30 px só cabe ao lado do gráfico de 128 px em telas largas; abaixo disso o valor encolhe em vez de quebrar no meio.
+const value = 'block font-display text-[22px] leading-[1.1] tracking-[-.02em] [overflow-wrap:anywhere] min-[420px]:text-[26px] min-[480px]:text-[30px]';
 
 export default function Inicio({ month }: { month: MonthKey }) {
   const [, navigate] = useLocation();
@@ -147,7 +149,7 @@ export default function Inicio({ month }: { month: MonthKey }) {
                 <div className="min-w-0">
                   <span data-testid="text-home-benefits" className={`${value} text-ink`}>{money(benefitAvailable)}</span>
                   <span className="mt-1 block text-[14px] text-ink-soft">disponível de {money(benefitTotal)}</span>
-                  <span className="block text-[14px] font-semibold text-ink">{usedPercent}% usado</span>
+                  <span className="block text-[14px] font-semibold text-ink">{isHidden() ? '••' : usedPercent}% usado</span>
                 </div>
                 <UsageBar spent={benefitSpent} total={benefitTotal}/>
               </>}
