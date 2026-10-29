@@ -40,7 +40,7 @@ export default function Historico() {
       </section>
 
       {loading ? <div className="mt-8 space-y-4 animate-pulse"><div className="h-40 rounded-2xl bg-line"/><div className="h-36 rounded-2xl bg-line"/></div>
-      : history.isError || cardsQuery.isError ? <div className="mt-8 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#e9e3d7] text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir o histórico.</h3><button onClick={() => { void cardsQuery.refetch(); void history.refetch(); }} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
+      : history.isError || cardsQuery.isError ? <div className="mt-8 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir o histórico.</h3><button onClick={() => { void cardsQuery.refetch(); void history.refetch(); }} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
       : <>
         {columns.length > 0 && <section data-testid="section-history-chart" aria-label="Fatura por mês" className="enter mt-6" style={{ animationDelay: '.08s' }}>
           <h2 className="font-display text-2xl text-ink">Fatura por mês</h2>
@@ -71,7 +71,7 @@ export default function Historico() {
             </button>)}
           </div>
         </section>
-        : <div className="mt-8 rounded-2xl border border-dashed border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#e8e9df] text-brand"><History size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Nada por aqui ainda.</h3><p className="mx-auto mt-1 max-w-xs text-[14px] leading-5 text-ink-soft">Seu histórico começa quando você cadastrar o cartão.</p></div>}
+        : <div className="mt-8 rounded-2xl border border-dashed border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-brand"><History size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Nada por aqui ainda.</h3><p className="mx-auto mt-1 max-w-xs text-[14px] leading-5 text-ink-soft">Seu histórico começa quando você cadastrar o cartão.</p></div>}
       </>}
     </div>
   </main>;

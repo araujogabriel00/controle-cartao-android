@@ -20,10 +20,10 @@ export function CardPicker<T extends PickerItem>({
     {cards.map((card) => {
       const active = card.id === selectedId;
       return <button key={card.id} type="button" data-testid={`${faceTestId}-${card.id}`} aria-pressed={active} aria-label={itemLabel(card)} onClick={() => onSelect(card.id)}
-        className={`flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-[14px] font-semibold transition ${active ? 'border-ink bg-ink text-on-brand' : 'border-line bg-surface text-ink hover:bg-[#eee9dd]'}`}>
+        className={`flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-[14px] font-semibold transition ${active ? 'border-ink bg-ink text-on-brand' : 'border-line bg-surface text-ink hover:bg-hover'}`}>
         <span aria-hidden className="h-3 w-3 rounded-full ring-1 ring-on-brand/60" style={{ background: dot ?? CARD_COLORS[card.color ?? 'grafite'].background }}/>{card.name}
       </button>;
     })}
-    <button type="button" data-testid={addTestId} aria-label={addLabel} onClick={onAdd} className="flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-dashed border-line px-4 text-[14px] font-semibold text-ink-soft transition hover:bg-[#eee9dd]"><Plus size={16}/>{addText}</button>
+    <button type="button" data-testid={addTestId} aria-label={addLabel} onClick={onAdd} className="flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-dashed border-line px-4 text-[14px] font-semibold text-ink-soft transition hover:bg-hover"><Plus size={16}/>{addText}</button>
   </div>;
 }

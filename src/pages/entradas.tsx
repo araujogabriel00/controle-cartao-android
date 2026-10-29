@@ -23,7 +23,7 @@ export default function Entradas({ month }: { month: MonthKey }) {
       <MonthNav area="income" month={month} canGoPrevious={canGoPrevious} canGoNext={canGoNext}/>
       <AppTabs/>
 
-      {cashQuery.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#e9e3d7] text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir as entradas.</h3><button onClick={() => void cashQuery.refetch()} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
+      {cashQuery.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir as entradas.</h3><button onClick={() => void cashQuery.refetch()} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
         : !cash ? <div aria-busy="true" className="mt-6 space-y-4"><div className="h-[84px] animate-pulse rounded-2xl bg-line"/><div className="h-[320px] animate-pulse rounded-2xl bg-line"/></div>
         : <>
           {/* D1, D6: saldo grande, sem card; negativo na cor de alerta com o aviso de sempre. */}

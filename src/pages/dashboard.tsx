@@ -102,21 +102,21 @@ export function Dialog({ kind, initial, month, categories, busy, error, onClose,
       {kind === 'movement' ? <>
         <label className="field-label">O que foi?</label><input data-testid="input-movement-description" required maxLength={200} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex.: mercado da semana" className="field-input mb-4"/>
         <label className="field-label">Categoria</label>
-        <div className="relative mb-4"><select data-testid="select-movement-category" disabled={onlyThisMonth} value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="field-input appearance-none disabled:opacity-60"><option value="">Sem categoria</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><ChevronDown className="pointer-events-none absolute right-4 top-4 text-[#768579]" size={16}/></div>
-        {(!isEdit || editsPurchase) && <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-[#e6dfd1] bg-[#f4f0e6] px-4 py-3">
-          <span id="purchase-switch-label" className="text-[13px] font-semibold text-[#3d5948]">Compra parcelada</span>
-          <button type="button" role="switch" data-testid="switch-installments" aria-checked={isPurchase} aria-labelledby="purchase-switch-label" disabled={isEdit} onClick={() => { setIsPurchase(!isPurchase); if (!isPurchase) setIsRecurring(false); }} className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-70 ${isPurchase ? 'bg-[#28513f]' : 'bg-[#cfc8b9]'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${isPurchase ? 'left-[22px]' : 'left-0.5'}`}/></button>
+        <div className="relative mb-4"><select data-testid="select-movement-category" disabled={onlyThisMonth} value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="field-input appearance-none disabled:opacity-60"><option value="">Sem categoria</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><ChevronDown className="pointer-events-none absolute right-4 top-4 text-ink-mute" size={16}/></div>
+        {(!isEdit || editsPurchase) && <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-line bg-paper px-4 py-3">
+          <span id="purchase-switch-label" className="text-[13px] font-semibold text-ink">Compra parcelada</span>
+          <button type="button" role="switch" data-testid="switch-installments" aria-checked={isPurchase} aria-labelledby="purchase-switch-label" disabled={isEdit} onClick={() => { setIsPurchase(!isPurchase); if (!isPurchase) setIsRecurring(false); }} className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-70 ${isPurchase ? 'bg-brand' : 'bg-line-strong'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${isPurchase ? 'left-[22px]' : 'left-0.5'}`}/></button>
         </div>}
-        {!isEdit && <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-[#e6dfd1] bg-[#f4f0e6] px-4 py-3">
-          <span id="recurring-switch-label" className="text-[13px] font-semibold text-[#3d5948]">Compra recorrente</span>
-          <button type="button" role="switch" data-testid="switch-recurring" aria-checked={isRecurring} aria-labelledby="recurring-switch-label" onClick={() => { setIsRecurring(!isRecurring); if (!isRecurring) setIsPurchase(false); }} className={`relative h-6 w-11 shrink-0 rounded-full transition ${isRecurring ? 'bg-[#28513f]' : 'bg-[#cfc8b9]'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${isRecurring ? 'left-[22px]' : 'left-0.5'}`}/></button>
+        {!isEdit && <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-line bg-paper px-4 py-3">
+          <span id="recurring-switch-label" className="text-[13px] font-semibold text-ink">Compra recorrente</span>
+          <button type="button" role="switch" data-testid="switch-recurring" aria-checked={isRecurring} aria-labelledby="recurring-switch-label" onClick={() => { setIsRecurring(!isRecurring); if (!isRecurring) setIsPurchase(false); }} className={`relative h-6 w-11 shrink-0 rounded-full transition ${isRecurring ? 'bg-brand' : 'bg-line-strong'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${isRecurring ? 'left-[22px]' : 'left-0.5'}`}/></button>
         </div>}
       </> : <>
         <label className="field-label">Nome do cartão</label><input data-testid="input-card-name" required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Cartão principal" className="field-input mb-4"/>
       </>}
       {kind === 'movement' && <>
       <label className="field-label">{isPurchase ? 'Valor total da compra' : isRecurring ? 'Valor mensal' : 'Valor da compra'}</label>
-      <div className="relative mb-4"><span className="absolute left-4 top-[13px] text-[#7d887d]">R$</span><input data-testid="input-movement-amount" required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="field-input pl-12"/></div>
+      <div className="relative mb-4"><span className="absolute left-4 top-[13px] text-ink-mute">R$</span><input data-testid="input-movement-amount" required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="field-input pl-12"/></div>
       </>}
       {kind === 'movement' && isPurchase && <div className={`mb-4 grid gap-3 ${editsPurchase ? 'grid-cols-3' : 'grid-cols-2'}`}>
         <div className="min-w-0"><label htmlFor="input-installment-count" className="field-label">Nº de parcelas</label><input id="input-installment-count" data-testid="input-installment-count" required type="number" step="1" value={installmentCount} onChange={(e) => setInstallmentCount(e.target.value)} className="field-input"/></div>
@@ -126,16 +126,16 @@ export function Dialog({ kind, initial, month, categories, busy, error, onClose,
       {kind === 'movement' && <><label className="field-label">Data da compra</label><input data-testid="input-movement-date" required type="date" min={editsRecurring ? firstDayOf(chargeMonth) : undefined} max={editsRecurring ? lastDayOf(chargeMonth) : undefined} value={date} onChange={(e) => setDate(e.target.value)} className={`field-input ${isPurchase || isRecurring ? 'mb-3' : 'mb-6'}`}/></>}
       {kind === 'movement' && isRecurring && <div className="mb-6 space-y-3">
         {!onlyThisMonth && <div><label htmlFor="input-recurring-last-month" className="field-label">Até (mês, opcional)</label><input id="input-recurring-last-month" data-testid="input-recurring-last-month" type="month" value={lastMonth} onChange={(e) => setLastMonth(e.target.value)} className="field-input"/></div>}
-        {date && <p data-testid="text-recurring-preview" className="text-[13px] text-[#5d7364]"><b className="font-semibold text-[#3d5948]">Todo mês, dia {Number(date.slice(8, 10))}</b>, a partir de {monthLabel(date.slice(0, 7))} · {lastMonth && !onlyThisMonth ? `até ${monthLabel(lastMonth)}` : 'sem data final'}</p>}
-        {editsRecurring && <p data-testid="text-recurring-warning" className="rounded-xl bg-[#f5e9e1] px-3 py-2 text-[13px] leading-5 text-[#8c5a4c]">{onlyThisMonth ? `A mudança vale só para ${monthLabel(chargeMonth)}.` : 'As mudanças valem deste mês em diante.'}</p>}
+        {date && <p data-testid="text-recurring-preview" className="text-[13px] text-ink-soft"><b className="font-semibold text-ink">Todo mês, dia {Number(date.slice(8, 10))}</b>, a partir de {monthLabel(date.slice(0, 7))} · {lastMonth && !onlyThisMonth ? `até ${monthLabel(lastMonth)}` : 'sem data final'}</p>}
+        {editsRecurring && <p data-testid="text-recurring-warning" className="rounded-xl bg-alert-tint px-3 py-2 text-[13px] leading-5 text-alert">{onlyThisMonth ? `A mudança vale só para ${monthLabel(chargeMonth)}.` : 'As mudanças valem deste mês em diante.'}</p>}
       </div>}
       {kind === 'movement' && isPurchase && <div className="mb-6 space-y-2">
-        {split && <p data-testid="text-installment-preview" className="text-[13px] text-[#5d7364]"><b className="font-semibold text-[#3d5948]">{installmentCount}x de {money(split.base)}</b> · última em {split.lastLabel}{split.first !== split.base && <> · 1ª de {money(split.first)}</>}</p>}
-        {editsPurchase && <p data-testid="text-purchase-warning" className="rounded-xl bg-[#f5e9e1] px-3 py-2 text-[13px] leading-5 text-[#8c5a4c]">As mudanças valem para todas as parcelas.</p>}
+        {split && <p data-testid="text-installment-preview" className="text-[13px] text-ink-soft"><b className="font-semibold text-ink">{installmentCount}x de {money(split.base)}</b> · última em {split.lastLabel}{split.first !== split.base && <> · 1ª de {money(split.first)}</>}</p>}
+        {editsPurchase && <p data-testid="text-purchase-warning" className="rounded-xl bg-alert-tint px-3 py-2 text-[13px] leading-5 text-alert">As mudanças valem para todas as parcelas.</p>}
       </div>}
-      {kind === 'card' && <><span id="card-color-label" className="field-label">Cor do cartão</span><div role="group" aria-labelledby="card-color-label" className="mb-6 flex flex-wrap gap-2.5">{CARD_COLOR_KEYS.map((key) => <button key={key} type="button" data-testid={`button-card-color-${key}`} aria-label={CARD_COLORS[key].label} aria-pressed={color === key} onClick={() => setColor(key)} className={`grid h-9 w-9 place-items-center rounded-full ring-offset-2 ring-offset-[#fbf8f0] transition ${color === key ? 'ring-2 ring-[#294438]' : 'hover:scale-105'}`} style={{ background: CARD_COLORS[key].background }}>{color === key && <Check size={15} className="text-white"/>}</button>)}</div></>}
+      {kind === 'card' && <><span id="card-color-label" className="field-label">Cor do cartão</span><div role="group" aria-labelledby="card-color-label" className="mb-6 flex flex-wrap gap-2.5">{CARD_COLOR_KEYS.map((key) => <button key={key} type="button" data-testid={`button-card-color-${key}`} aria-label={CARD_COLORS[key].label} aria-pressed={color === key} onClick={() => setColor(key)} className={`grid h-9 w-9 place-items-center rounded-full ring-offset-2 ring-offset-surface transition ${color === key ? 'ring-2 ring-ink' : 'hover:scale-105'}`} style={{ background: CARD_COLORS[key].background }}>{color === key && <Check size={15} className="text-white"/>}</button>)}</div></>}
       <FormActions busy={busy} isEdit={isEdit} onClose={onClose} error={error}/>
-    {kind === 'movement' && isEdit && onDelete && <button type="button" data-testid="button-delete-movement" onClick={onDelete} className="mt-3 flex min-h-11 w-full items-center justify-center rounded-full text-[14px] font-semibold text-alert transition hover:bg-[#f5e9e1]">Excluir compra</button>}
+    {kind === 'movement' && isEdit && onDelete && <button type="button" data-testid="button-delete-movement" onClick={onDelete} className="mt-3 flex min-h-11 w-full items-center justify-center rounded-full text-[14px] font-semibold text-alert transition hover:bg-alert-tint">Excluir compra</button>}
     </form>
   </FormSheet>;
 }
@@ -295,26 +295,26 @@ export default function Dashboard({ month }: { month: MonthKey }) {
     else if (await askDelete(`a compra “${movement.description}”`)) deleteMovement.mutate({ movementId: movement.id });
   };
 
-  if (loading) return <main className="min-h-safe bg-[#f5f1e7] p-5 sm:p-10"><div className="mx-auto max-w-6xl animate-pulse"><div className="h-5 w-36 rounded bg-[#e5dfd2]"/><div className="mt-8 h-12 w-64 rounded bg-[#e5dfd2]"/><div className="mt-10 grid gap-5 md:grid-cols-2"><div className="h-64 rounded-3xl bg-[#e9e3d7]"/><div className="h-64 rounded-3xl bg-[#e9e3d7]"/></div><div className="mt-6 h-72 rounded-3xl bg-[#e9e3d7]"/></div></main>;
-  if (cardsQuery.isError || movementsQuery.isError) return <main className="flex min-h-safe items-center justify-center bg-[#f5f1e7] p-6"><div className="max-w-md text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#e9e3d7] text-[#315944]"><CircleHelp/></div><h1 className="mt-5 font-display text-3xl text-[#234638]">Vamos tentar de novo?</h1><p className="mt-3 text-sm leading-6 text-[#758075]">Não conseguimos abrir seu caderno agora. Sua informação continua segura.</p><button onClick={() => { void cardsQuery.refetch(); void movementsQuery.refetch(); }} className="mt-6 rounded-full bg-[#28513f] px-6 py-3 text-sm font-semibold text-[#fffaf0]">Tentar novamente</button></div></main>;
+  if (loading) return <main className="min-h-safe bg-paper p-5 sm:p-10"><div className="mx-auto max-w-6xl animate-pulse"><div className="h-5 w-36 rounded bg-chip"/><div className="mt-8 h-12 w-64 rounded bg-chip"/><div className="mt-10 grid gap-5 md:grid-cols-2"><div className="h-64 rounded-3xl bg-chip"/><div className="h-64 rounded-3xl bg-chip"/></div><div className="mt-6 h-72 rounded-3xl bg-chip"/></div></main>;
+  if (cardsQuery.isError || movementsQuery.isError) return <main className="flex min-h-safe items-center justify-center bg-paper p-6"><div className="max-w-md text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-chip text-brand"><CircleHelp/></div><h1 className="mt-5 font-display text-3xl text-ink">Vamos tentar de novo?</h1><p className="mt-3 text-sm leading-6 text-ink-mute">Não conseguimos abrir seu caderno agora. Sua informação continua segura.</p><button onClick={() => { void cardsQuery.refetch(); void movementsQuery.refetch(); }} className="mt-6 rounded-full bg-brand px-6 py-3 text-sm font-semibold text-on-brand">Tentar novamente</button></div></main>;
 
-  return <main className="notebook-grain min-h-safe bg-[#f5f1e7] text-[#294438]">
+  return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
-      <header className="enter hidden items-center justify-between border-b border-[#ded8ca] pb-5 sm:flex">
-        <div className="flex items-center gap-2 rounded-full border border-[#ddd7c9] bg-[#f9f6ee] px-3.5 py-2 text-[11px] text-[#64766a]"><span className={`h-1.5 w-1.5 rounded-full ${health.isError ? 'bg-[#d78470]' : 'bg-[#6d9d79]'}`}/>{health.isError ? 'Sincronização pausada' : 'Seu caderno está em dia'}</div>
+      <header className="enter hidden items-center justify-between border-b border-line pb-5 sm:flex">
+        <div className="flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-2 text-[11px] text-ink-mute"><span className={`h-1.5 w-1.5 rounded-full ${health.isError ? 'bg-alert' : 'bg-brand'}`}/>{health.isError ? 'Sincronização pausada' : 'Seu caderno está em dia'}</div>
       </header>
       <MonthNav area="cards" month={month} canGoNext={canGoNext}/>
       <AppTabs/>
 
-      {isFuture && <p data-testid="text-preview-banner" className="enter mt-3 flex items-start gap-2 rounded-2xl border border-[#e6d7b8] bg-[#f8efd9] px-4 py-3 text-[13px] leading-5 text-[#7a6a45]"><CalendarDays size={14} className="mt-0.5 shrink-0"/><span><b className="font-semibold">{capitalize(monthName(month))} ainda não começou:</b> aparecem as parcelas e cobranças previstas e as compras já registradas.</span></p>}
+      {isFuture && <p data-testid="text-preview-banner" className="enter mt-3 flex items-start gap-2 rounded-2xl border border-line bg-warn-tint px-4 py-3 text-[13px] leading-5 text-eyebrow"><CalendarDays size={14} className="mt-0.5 shrink-0"/><span><b className="font-semibold">{capitalize(monthName(month))} ainda não começou:</b> aparecem as parcelas e cobranças previstas e as compras já registradas.</span></p>}
 
 
 
       {!cards.length ? <section className="enter mt-6 rounded-2xl border border-line bg-surface p-6">
-        <div className="mb-4 grid h-11 w-11 place-items-center rounded-full bg-[#e4ece2] text-brand"><CreditCard size={20}/></div>
+        <div className="mb-4 grid h-11 w-11 place-items-center rounded-full bg-tint text-brand"><CreditCard size={20}/></div>
         <h2 className="font-display text-[28px] leading-tight text-ink">Vamos anotar o seu cartão?</h2>
         <p className="mt-2 text-[15px] text-ink-soft">Lance as compras e veja quanto deu a fatura de cada mês.</p>
-        <button data-testid="button-create-card" onClick={() => setDialog({ kind: 'card', initial: { color: cardsQuery.data?.nextColor } })} className="mt-5 flex h-12 items-center gap-2 rounded-full bg-brand px-6 text-[15px] font-semibold text-on-brand transition hover:bg-[#1f4333]"><Plus size={16}/> Cadastrar cartão</button>
+        <button data-testid="button-create-card" onClick={() => setDialog({ kind: 'card', initial: { color: cardsQuery.data?.nextColor } })} className="mt-5 flex h-12 items-center gap-2 rounded-full bg-brand px-6 text-[15px] font-semibold text-on-brand transition hover:bg-brand-hover"><Plus size={16}/> Cadastrar cartão</button>
       </section> : <>
       <section className="enter mt-5"><CardPicker cards={cards} selectedId={selectedCardId} onSelect={chooseCard} onAdd={() => setDialog({ kind: 'card', initial: { color: cardsQuery.data?.nextColor } })}/></section>
 
@@ -322,7 +322,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
         <p className="text-sm font-medium text-ink-soft">{isFuture ? 'Fatura prevista de' : 'Fatura de'} {monthLabel(month)}</p>
         <div className="flex items-start justify-between gap-3">
           <p data-testid="text-invoice" className="min-w-0 font-display text-[44px] leading-[1.1] tracking-[-.02em] text-ink [overflow-wrap:anywhere] min-[380px]:text-[52px]">{money(card.invoiceAmount)}</p>
-          <button aria-label="Mais opções do cartão" data-testid="button-card-menu" onClick={() => setMenuOpen(true)} className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-soft transition hover:bg-[#ece7dc]"><MoreHorizontal size={22}/></button>
+          <button aria-label="Mais opções do cartão" data-testid="button-card-menu" onClick={() => setMenuOpen(true)} className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-soft transition hover:bg-hover"><MoreHorizontal size={22}/></button>
         </div>
         <p className="mt-1 text-[15px] text-ink-soft">{card.movementCount === 0 ? 'Nenhuma compra neste mês.' : plural(card.movementCount, 'compra', 'compras')}{nextInvoice > 0 && <> · próxima fatura prevista {money(nextInvoice)}</>}</p>
       </section>}
@@ -359,7 +359,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
           </div>
           <h2 className="font-display text-[28px] leading-tight text-ink">O que já aconteceu</h2>
           {chips.length > 0 && <div data-testid="filter-categories" role="group" aria-label="Filtrar por categoria" className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4">
-            {[{ key: 'all', label: 'Todas' }, ...chips].map((chip) => <button key={chip.key} data-testid={`filter-${chip.key}`} aria-pressed={activeFilter === chip.key} onClick={() => setFilter(chip.key)} className={`h-11 shrink-0 rounded-full border px-4 text-[14px] font-semibold transition ${activeFilter === chip.key ? 'border-brand bg-brand text-on-brand' : 'border-[#cfc7b7] bg-surface text-ink-soft hover:bg-[#eee9dd]'}`}>{chip.label}</button>)}
+            {[{ key: 'all', label: 'Todas' }, ...chips].map((chip) => <button key={chip.key} data-testid={`filter-${chip.key}`} aria-pressed={activeFilter === chip.key} onClick={() => setFilter(chip.key)} className={`h-11 shrink-0 rounded-full border px-4 text-[14px] font-semibold transition ${activeFilter === chip.key ? 'border-brand bg-brand text-on-brand' : 'border-line-strong bg-surface text-ink-soft hover:bg-hover'}`}>{chip.label}</button>)}
           </div>}
           {activeFilter !== 'all' && <p data-testid="text-filter-total" className="mt-3 text-[13px] text-ink-soft">Total do filtro: <b className="font-mono-data font-medium text-ink">{money(visibleTotal)}</b></p>}
           <div className="mt-4 border-y border-line">
@@ -368,10 +368,10 @@ export default function Dashboard({ month }: { month: MonthKey }) {
                 // D3 / D4: a registered purchase or a planned installment opens its edit form; a planned recurring charge has no action.
                 const open = row.movement ? () => editMovement(row.movement!) : row.planned ? () => editPlanned(row.planned!) : null;
                 const content = <>
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#f1e9df] text-[#9a4f3f]"><ArrowUpRight size={18}/></span>
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-alert-tint text-alert"><ArrowUpRight size={18}/></span>
                   <span className="block min-w-0 flex-1">
-                    <span className="flex items-center gap-2 text-[15px] font-semibold text-ink"><span className="truncate">{row.description}</span>{row.installment && <span data-testid={row.movement ? `badge-installment-${row.movement.id}` : undefined} className="shrink-0 rounded-full bg-[#ece6da] px-2 py-0.5 font-mono-data text-[12px] font-medium text-ink-soft">{row.installment}/{row.installmentCount}</span>}{row.recurring && <span data-testid="badge-recurring" className="shrink-0 rounded-full bg-[#e4ece2] px-2 py-0.5 text-[12px] font-semibold text-[#2f5a44]">Mensal</span>}{row.planned && <span className="shrink-0 rounded-full bg-[#f8efd9] px-2 py-0.5 text-[12px] font-medium text-eyebrow">prevista</span>}</span>
-                    <span className="mt-1 flex items-center gap-2 text-[13px] text-ink-soft"><span className="flex items-center gap-1"><CalendarDays size={14}/>{dateLabel(row.date)}</span>{row.categoryName && <span data-testid="text-movement-category" className="truncate rounded-full bg-[#e4ece2] px-2 py-0.5 text-[12px] font-medium text-[#2f5a44]">{row.categoryName}</span>}</span>
+                    <span className="flex items-center gap-2 text-[15px] font-semibold text-ink"><span className="truncate">{row.description}</span>{row.installment && <span data-testid={row.movement ? `badge-installment-${row.movement.id}` : undefined} className="shrink-0 rounded-full bg-chip px-2 py-0.5 font-mono-data text-[12px] font-medium text-ink-soft">{row.installment}/{row.installmentCount}</span>}{row.recurring && <span data-testid="badge-recurring" className="shrink-0 rounded-full bg-tint px-2 py-0.5 text-[12px] font-semibold text-brand">Mensal</span>}{row.planned && <span className="shrink-0 rounded-full bg-warn-tint px-2 py-0.5 text-[12px] font-medium text-eyebrow">prevista</span>}</span>
+                    <span className="mt-1 flex items-center gap-2 text-[13px] text-ink-soft"><span className="flex items-center gap-1"><CalendarDays size={14}/>{dateLabel(row.date)}</span>{row.categoryName && <span data-testid="text-movement-category" className="truncate rounded-full bg-tint px-2 py-0.5 text-[12px] font-medium text-brand">{row.categoryName}</span>}</span>
                   </span>
                   <span className="shrink-0 text-right font-mono-data text-[15px] font-medium text-ink">− {money(row.amount)}</span>
                 </>;
@@ -382,7 +382,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
                   : <div key={row.key} data-testid={testId} className={rowClass}>{content}</div>;
               })}
               {visibleRows.length > 8 && <button onClick={() => setShowAll(!showAll)} className="min-h-11 w-full py-3 text-[13px] font-semibold text-brand hover:bg-paper">{showAll ? 'Mostrar menos' : `Ver mais ${visibleRows.length - 8} compras`}</button>}
-            </div> : <div className="px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#f0eadd] text-[#9b8c69]"><ArrowDownLeft size={18}/></div><h3 data-testid="text-movements-empty" className="mt-3 font-display text-[20px] text-ink">Ainda sem compras</h3><p className="mt-1 text-[13px] leading-5 text-ink-soft">{card ? `As compras de ${monthName(month)} aparecem aqui assim que você registrar.` : 'Cadastre um cartão para começar a registrar suas compras.'}</p>{card && <button onClick={() => setDialog({ kind: 'movement', initial: {} })} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Registrar a primeira compra</button>}</div>}
+            </div> : <div className="px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-ink-mute"><ArrowDownLeft size={18}/></div><h3 data-testid="text-movements-empty" className="mt-3 font-display text-[20px] text-ink">Ainda sem compras</h3><p className="mt-1 text-[13px] leading-5 text-ink-soft">{card ? `As compras de ${monthName(month)} aparecem aqui assim que você registrar.` : 'Cadastre um cartão para começar a registrar suas compras.'}</p>{card && <button onClick={() => setDialog({ kind: 'movement', initial: {} })} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Registrar a primeira compra</button>}</div>}
           </div>
         </div>
       </section>

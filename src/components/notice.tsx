@@ -36,7 +36,7 @@ export function useNotice(formOpen = false) {
 export function Notice({ notice }: { notice: NoticeState }) {
   const [location] = useLocation();
   if (!notice) return null;
-  return <div role={notice.error ? 'alert' : 'status'} data-testid="status-toast" className={`fixed inset-x-4 z-[60] mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-full px-4 py-3 text-[14px] font-semibold text-white shadow-lg ${hasFooter(location) ? 'bottom-[calc(6.5rem+env(safe-area-inset-bottom))]' : 'bottom-6'} ${notice.error ? 'bg-alert' : 'bg-brand'}`}>
+  return <div role={notice.error ? 'alert' : 'status'} data-testid="status-toast" className={`fixed inset-x-4 z-[60] mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-full px-4 py-3 text-[14px] font-semibold text-on-brand shadow-lg ${hasFooter(location) ? 'bottom-[calc(6.5rem+env(safe-area-inset-bottom))]' : 'bottom-6'} ${notice.error ? 'bg-alert' : 'bg-brand'}`}>
     <Check size={16} className="shrink-0"/><span className="min-w-0">{notice.text}</span>
   </div>;
 }

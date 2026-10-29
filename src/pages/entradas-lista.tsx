@@ -20,7 +20,7 @@ import { areaPath, capitalize, dateLabel, money, monthLabel, type ListKind, type
 import { useRememberMonth } from '@/lib/last-month';
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
-const emptyBox = (testid: string, icon: React.ReactNode, text: string) => <div className="mt-6 rounded-2xl border border-dashed border-line bg-surface px-5 py-7 text-center"><div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[#e8e9df] text-brand">{icon}</div><p data-testid={testid} className="mt-3 text-[14px] text-ink-soft">{text}</p></div>;
+const emptyBox = (testid: string, icon: React.ReactNode, text: string) => <div className="mt-6 rounded-2xl border border-dashed border-line bg-surface px-5 py-7 text-center"><div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-chip text-brand">{icon}</div><p data-testid={testid} className="mt-3 text-[14px] text-ink-soft">{text}</p></div>;
 
 type ScopeAsk = { kind: 'income'; action: 'edit' | 'delete'; item: IncomeOccurrence } | { kind: 'bill'; action: 'edit' | 'delete'; item: BillOccurrence };
 
@@ -105,7 +105,7 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
   const busy = updateIncome.isPending || updateBill.isPending || updateDaily.isPending;
   const { kicker, title } = TITLES[kind];
   const subtitle = 'mt-0.5 flex flex-wrap items-center gap-2 text-[13px] text-ink-soft';
-  const tag = 'inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e4ece2] px-2 py-0.5 text-[12px] font-semibold text-[#2f5a44]';
+  const tag = 'inline-flex shrink-0 items-center gap-1 rounded-full bg-tint px-2 py-0.5 text-[12px] font-semibold text-brand';
   const rowButton = 'flex min-h-16 min-w-0 flex-1 items-center gap-3 py-3 text-left transition hover:bg-surface';
 
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
@@ -119,7 +119,7 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
       </section>
 
       {query.isLoading ? <div className="mt-6 space-y-3 animate-pulse"><div className="h-16 rounded-2xl bg-line"/><div className="h-16 rounded-2xl bg-line"/></div>
-      : query.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#e9e3d7] text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir esta lista.</h3><button onClick={() => void query.refetch()} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
+      : query.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir esta lista.</h3><button onClick={() => void query.refetch()} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
       : <>
       {kind === 'entradas' && (incomeItems.length ? <ul data-testid="list-incomes" className="mt-5 divide-y divide-line border-y border-line">
         {incomeItems.map((item) => {
@@ -165,7 +165,7 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
             <button type="button" aria-label={`Editar ${item.description}`} onClick={() => setDailyForm({ item })} className={rowButton}>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[15px] font-semibold text-ink">{item.description}</span>
-                <span className={subtitle}><span className="flex items-center gap-1"><CalendarDays size={13}/>{dateLabel(item.date)}</span>{item.categoryName && <span className="truncate rounded-full bg-[#e4ece2] px-2 py-0.5 text-[12px] font-medium text-[#2f5a44]">{item.categoryName}</span>}</span>
+                <span className={subtitle}><span className="flex items-center gap-1"><CalendarDays size={13}/>{dateLabel(item.date)}</span>{item.categoryName && <span className="truncate rounded-full bg-tint px-2 py-0.5 text-[12px] font-medium text-brand">{item.categoryName}</span>}</span>
               </span>
               <span className="shrink-0 font-mono-data text-[15px] text-ink">− {money(item.amount)}</span>
             </button>

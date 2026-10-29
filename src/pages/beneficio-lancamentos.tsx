@@ -60,20 +60,20 @@ export default function BeneficioLancamentos({ benefitId, filter, month }: { ben
       </section>
 
       {benefits.isLoading ? <div className="mt-6 space-y-3 animate-pulse"><div className="h-16 rounded-2xl bg-line"/><div className="h-16 rounded-2xl bg-line"/></div>
-      : benefits.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#e9e3d7] text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir os lançamentos.</h3><button onClick={() => void benefits.refetch()} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
+      : benefits.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir os lançamentos.</h3><button onClick={() => void benefits.refetch()} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
       : spends.length ? <ul data-testid="list-spends" className="mt-5 divide-y divide-line border-y border-line">
         {spends.map((spend) => <li key={spend.id} data-testid={`row-spend-${spend.id}`} className="flex items-center gap-1">
           <button type="button" aria-label={`Editar ${spend.description}`} onClick={() => setEditing(spend)} className="flex min-h-16 min-w-0 flex-1 items-center gap-3 py-3 text-left transition hover:bg-surface">
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[15px] font-semibold text-ink">{spend.description}</span>
-              <span className="mt-0.5 flex items-center gap-2 text-[13px] text-ink-soft"><span className="flex items-center gap-1"><CalendarDays size={13}/>{dateLabel(spend.date)}</span>{spend.categoryName && <span className="truncate rounded-full bg-[#e4ece2] px-2 py-0.5 text-[12px] font-medium text-[#2f5a44]">{spend.categoryName}</span>}</span>
+              <span className="mt-0.5 flex items-center gap-2 text-[13px] text-ink-soft"><span className="flex items-center gap-1"><CalendarDays size={13}/>{dateLabel(spend.date)}</span>{spend.categoryName && <span className="truncate rounded-full bg-tint px-2 py-0.5 text-[12px] font-medium text-brand">{spend.categoryName}</span>}</span>
             </span>
             <span className="shrink-0 font-mono-data text-[15px] text-ink">− {money(spend.amount)}</span>
           </button>
           <RowMenu title={spend.description} editTestId={`button-edit-spend-${spend.id}`} deleteTestId={`button-delete-spend-${spend.id}`} onEdit={() => setEditing(spend)} onDelete={() => void removeSpend(spend)}/>
         </li>)}
       </ul>
-      : <div className="mt-6 rounded-2xl border border-dashed border-line bg-surface px-5 py-7 text-center"><div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[#e8e9df] text-brand"><Receipt size={16}/></div><p data-testid="text-spends-empty" className="mt-3 text-[14px] text-ink-soft">{filter === 'todos' ? 'Sem lançamentos neste mês.' : 'Sem lançamentos nesta categoria.'}</p></div>}
+      : <div className="mt-6 rounded-2xl border border-dashed border-line bg-surface px-5 py-7 text-center"><div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-chip text-brand"><Receipt size={16}/></div><p data-testid="text-spends-empty" className="mt-3 text-[14px] text-ink-soft">{filter === 'todos' ? 'Sem lançamentos neste mês.' : 'Sem lançamentos nesta categoria.'}</p></div>}
     </div>
 
     {editing && benefit && <SpendDialog key={editing.id} month={month} benefit={benefit} spend={editing} categories={categories} busy={updateSpend.isPending} error={formError} onClose={() => setEditing(null)}

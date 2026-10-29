@@ -28,11 +28,11 @@ export default function EntradasResumo({ month }: { month: MonthKey }) {
 
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
-      <button data-testid="button-back" aria-label="Voltar" onClick={() => navigate(areaPath('income', month))} className="-ml-2 flex h-11 items-center gap-1.5 rounded-full px-3 text-[15px] font-semibold text-brand transition hover:bg-[#ece7dc]"><ArrowLeft size={20}/>Voltar</button>
+      <button data-testid="button-back" aria-label="Voltar" onClick={() => navigate(areaPath('income', month))} className="-ml-2 flex h-11 items-center gap-1.5 rounded-full px-3 text-[15px] font-semibold text-brand transition hover:bg-hover"><ArrowLeft size={20}/>Voltar</button>
       <p className="mt-3 font-mono-data text-xs uppercase tracking-[.08em] text-eyebrow">{capitalize(monthLabel(month))}</p>
       <h1 className="font-display text-[32px] leading-tight text-ink">Resumo do mês</h1>
 
-      {cashQuery.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#e9e3d7] text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir o resumo.</h3><button onClick={() => void cashQuery.refetch()} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
+      {cashQuery.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir o resumo.</h3><button onClick={() => void cashQuery.refetch()} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
         : !cash ? <div aria-busy="true" className="mt-6 space-y-3"><div className="h-14 animate-pulse rounded-2xl bg-line"/><div className="h-64 animate-pulse rounded-2xl bg-line"/></div>
         : <>
           <div className="mt-5 grid grid-cols-2 gap-3">
