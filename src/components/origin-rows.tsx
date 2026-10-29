@@ -31,10 +31,11 @@ export function OriginRows({ rows, income }: { rows: OriginRow[]; income: number
         return <li key={row.id}>
           <button data-testid={`row-origin-${row.id}`} aria-label={name} onClick={row.onOpen} className="block min-h-[72px] w-full px-4 py-3 text-left transition hover:bg-hover">
             <span className="flex items-center gap-3">
-              <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-tint text-brand">{row.icon}</span>
+              {/* Abaixo de 400 px o ícone sai para o nome e a quantidade caberem inteiros ao lado do valor. */}
+              <span aria-hidden className="hidden h-9 w-9 shrink-0 place-items-center rounded-xl bg-tint text-brand min-[400px]:grid">{row.icon}</span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[16px] font-semibold text-ink">{row.label}</span>
-                {row.count && <span className="block truncate text-[14px] text-ink-soft">{row.count}</span>}
+                <span className="block text-[16px] font-semibold leading-snug text-ink [overflow-wrap:anywhere]">{row.label}</span>
+                {row.count && <span className="block text-[14px] leading-snug text-ink-soft">{row.count}</span>}
               </span>
               <span className="shrink-0 font-mono-data text-[16px] text-ink">{signed(row.value, row.kind)}</span>
               <ChevronRight aria-hidden size={20} className="shrink-0 text-ink-soft"/>
@@ -42,7 +43,7 @@ export function OriginRows({ rows, income }: { rows: OriginRow[]; income: number
             <span aria-hidden className="mt-2 block">
               {hidden
                 ? <HiddenChart height={8}/>
-                : <span className="block h-2 overflow-hidden rounded-full bg-chart-track"><span className={`block h-full rounded-full ${row.kind === 'in' ? 'bg-chart-in' : 'bg-chart-out'}`} style={{ width: row.value > 0 ? `max(4px, ${percent}%)` : 0 }}/></span>}
+                : <span className="block h-2 overflow-hidden rounded-full bg-chart-track"><span className={`block h-full rounded-full ${row.kind === 'in' ? 'bg-chart-in' : 'bg-chart-out'}`} style={{ width: row.value > 0 && income > 0 ? `max(4px, ${percent}%)` : 0 }}/></span>}
             </span>
           </button>
         </li>;

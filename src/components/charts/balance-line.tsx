@@ -5,13 +5,13 @@ import { ChartTable, HiddenChart } from '@/components/charts/chart-table';
 
 const W = 358;
 const H = 170;
-const LEFT = 38;
-const RIGHT = 6;
+const LEFT = 2;
+const RIGHT = 2;
 const TOP = 14;
 const BOTTOM = 26;
 const DOT = 4.5;
 const DOT_LAST = 6;
-const ROUND = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 7, 8, 10];
+const ROUND = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 7, 8, 10];
 
 export type BalanceLinePoint = { month: MonthKey; value: number };
 
@@ -22,6 +22,7 @@ function niceUp(x: number) {
   return (ROUND.map((n) => n * magnitude).find((n) => n >= x - 1e-9)) ?? 10 * magnitude;
 }
 
+// Os rótulos do eixo ficam dentro da área do gráfico, acima de cada linha de grade, para as colunas de toque terem 48 px ou mais em 360 px.
 // specs/redesign-v2-entradas.md RN-04: de 0 (ou do menor saldo, se for negativo) até um valor redondo acima do maior,
 // com 3 marcas (início, meio e topo). Sem negativo o meio também é redondo ("0", "7 mil", "14 mil").
 export function balanceScale(values: number[]) {
@@ -44,7 +45,7 @@ export const shortMonth = (month: MonthKey) => capitalize(monthName(month).slice
 // a 12%. Cada mês é uma coluna tocável de 48 px ou mais; com o foco, as setas escolhem o mês. O último ponto leva o valor.
 export function BalanceLine({ points, selected, onSelect }: { points: BalanceLinePoint[]; selected: MonthKey; onSelect: (month: MonthKey) => void }) {
   const caption = 'Saldo ao fim de cada mês';
-  if (isHidden()) return <div data-testid="chart-balance-line"><HiddenChart height={H}/><ChartTable caption={caption} head={['Mês', 'Saldo']} rows={points.map((p) => ({ label: capitalize(monthLabel(p.month)), value: money(p.value) }))}/></div>;
+  if (isHidden()) return <div data-testid="chart-balance-line" className="max-w-[440px]"><HiddenChart height={H}/><ChartTable caption={caption} head={['Mês', 'Saldo']} rows={points.map((p) => ({ label: capitalize(monthLabel(p.month)), value: money(p.value) }))}/></div>;
 
   const scale = balanceScale(points.map((p) => p.value));
   const plotW = W - LEFT - RIGHT;
@@ -67,11 +68,11 @@ export function BalanceLine({ points, selected, onSelect }: { points: BalanceLin
 
   const label = `${caption}: ${points.map((p) => `${shortMonth(p.month)} ${money(p.value)}`).join('; ')}`;
   const lastY = y(points[last].value);
-  return <div data-testid="chart-balance-line" className="enter">
+  return <div data-testid="chart-balance-line" className="enter max-w-[440px]">
     <svg role="img" aria-label={label} tabIndex={0} onKeyDown={onKey} viewBox={`0 0 ${W} ${H}`} className="block w-full rounded-lg outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
       {scale.ticks.map((tick) => <g key={tick}>
         <line x1={LEFT} x2={W - RIGHT} y1={y(tick)} y2={y(tick)} strokeWidth={1} className="stroke-line"/>
-        <text x={LEFT - 6} y={y(tick) + 4} fontSize={12} textAnchor="end" className="fill-ink-soft">{tickLabel(tick)}</text>
+        <text x={LEFT + 4} y={y(tick) - 5} fontSize={12} textAnchor="start" strokeWidth={3} paintOrder="stroke" className="fill-ink-soft stroke-paper">{tickLabel(tick)}</text>
       </g>)}
       {scale.low < 0 && scale.top > 0 && <line x1={LEFT} x2={W - RIGHT} y1={y(0)} y2={y(0)} strokeWidth={1.5} strokeDasharray="4 3" className="stroke-ink-soft"/>}
       {points.map((p, i) => p.month === selected && <rect key={`sel-${p.month}`} x={LEFT + colW * i} y={TOP - 6} width={colW} height={plotH + 6} rx={8} className="fill-tint" fillOpacity={0.6}/>)}
