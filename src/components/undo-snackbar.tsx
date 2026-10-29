@@ -81,7 +81,7 @@ export function UndoSnackbar() {
   return <div
     role={snack.kind === 'error' ? 'alert' : 'status'} data-testid="snackbar-undo"
     onPointerEnter={() => setHover(true)} onPointerLeave={() => setHover(false)} onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
-    className={`fade-in fixed inset-x-4 z-[60] mx-auto flex min-h-14 max-w-[440px] items-center gap-3 rounded-[28px] bg-ink py-2 pl-5 pr-2 text-[14px] leading-5 text-paper shadow-lg transition-opacity duration-150 ${closing ? 'opacity-0' : 'opacity-100'} ${bottom}`}>
+    className={`fade-in fixed inset-x-4 z-[60] mx-auto flex min-h-14 max-w-[440px] items-center gap-3 rounded-[28px] bg-ink py-1 pl-5 pr-2 text-[14px] leading-5 text-paper shadow-lg transition-opacity duration-150 ${closing ? 'opacity-0' : 'opacity-100'} ${bottom}`}>
     <span data-testid="text-undo" className="min-w-0 flex-1 font-medium [overflow-wrap:anywhere]">{snack.text}</span>
     {snack.kind === 'undo' && snack.undoId !== undefined && <button type="button" data-testid="button-undo" disabled={undo.isPending}
       onClick={() => undo.mutate({ undoId: snack.undoId! })}
