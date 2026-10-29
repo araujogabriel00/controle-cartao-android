@@ -77,7 +77,7 @@ export function SnapCarousel<T extends SnapItem>({ items, selectedId, onSelect, 
 
   return <div>
     <div ref={scroller} role="region" aria-label={region} tabIndex={0} onKeyDown={onKeyDown}
-      className="no-scrollbar relative flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain rounded-[26px] py-1 outline-none focus-visible:ring-2 focus-visible:ring-[#78947e]/50">
+      className="no-scrollbar relative flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain rounded-[26px] py-1 outline-none focus-visible:ring-2 focus-visible:ring-brand/50">
       {/* Spacers let the first and last slides reach the center. */}
       <div aria-hidden className="w-[calc(7%-12px)] shrink-0"/>
       {items.map((item, i) => {
@@ -85,17 +85,17 @@ export function SnapCarousel<T extends SnapItem>({ items, selectedId, onSelect, 
         const { background, accent } = CARD_COLORS[item.color];
         return <article key={item.id} ref={(el) => { slides.current[i] = el; }} data-testid={`${faceTestId}-${item.id}`} aria-current={active ? 'true' : undefined} aria-label={itemLabel(item)}
           onClick={() => { if (!active) onSelect(item.id); }}
-          className={`relative w-[86%] shrink-0 snap-center overflow-hidden rounded-[26px] p-5 text-[#fffaf0] shadow-[0_14px_32px_-24px_rgba(32,70,52,.6)] transition duration-300 sm:p-8 ${active ? 'scale-100 opacity-100' : 'scale-[.94] cursor-pointer opacity-70'}`}
+          className={`relative w-[86%] shrink-0 snap-center overflow-hidden rounded-[26px] p-5 text-card-face-text shadow-[0_14px_32px_-24px_rgba(32,70,52,.6)] transition duration-300 sm:p-8 ${active ? 'scale-100 opacity-100' : 'scale-[.94] cursor-pointer opacity-70'}`}
           style={{ background }}>
           <div className="absolute -right-20 -top-28 h-72 w-72 rounded-full border border-white/10"/><div className="absolute -right-8 -top-16 h-52 w-52 rounded-full border border-white/10"/>
           {renderFace(item, active, accent)}
         </article>;
       })}
       <button ref={(el) => { slides.current[items.length] = el; }} data-testid={add.testId} onClick={onAdd}
-        className="flex w-[86%] shrink-0 snap-center flex-col items-center justify-center gap-3 rounded-[26px] border-2 border-dashed border-[#cfc7b7] bg-[#f8f5ed] p-6 text-[#496754] transition hover:bg-[#f1ede3]">
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#e4ece2] text-[#52735c]"><Plus size={22}/></span>
-        <span className="font-display text-[22px] text-[#234638]">{add.title}</span>
-        <span className="max-w-[220px] text-center text-xs leading-5 text-[#7d887c]">{add.text}</span>
+        className="flex w-[86%] shrink-0 snap-center flex-col items-center justify-center gap-3 rounded-[26px] border-2 border-dashed border-line-strong bg-surface p-6 text-ink-soft transition hover:bg-hover">
+        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-tint text-brand"><Plus size={22}/></span>
+        <span className="font-display text-[22px] text-ink">{add.title}</span>
+        <span className="max-w-[220px] text-center text-xs leading-5 text-ink-mute">{add.text}</span>
       </button>
       <div aria-hidden className="w-[calc(7%-12px)] shrink-0"/>
     </div>
@@ -106,7 +106,7 @@ export function SnapCarousel<T extends SnapItem>({ items, selectedId, onSelect, 
         return <button key={item.id} aria-label={itemLabel(item)} aria-current={active ? 'true' : undefined} onClick={() => onSelect(item.id)}
           className="grid h-11 min-w-11 place-items-center"><span className={`block h-2 rounded-full transition-all duration-300 ${active ? 'w-5' : 'w-2 opacity-40'}`} style={{ background: CARD_COLORS[item.color].background }}/></button>;
       })}
-      <button aria-label={add.ariaLabel} onClick={() => scrollToIndex(items.length, 'smooth')} className="grid h-11 w-11 place-items-center rounded-full text-[#7d887c] transition hover:bg-[#ece7dc]"><Plus size={16}/></button>
+      <button aria-label={add.ariaLabel} onClick={() => scrollToIndex(items.length, 'smooth')} className="grid h-11 w-11 place-items-center rounded-full text-ink-mute transition hover:bg-hover"><Plus size={16}/></button>
     </div>
   </div>;
 }

@@ -15,7 +15,7 @@ import { RowMenu } from '@/components/row-menu';
 import { Dialog, type DialogRecord } from '@/pages/dashboard';
 import { ScopeDialog } from '@/components/scope-dialog';
 import { chargeDialog, chargeOfMovement, chargeOfPlanned, type RecurringCharge } from '@/lib/recurring-charge';
-import { capitalize, currentMonth, dateLabel, money, monthLabel, monthOf, type MonthKey } from '@/lib/format';
+import { areaPath, capitalize, currentMonth, dateLabel, money, monthLabel, monthOf, type MonthKey } from '@/lib/format';
 
 // One line of the list: a registered purchase or a planned installment.
 type Row = {
@@ -122,7 +122,7 @@ export default function Compras() {
 
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
-      <BackButton onClick={() => navigate('/')}/>
+      <BackButton onClick={() => navigate(areaPath('cards', currentMonth()))}/>
 
       <section className="enter mt-3" style={{ animationDelay: '.06s' }}>
         <p className="font-mono-data text-xs uppercase tracking-[.08em] text-eyebrow">{card?.name ?? 'Cartão'} · Todos os meses</p>
@@ -139,7 +139,7 @@ export default function Compras() {
       </div>
 
       {cardsQuery.isLoading || all.isLoading ? <div className="mt-6 space-y-3 animate-pulse"><div className="h-16 rounded-2xl bg-line"/><div className="h-16 rounded-2xl bg-line"/></div>
-      : cardsQuery.isError || all.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#e9e3d7] text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir as compras</h3><button onClick={() => { void cardsQuery.refetch(); void all.refetch(); }} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
+      : cardsQuery.isError || all.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir as compras</h3><button onClick={() => { void cardsQuery.refetch(); void all.refetch(); }} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
       : groups.length ? <div data-testid="list-all-purchases" className="mt-6 space-y-7">
         {groups.map((group) => <section key={group.month} data-testid={`group-${group.month}`}>
           <div className="flex items-baseline justify-between gap-3 pb-2"><h2 className="font-display text-[22px] text-ink">{capitalize(monthLabel(group.month as MonthKey))}</h2><span data-testid={`total-${group.month}`} className="font-mono-data text-[15px] text-ink">{money(sum(group.rows))}</span></div>
@@ -150,10 +150,10 @@ export default function Compras() {
                   <span className="block truncate text-[15px] font-semibold text-ink">{row.description}</span>
                   <span className="mt-0.5 flex flex-wrap items-center gap-2 text-[13px] text-ink-soft">
                     <span className="flex items-center gap-1"><CalendarDays size={13}/>{dateLabel(row.date)}</span>
-                    {row.installment && <span className="rounded-full bg-[#ece6da] px-2 py-0.5 font-mono-data text-[12px] font-medium text-ink-soft">{row.installment}/{row.installmentCount}</span>}
-                    {row.recurring && <span className="rounded-full bg-[#e4ece2] px-2 py-0.5 text-[12px] font-semibold text-[#2f5a44]">Mensal</span>}
-                    {row.planned && <span className="rounded-full bg-[#f8efd9] px-2 py-0.5 text-[12px] font-medium text-eyebrow">prevista</span>}
-                    {row.categoryName && <span className="truncate rounded-full bg-[#e4ece2] px-2 py-0.5 text-[12px] font-medium text-[#2f5a44]">{row.categoryName}</span>}
+                    {row.installment && <span className="rounded-full bg-chip px-2 py-0.5 font-mono-data text-[12px] font-medium text-ink-soft">{row.installment}/{row.installmentCount}</span>}
+                    {row.recurring && <span className="rounded-full bg-tint px-2 py-0.5 text-[12px] font-semibold text-brand">Mensal</span>}
+                    {row.planned && <span className="rounded-full bg-warn-tint px-2 py-0.5 text-[12px] font-medium text-eyebrow">prevista</span>}
+                    {row.categoryName && <span className="truncate rounded-full bg-tint px-2 py-0.5 text-[12px] font-medium text-brand">{row.categoryName}</span>}
                   </span>
                 </span>
                 <span className="shrink-0 font-mono-data text-[15px] text-ink">− {money(row.amount)}</span>
@@ -163,7 +163,7 @@ export default function Compras() {
           </ul>
         </section>)}
       </div>
-      : <div className="mt-6 rounded-2xl border border-dashed border-line bg-surface px-5 py-7 text-center"><div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[#e8e9df] text-brand"><Receipt size={16}/></div><p data-testid="text-purchases-empty" className="mt-3 text-[14px] text-ink-soft">{rows.length ? 'Nenhuma compra encontrada.' : 'Nenhuma compra neste cartão.'}</p></div>}
+      : <div className="mt-6 rounded-2xl border border-dashed border-line bg-surface px-5 py-7 text-center"><div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-chip text-brand"><Receipt size={16}/></div><p data-testid="text-purchases-empty" className="mt-3 text-[14px] text-ink-soft">{rows.length ? 'Nenhuma compra encontrada.' : 'Nenhuma compra neste cartão.'}</p></div>}
     </div>
 
     {dialog && <Dialog key={dialog.id} kind="movement" initial={dialog} month={currentMonth()} categories={categories} busy={busy} error={formError} onClose={() => setDialog(null)} onSave={submit}/>}

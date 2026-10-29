@@ -1,21 +1,26 @@
 import { useLocation } from 'wouter';
-import { CreditCard, HandCoins, Utensils } from 'lucide-react';
-import { type Area, areaPath, monthInPath } from '@/lib/format';
+import { CreditCard, HandCoins, House, type LucideIcon, Utensils } from 'lucide-react';
+import { type Area, areaOf, areaPath, monthInPath } from '@/lib/format';
 
-// RF-01: the areas of the app, in this order. Cards, income and benefits never share a screen.
-// Changing the area keeps the open month (shared-month D1); screens with no month (history,
-// categories) open the current one.
+const TABS: { area: Area; label: string; icon: LucideIcon; testId: string }[] = [
+  { area: 'home', label: 'Início', icon: House, testId: 'nav-home' },
+  { area: 'income', label: 'Entradas', icon: HandCoins, testId: 'tab-income' },
+  { area: 'cards', label: 'Cartões', icon: CreditCard, testId: 'tab-cards' },
+  { area: 'benefits', label: 'Benefícios', icon: Utensils, testId: 'tab-benefits' },
+];
+
+// Barra inferior fixa com as áreas do app (specs/redesign-v2-fundacao.md D1, RF-01, RF-02). Trocar de área
+// mantém o mês aberto (shared-month D1); tocar na área ativa volta à tela raiz dela.
 export function AppTabs() {
   const [location, navigate] = useLocation();
-  const area: Area = location.startsWith('/entradas') ? 'income' : location.startsWith('/beneficios') ? 'benefits' : 'cards';
+  const active = areaOf(location);
   const month = monthInPath(location);
-  // Three tabs must fit a 360 px phone without widening the page: the icons only
-  // show from 400 px up, and min-w-0 + truncate keep a long label from pushing.
-  const tab = (active: boolean) => `flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-2 text-sm font-semibold transition ${active ? 'bg-brand text-on-brand' : 'text-ink-soft hover:bg-[#ece7dc]'}`;
-  const icon = 'hidden shrink-0 min-[400px]:block';
-  return <nav aria-label="Áreas do app" className="enter mt-3 flex gap-1 overflow-hidden rounded-full border border-line bg-surface p-1">
-    <button data-testid="tab-income" aria-current={area === 'income' ? 'page' : undefined} onClick={() => navigate(areaPath('income', month))} className={tab(area === 'income')}><HandCoins size={14} className={icon}/><span className="truncate">Entradas</span></button>
-    <button data-testid="tab-cards" aria-current={area === 'cards' ? 'page' : undefined} onClick={() => navigate(areaPath('cards', month))} className={tab(area === 'cards')}><CreditCard size={14} className={icon}/><span className="truncate">Cartões</span></button>
-    <button data-testid="tab-benefits" aria-current={area === 'benefits' ? 'page' : undefined} onClick={() => navigate(areaPath('benefits', month))} className={tab(area === 'benefits')}><Utensils size={14} className={icon}/><span className="truncate">Benefícios</span></button>
+  return <nav aria-label="Áreas do app" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 pb-[var(--safe-area-inset-bottom,env(safe-area-inset-bottom))] backdrop-blur">
+    <div className="mx-auto grid h-[72px] max-w-[860px] grid-cols-4">
+      {TABS.map(({ area, label, icon: Icon, testId }) => <button key={area} data-testid={testId} aria-current={active === area ? 'page' : undefined} onClick={() => navigate(areaPath(area, month))} className={`flex min-w-0 flex-col items-center justify-center gap-1 text-xs font-semibold transition ${active === area ? 'text-brand' : 'text-ink-soft'}`}>
+        <span className={`grid h-8 w-14 place-items-center rounded-full transition ${active === area ? 'bg-tint' : ''}`}><Icon size={22}/></span>
+        <span className="max-w-full truncate px-1">{label}</span>
+      </button>)}
+    </div>
   </nav>;
 }

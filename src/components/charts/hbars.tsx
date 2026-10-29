@@ -19,7 +19,7 @@ export function HBars({ rows, fill, label, activeKey, onSelect, testId, rowTestI
       const percent = Number(row.percent).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
       const body = <>
         <span className="flex items-baseline justify-between gap-3">
-          <span className="flex min-w-0 items-center gap-2"><span className="truncate text-[14px] font-semibold text-ink">{row.label}</span>{row.tag && <span className="shrink-0 rounded-full bg-[#e9e5dc] px-2 py-0.5 text-[12px] font-medium text-ink-soft">{row.tag}</span>}</span>
+          <span className="flex min-w-0 items-center gap-2"><span className="truncate text-[14px] font-semibold text-ink">{row.label}</span>{row.tag && <span className="shrink-0 rounded-full bg-chip px-2 py-0.5 text-[12px] font-medium text-ink-soft">{row.tag}</span>}</span>
           <span className={`shrink-0 font-mono-data text-[14px] ${row.alert ? 'text-alert' : 'text-ink'}`}>{row.noBar ? money(row.amount) : `${money(row.amount)} · ${percent}%`}</span>
         </span>
         {!row.noBar && <span aria-hidden className="mt-1.5 block h-3 overflow-hidden rounded-[4px] bg-chart-track"><span className={`block h-full rounded-r-[4px] ${fill}`} style={{ width: `${Math.max(0, Math.min(row.percent, 100))}%` }}/></span>}

@@ -69,11 +69,11 @@ export default function Categorias() {
 
       <form onSubmit={create} className="enter mt-5 flex items-center gap-2" style={{ animationDelay: '.08s' }}>
         <input data-testid="input-category-name" required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder="Nova categoria" aria-label="Nome da nova categoria" className="field-input"/>
-        <button data-testid="button-add-category" disabled={createCategory.isPending} type="submit" className="h-[52px] shrink-0 rounded-full bg-brand px-6 text-[15px] font-semibold text-on-brand transition hover:bg-[#1f4333] disabled:opacity-60">Criar</button>
+        <button data-testid="button-add-category" disabled={createCategory.isPending} type="submit" className="h-[52px] shrink-0 rounded-full bg-brand px-6 text-[15px] font-semibold text-on-brand transition hover:bg-brand-hover disabled:opacity-60">Criar</button>
       </form>
 
       {categoriesQuery.isLoading ? <div className="mt-6 space-y-3 animate-pulse"><div className="h-14 rounded-2xl bg-line"/><div className="h-14 rounded-2xl bg-line"/></div>
-      : categoriesQuery.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#e9e3d7] text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir as categorias.</h3><button onClick={() => void categoriesQuery.refetch()} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
+      : categoriesQuery.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir as categorias.</h3><button onClick={() => void categoriesQuery.refetch()} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
       : categories.length ? <ul data-testid="list-categories" className="enter mt-5 divide-y divide-line border-y border-line" style={{ animationDelay: '.1s' }}>
         {categories.map((item) => <li key={item.id} data-testid={`row-category-${item.id}`} className="flex items-center gap-1">
           <button type="button" aria-label={`Renomear ${item.name}`} onClick={() => setRenaming(item)} className="flex min-h-16 min-w-0 flex-1 flex-col justify-center py-3 text-left transition hover:bg-surface">

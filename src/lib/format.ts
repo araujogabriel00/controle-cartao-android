@@ -1,8 +1,10 @@
 // Formatting and calendar-month helpers shared by the data layer and the pages.
+import { HIDDEN_MONEY, isHidden } from '@/lib/hide-values';
 
 export type MonthKey = string; // 'YYYY-MM'
 
-export const money = (value = 0) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
+// RF-09: com o olho fechado todo valor em reais vira "R$ ••••" (specs/redesign-v2-fundacao.md D9).
+export const money = (value = 0) => isHidden() ? HIDDEN_MONEY : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
 export const dateLabel = (date?: string) => date ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(new Date(`${date.slice(0, 10)}T12:00:00`)).replace('.', '') : '';
 export const today = () => new Date().toLocaleDateString('en-CA');
 
@@ -46,11 +48,20 @@ export const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.
 // Today when it falls inside the month, otherwise the month's last day.
 export const defaultDateFor = (month: MonthKey) => monthOf(today()) === month ? today() : lastDayOf(month);
 
-// The three areas of the app (the tabs). The current month always lives at the
-// area's short route; any other month at "<area>/mes/AAAA-MM" (shared-month RN-02).
-export type Area = 'cards' | 'income' | 'benefits';
-const AREA_ROOT: Record<Area, string> = { cards: '', income: '/entradas', benefits: '/beneficios' };
-export const areaPath = (area: Area, month: MonthKey) => (month === currentMonth() ? AREA_ROOT[area] || '/' : `${AREA_ROOT[area]}/mes/${month}`);
+// The areas of the app (the bottom bar). The current month always lives at the area's short route
+// ("/" for the Início); any other month at "<area>/mes/AAAA-MM" (shared-month RN-02,
+// specs/redesign-v2-fundacao.md D2).
+export type Area = 'home' | 'cards' | 'income' | 'benefits';
+const AREA_ROOT: Record<Area, string> = { home: '/inicio', cards: '/cartoes', income: '/entradas', benefits: '/beneficios' };
+export const areaPath = (area: Area, month: MonthKey) => (month === currentMonth() ? (area === 'home' ? '/' : AREA_ROOT[area]) : `${AREA_ROOT[area]}/mes/${month}`);
+// The area an address belongs to, or null for the screens that are in none (history, categories, all purchases).
+export const areaOf = (path: string): Area | null => {
+  if (path === '/' || path === '/inicio' || path.startsWith('/inicio/')) return 'home';
+  if (path.startsWith('/entradas')) return 'income';
+  if (path.startsWith('/beneficios')) return 'benefits';
+  if (path === '/cartoes' || path.startsWith('/cartoes/')) return 'cards';
+  return null;
+};
 // Screens of the Entradas lists (specs/telas-de-entradas.md D10); the month goes at the end like the areas.
 export type ListKind = 'entradas' | 'contas-fixas' | 'gastos' | 'cartoes';
 export const listPath = (kind: ListKind, month: MonthKey) => `/entradas/lista/${kind}${month === currentMonth() ? '' : `/mes/${month}`}`;

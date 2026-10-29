@@ -9,7 +9,7 @@ export function RowMenu({ title, menuTestId, editTestId, deleteTestId, editLabel
 }) {
   const [open, setOpen] = useState(false);
   return <>
-    <button type="button" data-testid={menuTestId} aria-label={`Mais opções de ${title}`} onClick={() => setOpen(true)} className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-soft transition hover:bg-[#ece7dc]"><MoreHorizontal size={20}/></button>
+    <button type="button" data-testid={menuTestId} aria-label={`Mais opções de ${title}`} onClick={() => setOpen(true)} className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-soft transition hover:bg-hover"><MoreHorizontal size={20}/></button>
     {open && <CardMenu title={title} editLabel={editLabel} deleteLabel={deleteLabel} editTestId={editTestId} deleteTestId={deleteTestId} onClose={() => setOpen(false)} onEdit={onEdit} onDelete={onDelete}/>}
   </>;
 }

@@ -1,4 +1,5 @@
 import { money } from '@/lib/format';
+import { isHidden } from '@/lib/hide-values';
 import { ChartTable } from '@/components/charts/chart-table';
 
 export type DivergingRow = { label: string; value: number; tone: 'in' | 'out' };
@@ -14,6 +15,7 @@ const MINUS = '−';
 
 // Valor compacto, sem centavos: "+4.527", "−520", "0" (specs/redesign-opcao-d-entradas.md D4).
 export const compact = (value: number, sign: '+' | '−') => {
+  if (isHidden()) return '••••';
   const rounded = Math.round(Math.abs(value));
   return rounded === 0 ? '0' : `${sign}${new Intl.NumberFormat('pt-BR').format(rounded)}`;
 };

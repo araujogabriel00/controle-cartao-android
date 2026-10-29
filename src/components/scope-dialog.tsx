@@ -9,7 +9,7 @@ export function ScopeDialog({ subject, action, month, onChoose, onClose }: {
   subject: string; action: 'edit' | 'delete'; month: MonthKey; onChoose: (scope: IncomeScope) => void; onClose: () => void;
 }) {
   const verb = action === 'edit' ? 'Editar' : 'Excluir';
-  const option = 'flex min-h-16 w-full flex-col justify-center rounded-2xl border border-line bg-paper px-4 py-3 text-left transition hover:bg-[#eee9dd]';
+  const option = 'flex min-h-16 w-full flex-col justify-center rounded-2xl border border-line bg-paper px-4 py-3 text-left transition hover:bg-hover';
   return <BottomSheet title={`${verb} ${subject} que se repete`} onClose={onClose}>
     <p className="mb-3 flex items-center gap-2 text-[15px] text-ink-soft"><Repeat size={16} className="shrink-0"/>O que você quer {action === 'edit' ? 'mudar' : 'remover'}?</p>
     <div className="space-y-3">
