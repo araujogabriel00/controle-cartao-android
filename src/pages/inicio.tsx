@@ -1,22 +1,44 @@
+import { type ReactNode } from 'react';
 import { useLocation } from 'wouter';
 import {
   getGetBenefitsQueryKey, getGetCardsQueryKey, getGetIncomeRangeQueryKey, getGetMonthCashQueryKey,
-  useGetBenefits, useGetCards, useGetIncomeRange, useGetMonthCash,
+  useGetBalanceSeries, useGetBenefits, useGetCards, useGetIncomeRange, useGetInvoiceSeries, useGetMonthCash, useGetRecentSpends,
 } from '@workspace/api-client-react';
-import { ArrowDownLeft, ArrowUpRight, ChevronRight, CircleHelp, CreditCard, HandCoins, Plus, Utensils } from 'lucide-react';
+import { ChevronRight, CircleHelp, CreditCard, HandCoins, Plus, Utensils } from 'lucide-react';
 import { AppHeader } from '@/components/app-header';
 import { openQuickAdd } from '@/components/quick-add';
-import { CARD_COLORS } from '@/lib/card-colors';
-import { type Area, areaPath, money, plural, type MonthKey } from '@/lib/format';
+import { MiniColumns } from '@/components/charts/mini-columns';
+import { Sparkline } from '@/components/charts/sparkline';
+import { UsageBar } from '@/components/charts/usage-bar';
+import { type Area, areaPath, dateLabel, money, monthLabel, monthName, summaryPath, type MonthKey } from '@/lib/format';
 import { useRememberMonth } from '@/lib/last-month';
 
-// specs/redesign-v2-fundacao.md RF-04, RF-05: o Início só lê o que as áreas já leem (RN-01, RN-03) e cada bloco
-// abre a área correspondente, no mês aberto. Sem nada cadastrado, mostra os 3 passos do primeiro uso.
+// specs/redesign-v2-fundacao.md RF-04 e specs/inicio-com-minigraficos.md: o Início só lê o que as áreas já leem (RN-02) e
+// cada painel abre a área correspondente no mês aberto. Sem nada cadastrado, mostra os 3 passos do primeiro uso.
 const NBSP = ' ';
-const signed = (value: number, kind: 'in' | 'out' | 'result') =>
-  value > 0 ? `${kind === 'out' ? '−' : '+'}${NBSP}${money(value)}` : money(value);
+const BALANCE_MONTHS = 6;
+const INVOICE_MONTHS = 7;
+const RECENT_LIMIT = 3;
 
-const block = 'enter block w-full rounded-2xl border border-line bg-surface p-4 text-left transition hover:bg-hover';
+// "+ R$ 4.649,50" / "− R$ 520,00": o sinal diz o mesmo que a cor (RN-07).
+const signed = (value: number) => value > 0 ? `+${NBSP}${money(value)}` : value < 0 ? `−${NBSP}${money(-value)}` : money(value);
+
+// D1, RF-05: o painel é um alvo só. O botão cobre o painel inteiro e o conteúdo fica ao lado dele, no leitor de tela, para o
+// gráfico e a tabela de apoio (RF-08) continuarem alcançáveis: os filhos de um <button> não são lidos como estrutura.
+function Panel({ testId, dot, title, label, onOpen, delay, children }: {
+  testId: string; dot: string; title: string; label: string; onOpen: () => void; delay: string; children: ReactNode;
+}) {
+  return <section data-testid={testId} aria-label={title} style={{ animationDelay: delay }} className="enter relative min-h-[120px] rounded-[20px] border border-line bg-surface p-4 transition hover:bg-hover">
+    <div className="flex items-center justify-between gap-2 text-[14px]">
+      <span className="flex items-center gap-2 font-semibold text-ink"><span aria-hidden className={`h-2.5 w-2.5 rounded-full ${dot}`}/>{title}</span>
+      <span aria-hidden className="flex items-center text-ink-soft">Abrir<ChevronRight size={16}/></span>
+    </div>
+    <div className="mt-3 flex items-end justify-between gap-3">{children}</div>
+    <button type="button" aria-label={label} onClick={onOpen} className="absolute inset-0 rounded-[20px]"/>
+  </section>;
+}
+
+const value = 'block font-display text-[26px] leading-[1.1] tracking-[-.02em] [overflow-wrap:anywhere] min-[400px]:text-[30px]';
 
 export default function Inicio({ month }: { month: MonthKey }) {
   const [, navigate] = useLocation();
@@ -24,6 +46,9 @@ export default function Inicio({ month }: { month: MonthKey }) {
   const cashQuery = useGetMonthCash(month, { query: { queryKey: getGetMonthCashQueryKey(month), refetchOnWindowFocus: true } });
   const cardsQuery = useGetCards(month, { query: { queryKey: getGetCardsQueryKey(month) } });
   const benefitsQuery = useGetBenefits(month, { query: { queryKey: getGetBenefitsQueryKey(month) } });
+  const balanceSeries = useGetBalanceSeries(month, BALANCE_MONTHS);
+  const invoiceSeries = useGetInvoiceSeries(month, INVOICE_MONTHS);
+  const recent = useGetRecentSpends(month, RECENT_LIMIT);
   const range = useGetIncomeRange({ query: { queryKey: getGetIncomeRangeQueryKey() } }).data;
   const canGoPrevious = !range || month > range.first;
   const canGoNext = !range || month < range.last;
@@ -37,7 +62,12 @@ export default function Inicio({ month }: { month: MonthKey }) {
   const spent = (cash?.billsAmount ?? 0) + (cash?.dailyAmount ?? 0) + (cash?.cardsAmount ?? 0);
   const empty = Boolean(cash) && cards.length === 0 && benefits.length === 0 && (cash?.incomeAmount ?? 0) === 0 && spent === 0 && (cash?.previousAmount ?? 0) === 0;
   const negative = (cash?.balanceAmount ?? 0) < 0;
-  const invoices = cards.filter((card) => card.invoiceAmount > 0).sort((a, b) => b.invoiceAmount - a.invoiceAmount);
+
+  // D5: gasto sobre o disponível do mês (valor do mês + o que veio do anterior), de todos os benefícios.
+  const benefitSpent = benefits.reduce((total, item) => total + item.spentAmount, 0);
+  const benefitTotal = benefits.reduce((total, item) => total + item.amount + item.carriedAmount, 0);
+  const benefitAvailable = benefitsQuery.data?.totalAvailable ?? 0;
+  const usedPercent = benefitTotal > 0 ? Math.round((benefitSpent / benefitTotal) * 100) : 0;
 
   const steps = [
     { title: 'Cadastre um cartão', text: 'Para lançar as compras e ver a fatura.', action: () => go('cards') },
@@ -45,12 +75,33 @@ export default function Inicio({ month }: { month: MonthKey }) {
     { title: 'Veja o saldo', text: 'O Início mostra quanto sobra no mês.', action: null },
   ];
 
+  // D9, RN-08: um painel sem gráfico mostra o motivo no lugar dele; a falha da leitura só derruba o gráfico do painel.
+  const note = (text: string) => <p data-testid="text-chart-note" className="w-[128px] shrink-0 text-right text-[13px] leading-snug text-ink-soft">{text}</p>;
+  const balancePoints = balanceSeries.data ?? [];
+  const balanceChart = balanceSeries.isError ? note('Gráfico indisponível')
+    : balanceSeries.isLoading ? <div aria-busy="true" className="h-14 w-[128px] shrink-0 animate-pulse rounded-lg bg-line"/>
+    : balancePoints.length < 2 ? note('Ainda sem histórico')
+    : <Sparkline points={balancePoints.map((p) => ({ month: p.month, value: p.balanceAmount }))} legend="últimos 6 meses"
+        caption="Saldo ao fim de cada mês"
+        ariaLabel={`Saldo ao fim de cada mês, de ${monthLabel(balancePoints[0].month)} a ${monthLabel(balancePoints[balancePoints.length - 1].month)}: de ${money(balancePoints[0].balanceAmount)} para ${money(balancePoints[balancePoints.length - 1].balanceAmount)}`}/>;
+
+  const invoicePoints = invoiceSeries.data ?? [];
+  const hasInvoices = invoicePoints.some((p) => p.invoiceAmount > 0);
+  const invoiceChart = invoiceSeries.isError ? note('Gráfico indisponível')
+    : invoiceSeries.isLoading ? <div aria-busy="true" className="h-14 w-[128px] shrink-0 animate-pulse rounded-lg bg-line"/>
+    : !hasInvoices ? null
+    : <MiniColumns columns={invoicePoints.map((p) => ({ month: p.month, value: p.invoiceAmount }))} legend="próximas 7 faturas"
+        caption="Faturas dos próximos 7 meses"
+        ariaLabel={`Faturas dos próximos ${INVOICE_MONTHS} meses, a partir de ${monthLabel(invoicePoints[0].month)}: ${money(invoicePoints[0].invoiceAmount)} no mês aberto`}/>;
+
+  const recentItems = recent.data ?? [];
+
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
       <AppHeader area="home" month={month} canGoPrevious={canGoPrevious} canGoNext={canGoNext}/>
 
       {failed ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-brand"><CircleHelp size={18}/></div><h2 className="mt-3 font-display text-xl text-ink">Não deu para carregar o Início</h2><p className="mt-1 text-[14px] text-ink-soft">Seus dados continuam salvos. Tente de novo.</p><button onClick={() => { void cashQuery.refetch(); void cardsQuery.refetch(); void benefitsQuery.refetch(); }} className="mt-4 h-12 rounded-full bg-brand px-6 text-[15px] font-semibold text-on-brand transition hover:bg-brand-hover">Tentar de novo</button></div>
-        : loading || !cash ? <div aria-busy="true" className="mt-6 space-y-3"><div className="h-[148px] animate-pulse rounded-2xl bg-line"/><div className="h-[84px] animate-pulse rounded-2xl bg-line"/><div className="h-[96px] animate-pulse rounded-2xl bg-line"/></div>
+        : loading || !cash ? <div aria-busy="true" className="mt-6 space-y-3"><div className="h-[132px] animate-pulse rounded-2xl bg-line"/><div className="h-[132px] animate-pulse rounded-2xl bg-line"/><div className="h-[132px] animate-pulse rounded-2xl bg-line"/></div>
         : empty ? <section data-testid="section-first-use" aria-label="Primeiros passos" className="enter mt-6">
           <h1 className="font-display text-[28px] leading-tight text-ink">Lance sua primeira entrada</h1>
           <p className="mt-1 text-[15px] text-ink-soft">Em três passos o app já mostra para onde vai o seu dinheiro.</p>
@@ -65,47 +116,60 @@ export default function Inicio({ month }: { month: MonthKey }) {
           </ol>
         </section>
         : <div className="mt-6 space-y-3">
-          {/* RF-04: saldo com o anterior e o resultado; abre Entradas. */}
-          <button data-testid="card-home-balance" onClick={() => go('income')} aria-label={`Saldo do mês: ${money(cash.balanceAmount)}. Abrir Entradas`} className={block}>
-            <span className="text-sm font-medium text-ink-soft">Saldo</span>
-            <span data-testid="text-home-balance" className={`block font-display text-[40px] leading-[1.1] tracking-[-.02em] [overflow-wrap:anywhere] min-[380px]:text-[48px] ${negative ? 'text-alert' : 'text-ink'}`}>{money(cash.balanceAmount)}</span>
-            {negative && <span className="mt-1 block text-[14px] text-alert">As saídas passaram das entradas e do saldo anterior.</span>}
-            <span className="mt-3 grid grid-cols-2 gap-3 border-t border-line pt-3 text-[14px]">
-              <span><span className="block text-ink-soft">Saldo anterior</span><span className="font-semibold text-ink">{money(cash.previousAmount)}</span></span>
-              <span><span className="block text-ink-soft">Resultado do mês</span><span className="font-semibold text-ink">{signed(cash.resultAmount, 'result')}</span></span>
-            </span>
-          </button>
+          {/* RF-02: saldo do mês, resultado do mês e a linha dos últimos 6 meses; abre Entradas. */}
+          <Panel testId="card-home-balance" dot="bg-chart-in" title="Saldo" label={`Abrir Entradas, saldo ${money(cash.balanceAmount)}`} onOpen={() => go('income')} delay="0s">
+            <div className="min-w-0">
+              <span data-testid="text-home-balance" className={`${value} ${negative ? 'text-alert' : 'text-ink'}`}>{money(cash.balanceAmount)}</span>
+              {negative && <span className="mt-1 block text-[14px] text-alert">As saídas passaram das entradas e do saldo anterior.</span>}
+              <span data-testid="text-home-result" className="mt-1 block text-[14px] text-ink-soft">{signed(cash.resultAmount)} neste mês</span>
+            </div>
+            {balanceChart}
+          </Panel>
 
-          <div className="grid grid-cols-2 gap-3">
-            <button data-testid="card-home-in" onClick={() => go('income')} className={block} style={{ animationDelay: '.04s' }}>
-              <span className="flex items-center gap-1.5 text-sm font-medium text-ink-soft"><ArrowDownLeft size={16} className="text-chart-in"/>Entrou</span>
-              <span className="mt-1 block text-[18px] font-semibold text-ink [overflow-wrap:anywhere]">{signed(cash.incomeAmount, 'in')}</span>
-            </button>
-            <button data-testid="card-home-out" onClick={() => go('income')} className={block} style={{ animationDelay: '.06s' }}>
-              <span className="flex items-center gap-1.5 text-sm font-medium text-ink-soft"><ArrowUpRight size={16} className="text-chart-out"/>Saiu</span>
-              <span className="mt-1 block text-[18px] font-semibold text-ink [overflow-wrap:anywhere]">{signed(spent, 'out')}</span>
-            </button>
-          </div>
+          {/* RF-03: fatura do mês aberto e as colunas das 7 faturas; abre Cartões. */}
+          <Panel testId="card-home-invoice" dot="bg-chart-violet" title="Cartões" label={`Abrir Cartões, fatura ${money(cash.cardsAmount)}`} onOpen={() => go('cards')} delay=".04s">
+            <div className="min-w-0">
+              {cash.cardsAmount > 0
+                ? <>
+                  <span data-testid="text-home-invoice" className={`${value} text-ink`}>{money(cash.cardsAmount)}</span>
+                  <span className="mt-1 block text-[14px] text-ink-soft">Fatura de {monthName(month)}{cards.length > 1 ? ` · ${cards.length} cartões` : ''}</span>
+                </>
+                : <span className="block text-[15px] text-ink-soft">Nenhuma fatura neste mês.</span>}
+            </div>
+            {invoiceChart}
+          </Panel>
 
-          {/* RF-04: próxima fatura — a maior do mês; abre Cartões. */}
-          <button data-testid="card-home-invoice" onClick={() => go('cards')} className={block} style={{ animationDelay: '.08s' }}>
-            <span className="flex items-center gap-1.5 text-sm font-medium text-ink-soft"><CreditCard size={16}/>Próxima fatura</span>
-            {invoices.length === 0
-              ? <span className="mt-1 block text-[15px] text-ink-soft">Nenhuma fatura neste mês.</span>
-              : <>
-                <span className="mt-1 block font-display text-[28px] leading-tight text-ink [overflow-wrap:anywhere]">{money(invoices[0].invoiceAmount)}</span>
-                <span className="mt-0.5 flex items-center gap-2 text-[14px] text-ink-soft"><span aria-hidden className="h-3 w-3 shrink-0 rounded-full" style={{ background: CARD_COLORS[invoices[0].color].background }}/>{invoices[0].name}</span>
-                {invoices.length > 1 && <span className="mt-1 block text-[14px] text-ink-soft">e mais {plural(invoices.length - 1, 'cartão', 'cartões')} com fatura no mês</span>}
-              </>}
-          </button>
-
-          {/* RF-04: saldo disponível de cada benefício; abre Benefícios. */}
-          <button data-testid="card-home-benefits" onClick={() => go('benefits')} className={block} style={{ animationDelay: '.1s' }}>
-            <span className="flex items-center gap-1.5 text-sm font-medium text-ink-soft"><Utensils size={16}/>Benefícios</span>
+          {/* RF-04: total disponível e o uso de todos os benefícios; abre Benefícios. */}
+          <Panel testId="card-home-benefits" dot="bg-chart-rose" title="Benefícios" label={`Abrir Benefícios, disponível ${money(benefitAvailable)}`} onOpen={() => go('benefits')} delay=".08s">
             {benefits.length === 0
-              ? <span className="mt-1 block text-[15px] text-ink-soft">Nenhum benefício cadastrado.</span>
-              : <span className="mt-2 block divide-y divide-line">{benefits.map((item) => <span key={item.id} data-testid={`row-home-benefit-${item.id}`} className="flex items-center justify-between gap-3 py-2 text-[15px]"><span className="min-w-0 truncate text-ink">{item.name}</span><span className="shrink-0 font-semibold text-ink">{money(item.availableAmount)}</span></span>)}</span>}
-          </button>
+              ? <span className="block text-[15px] text-ink-soft">Nenhum benefício cadastrado.</span>
+              : <>
+                <div className="min-w-0">
+                  <span data-testid="text-home-benefits" className={`${value} text-ink`}>{money(benefitAvailable)}</span>
+                  <span className="mt-1 block text-[14px] text-ink-soft">disponível de {money(benefitTotal)}</span>
+                  <span className="block text-[14px] font-semibold text-ink">{usedPercent}% usado</span>
+                </div>
+                <UsageBar spent={benefitSpent} total={benefitTotal}/>
+              </>}
+          </Panel>
+
+          {/* RF-06, D7: os 3 últimos gastos do mês aberto; "Ver todos" abre o Resumo do mês. */}
+          <section aria-label="Lançamentos recentes" className="enter pt-2" style={{ animationDelay: '.12s' }}>
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-xl text-ink">Lançamentos recentes</h2>
+              <button data-testid="link-home-recent-all" onClick={() => navigate(summaryPath(month))} className="-mr-2 flex h-12 items-center gap-1 rounded-full px-3 text-[15px] font-semibold text-brand transition hover:bg-hover">Ver todos<ChevronRight size={18}/></button>
+            </div>
+            {recent.isError ? <p className="py-3 text-[14px] text-ink-soft">Lançamentos indisponíveis agora.</p>
+              : recentItems.length === 0 ? <p data-testid="text-home-recent-empty" className="py-3 text-[14px] text-ink-soft">Nenhum gasto neste mês até agora.</p>
+              : <ul data-testid="list-home-recent" className="divide-y divide-line border-y border-line">
+                {recentItems.map((item, index) => <li key={`${item.area}-${item.id}-${item.date}-${index}`}>
+                  <button data-testid={`row-home-recent-${index}`} onClick={() => go(item.area)} className="flex min-h-16 w-full items-center justify-between gap-3 py-3 text-left transition hover:bg-hover">
+                    <span className="min-w-0"><span className="block truncate text-[15px] font-semibold text-ink">{item.description}</span><span className="block truncate text-[14px] text-ink-soft">{item.origin} · {dateLabel(item.date)}</span></span>
+                    <span className="shrink-0 text-[15px] font-semibold text-ink">−{NBSP}{money(item.amount)}</span>
+                  </button>
+                </li>)}
+              </ul>}
+          </section>
 
           <nav aria-label="Atalhos" className="grid grid-cols-3 gap-2 pt-1">
             {([['income', 'Entradas', HandCoins], ['cards', 'Cartões', CreditCard], ['benefits', 'Benefícios', Utensils]] as const).map(([area, label, Icon]) => <button key={area} data-testid={`shortcut-${area}`} onClick={() => go(area)} className="flex min-h-12 items-center justify-center gap-1.5 rounded-full border border-line bg-surface px-2 text-[14px] font-semibold text-brand transition hover:bg-hover"><Icon size={16}/>{label}</button>)}
