@@ -1783,10 +1783,12 @@ const dropForecastExceptionsFrom = (state: State, forecastId: number, month: Mon
   state.forecastExceptions = state.forecastExceptions.filter((e) => e.forecastId !== forecastId || e.month < month);
 };
 
+// The month's exception is rewritten in place, so undoing a change puts everything back in the same order (RN-01 of desfazer-exclusao).
 const setForecastException = (state: State, forecastId: number, month: MonthKey, patch: Partial<StoredForecastException>) => {
-  const previous = forecastExceptionOf(state, forecastId, month);
-  state.forecastExceptions = state.forecastExceptions.filter((e) => !(e.forecastId === forecastId && e.month === month));
-  state.forecastExceptions.push({ ...previous, forecastId, month, skip: false, ...patch });
+  const index = state.forecastExceptions.findIndex((e) => e.forecastId === forecastId && e.month === month);
+  const next: StoredForecastException = { ...state.forecastExceptions[index], forecastId, month, skip: false, ...patch };
+  if (index >= 0) state.forecastExceptions[index] = next;
+  else state.forecastExceptions.push(next);
 };
 
 export function createForecast(input: ForecastInput) {
