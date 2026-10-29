@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Proposta |
+| Status | Implementada |
 | Criada em | 29/10/2026 |
 | Escopo | `src/pages/entradas.tsx`, novos `src/components/origin-rows.tsx` e `src/components/charts/balance-line.tsx`, `src/components/charts/diverging-bars.tsx` (removido se nada mais o usar), `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`redesign-v2-fundacao.md`](redesign-v2-fundacao.md) (casco, tema, olho), [`inicio-com-minigraficos.md`](inicio-com-minigraficos.md) (`getBalanceSeries`, cores dos gráficos), [`redesign-opcao-d-entradas.md`](redesign-opcao-d-entradas.md), [`telas-de-entradas.md`](telas-de-entradas.md), [`contas-e-gastos.md`](contas-e-gastos.md) |
@@ -32,6 +32,10 @@ A fundação da v2 trocou o casco do app, mas deixou o **conteúdo** da aba Entr
 | D7 | O link "**Resumo do mês**" **continua** na aba (o desenho v3 não o mostra, mas a fundação o colocou aqui e a tela não tem outro caminho), à direita do título do cartão de origens, que passa a se chamar "Entrou e saiu". | Não deixar o Resumo inalcançável. |
 | D8 | Saldo negativo mantém a cor de alerta e o aviso "As saídas passaram das entradas e do saldo anterior." | Regra existente. |
 | D9 | O "Resumo do mês" (tela) e as quatro listas não mudam. | Escopo desta parte é a aba. |
+| D10 | **Os rótulos do eixo ficam dentro da área do gráfico**, acima de cada linha de grade, com um contorno na cor do fundo (ajuste da implementação). | Com o eixo fora, as colunas de toque ficavam com 44,6 px em 360 px, abaixo dos 48 px exigidos (RF-03, seção 8); por dentro ficam com 51,6 px. |
+| D11 | **Em telas com menos de 400 px o ícone da linha de origem some** e o nome e a quantidade quebram em duas linhas em vez de serem cortados (ajuste da implementação). | Em 360 px o nome ("Entrad…") e a quantidade ("1 lança…") eram cortados pelo valor em fonte monoespaçada, a seta e o ícone. O ícone é decorativo (`aria-hidden`). |
+| D12 | **O gráfico tem largura máxima de 440 px**, como os outros gráficos do app, e a escala aceita 1,2 entre os valores redondos (1, 1,2, 1,5, 2, 2,5, 3, 4, 5, 6, 7, 8 × 10ⁿ). | Em janela larga o gráfico esticava e as fontes cresciam; com 1,2 a escala fica mais justa (0, 12 mil, 24 mil em vez de 0, 15 mil, 30 mil para R$ 23.349,84). Os exemplos da spec (0, 7 mil, 14 mil para R$ 12.349,54) continuam valendo. |
+| D13 | **Sem entrada no mês, todas as barras ficam em zero**, inclusive o mínimo de 4 px, que só vale com total de entradas maior que zero (RN-05, RF-08). | O mínimo de 4 px mostrava uma barra de saída mesmo sem nada que entrou. |
 
 ## 3. Requisitos
 
@@ -172,19 +176,23 @@ Sem mudança no formato salvo, na camada de dados nem nos hooks existentes. A ab
 
 ## 8. Critérios de aceite
 
-- [ ] `npm run typecheck` e `npm run build` passam.
-- [ ] A aba mostra o saldo com o resultado, "Saldo mês a mês" e as 4 linhas conforme a seção 4, nos temas claro e escuro.
-- [ ] Os pontos do gráfico batem com o saldo de cada mês no Resumo do mês e no Início.
-- [ ] Tocar em um mês, e usar as setas no teclado, atualiza o texto e o destaque.
-- [ ] Os valores e as quantidades das linhas batem com o Resumo do mês e as listas.
-- [ ] Cada linha abre a lista certa, no mês aberto; "Resumo" abre o Resumo do mês.
-- [ ] Mês com saldo negativo mostra o gráfico com ponto abaixo do zero e o aviso.
-- [ ] Menos de 2 meses de histórico mostra "Ainda sem histórico."
-- [ ] Com o olho fechado, nenhum valor e nenhum formato de gráfico ou comprimento de barra aparece.
-- [ ] Falha na série ou numa contagem não derruba a tela.
-- [ ] Leitor de tela: gráfico com descrição e tabela de apoio; linhas com nome, quantidade e valor.
-- [ ] Sem scroll horizontal em 360 px; linhas com no mínimo 72 px; colunas do gráfico com pelo menos 48 px de largura.
-- [ ] `FUNCIONALIDADES.md` (nova seção 35 e ajuste das seções 23 e 27) e `README.md` atualizados.
+Verificado no navegador (`npm run dev`) com dados de teste, nos temas escuro e claro, em janela larga e num `<iframe>` de 360 px. Não conferi com um leitor de tela de verdade: a acessibilidade foi conferida pelo DOM.
+
+- [x] `npm run typecheck` e `npm run build` passam.
+- [x] A aba mostra o saldo com o resultado, "Saldo mês a mês" e as 4 linhas conforme a seção 4, nos temas claro e escuro (escuro com 6 meses, saldo negativo e olho fechado; claro com pouco histórico e, em 360 px, com 6 meses).
+- [x] Os pontos do gráfico batem com o saldo de cada mês no Resumo do mês e no Início: o ponto de setembro (R$ 19.235,00) é o "Saldo anterior" do Resumo de outubro; outubro (R$ 23.149,84) é esse saldo mais o resultado de R$ 3.914,84; o "Saldo anterior" de agosto (R$ 12.181,00) é o ponto de julho; em agosto o saldo da aba é o ponto de agosto do gráfico de outubro. O Início usa a mesma `getBalanceSeries`.
+- [x] Tocar em um mês, e usar as setas no teclado, atualiza o texto e o destaque (toque em setembro: "Set: R$ 19.335,00"; seta à esquerda: "Ago"; Home: "Mai"; as setas param nos limites).
+- [x] Os valores e as quantidades das linhas batem com o Resumo do mês e as listas (R$ 4.527,00, R$ 100,00, R$ 95,00 e R$ 417,16; "1 lançamento", "1 conta", "2 gastos", "1 fatura").
+- [x] Cada linha abre a lista certa, no mês aberto (inclusive agosto, em `/mes/2026-08`); "Resumo" abre o Resumo do mês.
+- [x] Mês com saldo negativo mostra o gráfico com o ponto abaixo do zero (escala de −3 mil a 0), o saldo em cor de alerta e o aviso.
+- [x] Menos de 2 meses de histórico mostra "Ainda sem histórico." (só o mês corrente).
+- [x] Com o olho fechado, nenhum valor e nenhum formato de gráfico ou comprimento de barra aparece (texto, HTML e `aria-label` sem valor em reais; sem `<svg>` do gráfico; barras sem largura). A quantidade ("1 lançamento") continua visível por não ser valor em reais, e o percentual some do `aria-label`.
+- [x] Falha na série ou numa contagem não derruba a tela (com erros temporários em `getBalanceSeries` e `getBills`: a seção mostrou "Gráfico indisponível" e "Tentar novamente", e "Contas fixas" mostrou o valor sem a quantidade; saldo e demais linhas normais). Os erros de teste foram revertidos. Não cliquei em "Tentar novamente" com a leitura já normalizada.
+- [x] Leitor de tela: gráfico com `role="img"`, `aria-label` com os 6 saldos e tabela de apoio (6 linhas); linhas com `aria-label` de nome, quantidade, valor e percentual, e uma tabela de apoio das origens. Só pelo DOM.
+- [x] Sem scroll horizontal em 360 px (documento de 345 px num iframe de 360 px); linhas com 81 px ou mais; colunas do gráfico com 51,6 px (depois do ajuste D10).
+- [x] `FUNCIONALIDADES.md` (nova seção 35 e ajuste das seções 23 e 27) e `README.md` atualizados.
+
+Não conferido: o aviso falando por um leitor de tela; `prefers-reduced-motion` (a linha não tem animação de desenho, só a entrada `enter`, que usa a regra global); e a seleção por toque num celular de verdade (testei com cliques e eventos de teclado no navegador).
 
 ## 9. Tarefas
 
