@@ -47,6 +47,7 @@ A especificação completa está em [`specs/parcelamento.md`](specs/parcelamento
 - Cada parcela vira uma **compra comum** no mês em que cai, na categoria da compra parcelada. A compra parcelada aceita data de até 12 meses à frente (as parcelas ficam todas previstas).
 - As parcelas de meses futuros não são gravadas: elas são calculadas a partir da compra e gravadas quando o mês começa.
 - Editar ou excluir uma parcela muda a compra inteira, todas as parcelas.
+- **Apagar um lançamento** (entrada, conta fixa, gasto do dia a dia, compra do cartão, gasto de benefício) não pergunta: apaga na hora e abre um aviso com **Desfazer** por 6 segundos ([`specs/desfazer-exclusao.md`](specs/desfazer-exclusao.md)). Em `src/data/store.ts`, `mutateUndoable` compara o estado antes e depois e guarda um remendo reverso por lista (o que saiu, o que mudou, o que foi acrescentado); `undoDeletion` o aplica só se tudo ainda estiver como a exclusão deixou, senão diz "Não foi possível desfazer." e não muda nada. Só vale o último desfazer, fica só na memória (sem formato salvo novo) e cartão, benefício e categoria continuam pedindo confirmação.
 
 ### Entradas
 
@@ -163,7 +164,8 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── components/card-picker.tsx # fileira de botões dos cartões e dos benefícios
 │   ├── components/card-menu.tsx # folha "⋯" (editar e excluir cartão ou benefício)
 │   ├── components/bottom-sheet.tsx # folha de rodapé, moldura dos formulários e botões de salvar
-│   ├── components/confirm-dialog.tsx # confirmação antes de apagar (`useConfirm`)
+│   ├── components/confirm-dialog.tsx # confirmação antes de apagar cartão, benefício e categoria (`useConfirm`)
+│   ├── components/undo-snackbar.tsx # aviso "removido. Desfazer" de 6 s depois de apagar um lançamento (`showUndo`, `undoable`)
 │   ├── components/notice.tsx # avisos acima do rodapé (`useNotice`)
 │   ├── components/row-menu.tsx # "⋯" de 44 px por linha das listas
 │   ├── components/back-button.tsx # botão Voltar das telas secundárias

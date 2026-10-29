@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Proposta |
+| Status | Implementada |
 | Criada em | 29/10/2026 |
 | Escopo | `src/data/store.ts` e `src/data/api.ts` (guardar e aplicar o desfazer), novo `src/components/undo-snackbar.tsx`, `src/components/notice.tsx` (convivência com o aviso), `src/components/confirm-dialog.tsx` (`removeAsk` deixa de ser usado nas exclusões listadas), `src/pages/{entradas-lista,dashboard,compras,beneficio-lancamentos}.tsx`, `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`redesign-opcao-d-telas-de-apoio.md`](redesign-opcao-d-telas-de-apoio.md) (D5 confirmação, D8 aviso), [`telas-de-entradas.md`](telas-de-entradas.md), [`compra-recorrente.md`](compra-recorrente.md), [`parcelamento.md`](parcelamento.md), [`lancamentos-do-beneficio.md`](lancamentos-do-beneficio.md) |
@@ -31,6 +31,10 @@ Hoje, apagar um lançamento abre uma pergunta ("Remover …?") e, depois do "Rem
 | D6 | As telas de escolha do alcance (só este mês × daqui para a frente) continuam como são. Escolhido o alcance, apaga na hora, sem segunda pergunta. | O alcance é uma escolha de conteúdo, não uma confirmação. |
 | D7 | O desfazer vive **na memória** do app, só durante o aviso. Se o app fechar nesse tempo, a exclusão fica definitiva. | Não cria dado novo salvo nem migração; 6 segundos não justificam persistir. |
 | D8 | Desfazer que não pode ser aplicado (por exemplo, o mesmo item foi editado nesse intervalo) mostra "Não foi possível desfazer." e deixa tudo como está. | Nunca desfazer pela metade. |
+| D9 | **Gênero do aviso (ajuste da implementação):** "removida" para compra, compra parcelada, compra recorrente e conta fixa; "removido" para gasto do dia a dia, gasto de benefício e entrada. | O texto de exemplo da RF-07 é "Salário removido deste mês." (a spec não fixa o gênero de "entrada"); o tipo do item é o que o app sabe, e a descrição digitada pela pessoa não tem gênero conhecido. |
+| D10 | **O formulário de edição fecha ao apagar a partir dele** (botão "Excluir compra" em Cartões e em Compras; gasto do benefício). | Antes a pergunta vinha por cima do formulário e ele continuava aberto, mostrando um item que já não existe. |
+| D11 | **A cor do botão "Desfazer" é uma cor nova, `snack-action`** (#8fd0b1 no claro, #28513f no escuro). | O aviso inverte (fundo `ink`, texto `paper`) e nenhuma cor com nome serve de botão sobre esse fundo nos dois temas (contraste de 6,9:1 e 7,7:1). |
+| D12 | **Parar o relógio:** o cursor ou o dedo sobre o aviso também pausa a contagem, além do foco no botão (RF-04), e o tempo que restava é retomado. | Pedido da própria RF-04. |
 
 ## 3. Requisitos
 
@@ -182,17 +186,21 @@ Funcionalidade: Desfazer a exclusão
 
 ## 8. Critérios de aceite
 
-- [ ] `npm run typecheck` e `npm run build` passam.
-- [ ] Apagar entrada, conta fixa, gasto do dia a dia, compra (avulsa, parcelada e recorrente) e gasto de benefício apaga sem diálogo e mostra o aviso com "Desfazer".
-- [ ] "Desfazer" devolve o item, as parcelas, a data final e as exceções de mês; o saldo e a fatura voltam aos valores de antes.
-- [ ] O aviso some em 6 segundos e espera enquanto o botão tem foco.
-- [ ] Apagar outro item antes do prazo troca o aviso e o desfazer vale só para o último.
-- [ ] Lançamentos criados depois da exclusão não se perdem ao desfazer.
-- [ ] Cartão, benefício e categoria continuam pedindo confirmação, sem "Desfazer".
-- [ ] Falha ao apagar não muda nada e não mostra "Desfazer".
-- [ ] Aviso legível nos temas claro e escuro, acima da barra e do botão Lançar, sem scroll horizontal em 360 px.
-- [ ] Leitor de tela anuncia o aviso; o botão tem 48 px.
-- [ ] `FUNCIONALIDADES.md` (nova seção 34, e ajuste das seções 19, 20, 22, 24, 25 e 30 onde havia "Remover … ? Cancelar / Remover") e `README.md` atualizados.
+Verificado no navegador (`npm run dev`) com dados de teste, nos temas claro e escuro, e a lógica de dados exercitada direto em `src/data/store.ts`. Não conferi com um leitor de tela de verdade: a acessibilidade foi conferida pelo DOM.
+
+- [x] `npm run typecheck` e `npm run build` passam.
+- [x] Apagar entrada, conta fixa, gasto do dia a dia, compra (avulsa, parcelada e recorrente) e gasto de benefício apaga sem diálogo e mostra o aviso com "Desfazer". Conferido pela interface em Entradas (gastos, entradas, contas fixas), Cartões, Compras e lançamentos do benefício.
+- [x] "Desfazer" devolve o item, as parcelas, a data final e as exceções de mês; o saldo e a fatura voltam aos valores de antes. Nos dez tipos de exclusão (gasto, entrada e conta fixa "só este mês" e "daqui em diante", avulsa, parcelada de 3 parcelas, recorrente nos dois alcances, gasto de benefício) o JSON salvo depois de apagar e desfazer é **idêntico, byte a byte,** ao de antes.
+- [x] O aviso some em 6 segundos (medido: 6,28 s, contando os 150 ms do fade) e espera enquanto o botão tem foco (com o foco no botão, seguia na tela depois de 8 s) e enquanto o cursor está sobre ele.
+- [x] Apagar outro item antes do prazo troca o aviso e o desfazer vale só para o último (um só aviso na tela; "Fone removida." desfeito devolve as 3 parcelas e "Avulsa" continua apagada; o desfazer antigo falha com "Não foi possível desfazer.").
+- [x] Lançamentos criados depois da exclusão não se perdem ao desfazer (apaguei A, lancei C, desfiz: A e C aparecem).
+- [x] Cartão, benefício e categoria continuam pedindo confirmação, sem "Desfazer". Categoria conferida até o fim (o aviso depois é o de sucesso, sem botão); cartão e benefício conferidos até o diálogo, com "Cancelar".
+- [x] Falha ao apagar não muda nada e não mostra "Desfazer" (com um erro temporário em `mutateUndoable`: o gasto continuou na lista, o armazenamento ficou intacto e o aviso de erro apareceu). O erro de teste foi revertido.
+- [x] Aviso legível nos temas claro e escuro, acima da barra e do botão Lançar (base do aviso a 687 px e topo do Lançar a 711 px), sem scroll horizontal em 360 px (documento de 345 px num iframe de 360 px, aviso de 56 px com margem de 16 px, mensagem longa em duas linhas). Contraste de 10,9:1 (texto) e 6,9:1 (botão) no claro, 14,6:1 e 7,7:1 no escuro.
+- [x] Leitor de tela: o aviso tem `role="status"` (e `role="alert"` no erro) e o botão tem 48 px de altura. **Não** ouvi um leitor de tela de verdade.
+- [x] `FUNCIONALIDADES.md` (nova seção 34, e ajuste das seções que tinham "Remover … ? Cancelar / Remover": 3, 11, 13, 14, 15, 24, 25 e 30; as seções 19, 20 e 22 não tinham esse texto) e `README.md` atualizados.
+
+Não conferido: o aviso falando por um leitor de tela; `prefers-reduced-motion` (usa a regra global de `index.css`, que não foi tocada); e o fluxo de desfazer a partir do Início e do Resumo, que não apagam nada.
 
 ## 9. Tarefas
 
