@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -6,6 +6,7 @@ import { getGetBenefitRangeQueryKey, getGetBenefitsQueryKey, getGetIncomeRangeQu
 import { areaPath, benefitSpendsPath, currentMonth, isFutureMonth, isMonthKey, listPath, summaryPath, type ListKind } from '@/lib/format';
 import { readLastMonth } from '@/lib/last-month';
 import { loadTheme } from '@/lib/theme';
+import { loadHideValues, useHideValues } from '@/lib/hide-values';
 import { FooterMenu } from '@/components/quick-add';
 import { ConfirmProvider } from '@/components/confirm-dialog';
 import NotFound from '@/pages/not-found';
@@ -155,8 +156,8 @@ function Bootstrap({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   useEffect(() => {
     let alive = true;
-    // O tema é lido junto com o mês, antes da primeira tela (RN-09).
-    void Promise.all([readLastMonth(), loadTheme()]).then(([last]) => {
+    // O tema e o olho são lidos junto com o mês, antes da primeira tela (RN-09, RN-07).
+    void Promise.all([readLastMonth(), loadTheme(), loadHideValues()]).then(([last]) => {
       if (!alive) return;
       const hash = window.location.hash;
       if (last && last !== currentMonth() && (hash === '' || hash === '#' || hash === '#/')) window.history.replaceState(null, '', `#${areaPath('cards', last)}`);
@@ -167,6 +168,17 @@ function Bootstrap({ children }: { children: ReactNode }) {
   return ready ? <>{children}</> : null;
 }
 
+// money() é uma função pura usada em todo lugar: ao trocar o olho (RF-09) a árvore de telas é
+// remontada com outra chave para que todo valor seja formatado de novo. Os dados vêm do cache, e a
+// posição da rolagem é devolvida para a tela não pular.
+function HiddenValuesKey({ children }: { children: ReactNode }) {
+  const hidden = useHideValues();
+  const scroll = useRef(0);
+  scroll.current = window.scrollY;
+  useLayoutEffect(() => { window.scrollTo(0, scroll.current); }, [hidden]);
+  return <div key={String(hidden)} className="contents">{children}</div>;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -174,7 +186,7 @@ function App() {
         {/* Hash routes: the bundle uses a relative base, so nested paths would
             break asset URLs on reload. */}
         <WouterRouter hook={useHashLocation}>
-          <Bootstrap><ConfirmProvider><Router /><FooterMenu /></ConfirmProvider></Bootstrap>
+          <Bootstrap><ConfirmProvider><HiddenValuesKey><Router /><FooterMenu /></HiddenValuesKey></ConfirmProvider></Bootstrap>
         </WouterRouter>
       </TooltipProvider>
     </QueryClientProvider>

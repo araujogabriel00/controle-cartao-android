@@ -1,8 +1,10 @@
 // Formatting and calendar-month helpers shared by the data layer and the pages.
+import { HIDDEN_MONEY, isHidden } from '@/lib/hide-values';
 
 export type MonthKey = string; // 'YYYY-MM'
 
-export const money = (value = 0) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
+// RF-09: com o olho fechado todo valor em reais vira "R$ ••••" (specs/redesign-v2-fundacao.md D9).
+export const money = (value = 0) => isHidden() ? HIDDEN_MONEY : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
 export const dateLabel = (date?: string) => date ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(new Date(`${date.slice(0, 10)}T12:00:00`)).replace('.', '') : '';
 export const today = () => new Date().toLocaleDateString('en-CA');
 

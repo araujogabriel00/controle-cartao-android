@@ -1,5 +1,6 @@
 import { dateLabel, money, monthName } from '@/lib/format';
 import { niceScale, type PacePoint } from '@/lib/card-series';
+import { isHidden } from '@/lib/hide-values';
 import { ChartTable } from '@/components/charts/chart-table';
 
 const W = 358;
@@ -9,7 +10,7 @@ const RIGHT = 10;
 const TOP = 22;
 const BOTTOM = 26;
 
-const axis = (value: number) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value);
+const axis = (value: number) => isHidden() ? '••' : new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value);
 
 // Gasto acumulado dia a dia, em degraus (specs/redesign-opcao-d-cartoes.md D5, D6). `light` desenha
 // a linha em tom claro (mês futuro); `todayDay` marca "hoje" no mês corrente; `endDay` é até onde a linha vai.
