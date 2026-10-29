@@ -14,6 +14,7 @@ export type {
   RecurringInput, StoredRecurring,
   Bills, BillOccurrence, BillInput, DailyExpense, DailyExpenses, DailyExpenseInput, MonthCash, StoredBill, StoredDailyExpense,
   BalancePoint, InvoicePoint, RecentSpend, UndoResult,
+  ForecastKind, ForecastPayAs, ForecastState, ForecastOccurrence, ForecastInput, ForecastMonth, ForecastDay, ForecastSummary, BalanceForecast, StoredForecast,
   Benefits, BenefitItem, BenefitSpend, BenefitRange, BenefitInput, BenefitUpdate, BenefitSpendInput, BenefitSplitItem, BenefitCategoryRow, StoredBenefit, StoredBenefitSpend,
 } from './store';
 export { INCOME_KINDS } from './store';
@@ -239,3 +240,46 @@ export const useUndoDeletion = (options?: MutationOpts<void, { undoId: number }>
 
 export const useDiscardUndo = (options?: MutationOpts<void, { undoId: number }>) =>
   useMutation({ mutationFn: ({ undoId }: { undoId: number }) => store.discardUndo(undoId), ...options?.mutation });
+
+// Previsões de receber e pagar (specs/previsoes.md). As leituras não tentam de novo ao falhar: a tela mostra "Tentar de novo" na hora (RN-16).
+export const getGetForecastsQueryKey = (month?: store.MonthKey) => key('forecasts', month);
+export const getGetForecastDayQueryKey = (date?: string) => key('forecasts', 'day', date);
+export const getGetForecastRangeQueryKey = () => ['forecasts', 'range'] as const;
+export const getGetForecastSummaryQueryKey = (month?: store.MonthKey) => key('forecasts', 'summary', month);
+export const getGetBalanceForecastQueryKey = (days?: number) => key('forecasts', 'balance', days);
+export const getGetForecastAlertsQueryKey = (since?: string | null) => ['forecasts', 'alerts', since ?? 'none'] as const;
+
+const noRetry = <T>(options?: QueryOpts<T>): QueryOpts<T> => ({ query: { retry: false, ...options?.query } });
+
+export const useGetForecasts = (month: store.MonthKey, options?: QueryOpts<store.ForecastMonth>) =>
+  useLocalQuery(getGetForecastsQueryKey(month), () => store.getForecasts(month), noRetry(options));
+
+export const useGetForecastDay = (date: string, options?: QueryOpts<store.ForecastDay>) =>
+  useLocalQuery(getGetForecastDayQueryKey(date), () => store.getForecastDay(date), noRetry(options));
+
+export const useGetForecastRange = (options?: QueryOpts<{ first: store.MonthKey; last: store.MonthKey }>) =>
+  useLocalQuery(getGetForecastRangeQueryKey(), () => store.getForecastRange(), noRetry(options));
+
+export const useGetForecastSummary = (month: store.MonthKey, options?: QueryOpts<store.ForecastSummary>) =>
+  useLocalQuery(getGetForecastSummaryQueryKey(month), () => store.getForecastSummary(month), noRetry(options));
+
+export const useGetBalanceForecast = (days: number, options?: QueryOpts<store.BalanceForecast>) =>
+  useLocalQuery(getGetBalanceForecastQueryKey(days), () => store.getBalanceForecast(days), noRetry(options));
+
+export const useGetForecastAlerts = (since: string | null, options?: QueryOpts<store.ForecastOccurrence[]>) =>
+  useLocalQuery(getGetForecastAlertsQueryKey(since), () => store.getForecastAlerts(since), noRetry(options));
+
+export const useCreateForecast = (options?: MutationOpts<store.StoredForecast, { data: store.ForecastInput }>) =>
+  useMutation({ mutationFn: ({ data }) => store.createForecast(data), ...options?.mutation });
+
+export const useUpdateForecast = (options?: MutationOpts<store.StoredForecast, { forecastId: number; month: store.MonthKey; scope: store.IncomeScope; data: store.ForecastInput }>) =>
+  useMutation({ mutationFn: ({ forecastId, month, scope, data }) => store.updateForecast(forecastId, month, scope, data), ...options?.mutation });
+
+export const useDeleteForecast = (options?: MutationOpts<store.UndoResult, { forecastId: number; month: store.MonthKey; scope: store.IncomeScope }>) =>
+  useMutation({ mutationFn: ({ forecastId, month, scope }) => store.deleteForecast(forecastId, month, scope), ...options?.mutation });
+
+export const useSetForecastAmount = (options?: MutationOpts<void, { forecastId: number; month: store.MonthKey; amount: number }>) =>
+  useMutation({ mutationFn: ({ forecastId, month, amount }) => store.setForecastAmount(forecastId, month, amount), ...options?.mutation });
+
+export const usePutForecastInBalance = (options?: MutationOpts<void, { forecastId: number; month: store.MonthKey }>) =>
+  useMutation({ mutationFn: ({ forecastId, month }) => store.putForecastInBalance(forecastId, month), ...options?.mutation });

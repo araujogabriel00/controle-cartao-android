@@ -75,8 +75,25 @@ export type StoredBenefitSpend = {
   id: number; benefitId: number; categoryId: number | null; description: string; amount: number; date: string;
 };
 
+// Previsões de receber e pagar (specs/previsoes.md seção 6). Uma previsão que se repete tem uma ocorrência por mês; as
+// ocorrências são calculadas, nunca gravadas. A exceção de um mês apaga a ocorrência, muda o valor, a descrição ou o dia
+// dela, ou a "coloca no saldo" (só para lembretes).
+export type ForecastKind = 'receive' | 'pay';
+export type ForecastPayAs = 'bill' | 'daily';
+export type StoredForecast = {
+  id: number; kind: ForecastKind; description: string; amount: number;
+  firstMonth: MonthKey; day: number;
+  affects: boolean;                 // "mexe no saldo no dia"
+  payAs: ForecastPayAs | null;      // só quando kind = 'pay' e affects = true
+  recurring: boolean; lastMonth: MonthKey | null;
+};
+export type StoredForecastException = {
+  forecastId: number; month: MonthKey; skip: boolean;
+  amount?: number; description?: string; day?: number; putInBalance?: boolean;
+};
+
 type State = {
-  version: 10;
+  version: 11;
   nextId: number;
   selectedCardId: number | null;
   cards: StoredCard[];
@@ -93,14 +110,18 @@ type State = {
   dailyExpenses: StoredDailyExpense[];
   recurrings: StoredRecurring[];
   recurringExceptions: StoredRecurringException[];
+  forecasts: StoredForecast[];
+  forecastExceptions: StoredForecastException[];
 };
 
 // Previous formats, kept only to migrate saved data.
 type OldCategory = { id: number; cardId: number; month: MonthKey; name: string; amount: number; isClosed: boolean };
 type OldMovement = Omit<StoredMovement, 'cardId' | 'categoryId'> & { categoryId: number };
 type OldPurchase = Omit<StoredPurchase, 'categoryId'> & { categoryName: string };
+// Until v10 there were no forecasts (previsoes D2).
+type StateV10 = Omit<State, 'version' | 'forecasts' | 'forecastExceptions'> & { version: 10 };
 // Until v9 the card and its months carried a limit (cartao-sem-limite D2).
-type StateV9 = Omit<State, 'version' | 'cards' | 'months'> & {
+type StateV9 = Omit<StateV10, 'version' | 'cards' | 'months'> & {
   version: 9; cards: (StoredCard & { limitAmount: number })[]; months: (StoredMonth & { limitAmount: number })[];
 };
 type StateV8 = Omit<StateV9, 'version' | 'recurrings' | 'recurringExceptions'> & { version: 8 };
@@ -127,7 +148,7 @@ type StateV1 = {
   categories: Omit<OldCategory, 'cardId' | 'month'>[];
   movements: OldMovement[];
 };
-type Saved = StateV9 | StateV8 | StateV7 | StateV6 | StateV5 | StateV4 | StateV3 | StateV2 | StateV1;
+type Saved = StateV10 | StateV9 | StateV8 | StateV7 | StateV6 | StateV5 | StateV4 | StateV3 | StateV2 | StateV1;
 
 // invoiceAmount is the card's invoice (sum of the purchases) in the requested month.
 export type Card = StoredCard & { invoiceAmount: number; movementCount: number };
@@ -165,14 +186,15 @@ export type Consolidated = {
 };
 
 export type IncomeOccurrence = { incomeId: number; kind: IncomeKind; description: string; amount: number; date: string; recurring: boolean; lastMonth: MonthKey | null };
-export type Incomes = { month: MonthKey; totalAmount: number; items: IncomeOccurrence[] };
+// `forecastItems`: previsões que já entraram no saldo e somam nesta linha do caixa (previsoes D13); o total já as inclui.
+export type Incomes = { month: MonthKey; totalAmount: number; items: IncomeOccurrence[]; forecastItems: ForecastOccurrence[] };
 export type IncomeRange = { first: MonthKey; last: MonthKey };
 export type IncomeScope = 'month' | 'forward';
 
 export type BillOccurrence = { billId: number; name: string; amount: number; date: string; lastMonth: MonthKey | null };
-export type Bills = { month: MonthKey; totalAmount: number; items: BillOccurrence[] };
+export type Bills = { month: MonthKey; totalAmount: number; items: BillOccurrence[]; forecastItems: ForecastOccurrence[] };
 export type DailyExpense = StoredDailyExpense & { categoryName: string | null };
-export type DailyExpenses = { month: MonthKey; totalAmount: number; items: DailyExpense[]; summary: CategorySummary[] };
+export type DailyExpenses = { month: MonthKey; totalAmount: number; items: DailyExpense[]; summary: CategorySummary[]; forecastItems: ForecastOccurrence[] };
 // RN-06: what comes in, what goes out and what is left in the month.
 // resultAmount is the month on its own; previousAmount is what came from the months before it; balanceAmount adds the two.
 export type MonthCash = {
@@ -216,7 +238,7 @@ export type BenefitSpendInput = { description: string; amount: number; date: str
 // purchase starts there, on update `firstInstallment` says where it starts.
 export type PurchaseInput = { description: string; totalAmount: number; installmentCount: number; installment: number; firstInstallment?: number; date: string };
 
-const emptyState = (): State => ({ version: 10, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [], benefits: [], benefitSpends: [], bills: [], billExceptions: [], dailyExpenses: [], recurrings: [], recurringExceptions: [] });
+const emptyState = (): State => ({ version: 11, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [], benefits: [], benefitSpends: [], bills: [], billExceptions: [], dailyExpenses: [], recurrings: [], recurringExceptions: [], forecasts: [], forecastExceptions: [] });
 
 // RN-05 (categories): names match ignoring case and surrounding spaces.
 const nameKey = (name: string) => name.trim().toLocaleLowerCase('pt-BR');
@@ -300,11 +322,14 @@ const migrateV7 = (old: StateV7): StateV8 => ({
 const migrateV8 = (old: StateV8): StateV9 => ({ ...old, version: 9, recurrings: [], recurringExceptions: [] });
 
 // RN-07: the limit leaves the cards and their months for good.
-const migrateV9 = (old: StateV9): State => ({
+const migrateV9 = (old: StateV9): StateV10 => ({
   ...old, version: 10,
   cards: old.cards.map(({ id, name, color }) => ({ id, name, color })),
   months: old.months.map(({ cardId, month }) => ({ cardId, month })),
 });
+
+// Forecasts didn't exist before v11: nothing else changes (previsoes seção 6).
+const migrateV10 = (old: StateV10): State => ({ ...old, version: 11, forecasts: [], forecastExceptions: [] });
 
 function migrate(old: Saved): State {
   if (old.version === 1) return migrate(migrateV1(old));
@@ -315,7 +340,8 @@ function migrate(old: Saved): State {
   if (old.version === 6) return migrate(migrateV6(old));
   if (old.version === 7) return migrate(migrateV7(old));
   if (old.version === 8) return migrate(migrateV8(old));
-  return migrateV9(old);
+  if (old.version === 9) return migrate(migrateV9(old));
+  return migrateV10(old);
 }
 
 let statePromise: Promise<State> | null = null;
@@ -333,12 +359,14 @@ function load(): Promise<State> {
     if (!value) return emptyState();
     try {
       const parsed = JSON.parse(value) as State | Saved;
-      if (parsed?.version === 10) {
+      if (parsed?.version === 11) {
         for (const b of parsed.benefits) { b.splits ??= []; b.closures ??= []; }
+        parsed.forecasts ??= [];
+        parsed.forecastExceptions ??= [];
         return parsed;
       }
       const version: number | undefined = parsed?.version;
-      if (version !== 9 && version !== 8 && version !== 7 && version !== 6 && version !== 5 && version !== 4 && version !== 3 && version !== 2 && version !== 1) return emptyState();
+      if (version !== 10 && version !== 9 && version !== 8 && version !== 7 && version !== 6 && version !== 5 && version !== 4 && version !== 3 && version !== 2 && version !== 1) return emptyState();
       const migrated = migrate(parsed as Saved);
       // Saved right away so the data stays in this month even if the next
       // change only happens in a later month.
@@ -381,6 +409,8 @@ const UNDO_KEYS = {
   recurrings: (r: AnyRecord) => String(r.id),
   recurringExceptions: (r: AnyRecord) => `${r.recurringId}:${r.month}`,
   benefitSpends: (r: AnyRecord) => String(r.id),
+  forecasts: (r: AnyRecord) => String(r.id),
+  forecastExceptions: (r: AnyRecord) => `${r.forecastId}:${r.month}`,
 } as const;
 type UndoList = keyof typeof UNDO_KEYS;
 const UNDO_LISTS = Object.keys(UNDO_KEYS) as UndoList[];
@@ -1120,7 +1150,8 @@ export async function getIncomes(month: MonthKey): Promise<Incomes> {
     .map((income) => occurrenceOf(state, income, month))
     .filter((item): item is IncomeOccurrence => item !== null)
     .sort((a, b) => a.date.localeCompare(b.date) || a.incomeId - b.incomeId);
-  return { month, totalAmount: cents(items.reduce((sum, item) => sum + item.amount, 0)), items };
+  const forecastItems = forecastEntered(state, month).filter((o) => o.kind === 'receive');
+  return { month, totalAmount: cents(items.reduce((sum, item) => sum + item.amount, 0) + sum(forecastItems.map((o) => o.amount))), items, forecastItems };
 }
 
 // RN-12: from the oldest income, bill or daily expense (never later than now)
@@ -1538,8 +1569,10 @@ const dropBillExceptionsFrom = (state: State, billId: number, month: MonthKey) =
 };
 
 export async function getBills(month: MonthKey): Promise<Bills> {
-  const items = billsOf(await load(), month).sort((a, b) => a.date.localeCompare(b.date) || a.billId - b.billId);
-  return { month, totalAmount: sum(items.map((i) => i.amount)), items };
+  const state = await load();
+  const items = billsOf(state, month).sort((a, b) => a.date.localeCompare(b.date) || a.billId - b.billId);
+  const forecastItems = forecastEntered(state, month).filter((o) => o.kind === 'pay' && o.payAs === 'bill');
+  return { month, totalAmount: sum([...items.map((i) => i.amount), ...forecastItems.map((o) => o.amount)]), items, forecastItems };
 }
 
 export function createBill(input: BillInput) {
@@ -1614,13 +1647,16 @@ export async function getDailyExpenses(month: MonthKey): Promise<DailyExpenses> 
     .filter((x) => monthOf(x.date) === month)
     .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
     .map((x) => ({ ...x, categoryName: categoryNameOf(state, x.categoryId) }));
-  const totalAmount = sum(items.map((x) => x.amount));
+  // As previsões "a pagar" que entraram como gasto do dia a dia somam no total e, no resumo por categoria, em "Sem categoria".
+  const forecastItems = forecastEntered(state, month).filter((o) => o.kind === 'pay' && o.payAs === 'daily');
+  const totalAmount = sum([...items.map((x) => x.amount), ...forecastItems.map((o) => o.amount)]);
   const byCategory = new Map<number | null, number>();
   for (const x of items) byCategory.set(x.categoryId, cents((byCategory.get(x.categoryId) ?? 0) + x.amount));
+  for (const o of forecastItems) byCategory.set(null, cents((byCategory.get(null) ?? 0) + o.amount));
   const summary = [...byCategory.entries()]
     .map(([categoryId, amount]) => ({ categoryId, name: categoryNameOf(state, categoryId), amount, percent: percent(amount, totalAmount) }))
     .sort((a, b) => b.amount - a.amount);
-  return { month, totalAmount, items, summary };
+  return { month, totalAmount, items, summary, forecastItems };
 }
 
 export function createDailyExpense(categoryId: number | null, input: DailyExpenseInput) {
@@ -1647,21 +1683,279 @@ export function deleteDailyExpense(expenseId: number) {
   });
 }
 
+
+// --- previsões de receber e pagar (specs/previsoes.md) -------------------------------------------------------
+
+export type ForecastState = 'in-balance' | 'reminder' | 'planned';
+// `affects` já considera "colocar no saldo" da ocorrência (RN-04); `state` diz o que a pessoa vê (RF-04).
+export type ForecastOccurrence = {
+  forecastId: number; kind: ForecastKind; description: string; amount: number; date: string; month: MonthKey;
+  payAs: ForecastPayAs | null; recurring: boolean; lastMonth: MonthKey | null;
+  affects: boolean; putInBalance: boolean; state: ForecastState;
+};
+export type ForecastInput = { kind: ForecastKind; description: string; amount: number; date: string; affects: boolean; payAs?: ForecastPayAs | null; recurring: boolean };
+
+// RN-06: a one-off forecast occurs in its own month; a recurring one from firstMonth to lastMonth (or with no end).
+const forecastOccursIn = (f: StoredForecast, month: MonthKey) =>
+  f.recurring ? month >= f.firstMonth && (!f.lastMonth || month <= f.lastMonth) : month === f.firstMonth;
+
+const forecastExceptionOf = (state: State, forecastId: number, month: MonthKey) =>
+  state.forecastExceptions.find((e) => e.forecastId === forecastId && e.month === month);
+
+// RN-01 to RN-04: the month's exception overrides the rule; a reminder only counts once it is "put in the balance",
+// and an occurrence that affects the balance only counts when its date is today or past (RN-02).
+function forecastOccurrenceOf(state: State, f: StoredForecast, month: MonthKey): ForecastOccurrence | null {
+  if (!forecastOccursIn(f, month)) return null;
+  const exception = forecastExceptionOf(state, f.id, month);
+  if (exception?.skip) return null;
+  const date = incomeDate(month, exception?.day ?? f.day);
+  const affects = f.affects || Boolean(exception?.putInBalance);
+  return {
+    forecastId: f.id, kind: f.kind, recurring: f.recurring, lastMonth: f.lastMonth, month,
+    description: exception?.description ?? f.description,
+    amount: exception?.amount ?? f.amount,
+    date,
+    // D7: a reminder put in the balance keeps the forecast's "Entra como" (default: Contas fixas).
+    payAs: f.kind === 'pay' ? f.payAs ?? 'bill' : null,
+    affects, putInBalance: !f.affects && Boolean(exception?.putInBalance),
+    state: !affects ? 'reminder' : date <= today() ? 'in-balance' : 'planned',
+  };
+}
+
+const forecastsOf = (state: State, month: MonthKey) =>
+  state.forecasts.map((f) => forecastOccurrenceOf(state, f, month)).filter((o): o is ForecastOccurrence => o !== null)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.forecastId - b.forecastId);
+
+const forecastEntered = (state: State, month: MonthKey) => forecastsOf(state, month).filter((o) => o.state === 'in-balance');
+
+// RN-01: what the forecasts that already entered add to each line of the month's cash.
+function forecastCash(state: State, month: MonthKey) {
+  const entered = forecastEntered(state, month);
+  const total = (pick: (o: ForecastOccurrence) => boolean) => sum(entered.filter(pick).map((o) => o.amount));
+  return {
+    income: total((o) => o.kind === 'receive'),
+    bills: total((o) => o.kind === 'pay' && o.payAs === 'bill'),
+    daily: total((o) => o.kind === 'pay' && o.payAs === 'daily'),
+  };
+}
+
+const signedForecast = (o: ForecastOccurrence) => (o.kind === 'receive' ? o.amount : -o.amount);
+
+function balanceOf(state: State, month: MonthKey) {
+  const first = cashStart(state);
+  let previous = 0;
+  if (first) for (let m = first; m < month; m = shiftMonth(m, 1)) previous = cents(previous + cashOf(state, m).resultAmount);
+  return cents(previous + cashOf(state, month).resultAmount);
+}
+
+const addDays = (date: string, days: number) => {
+  const d = new Date(`${date}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toLocaleDateString('en-CA');
+};
+
+// RN-07 / D10 / RN-10
+function requireForecast(input: ForecastInput, creating: boolean) {
+  if (input?.kind !== 'receive' && input?.kind !== 'pay') throw new Error('Tipo é obrigatório.');
+  const description = requireText(input.description, 'Descrição', 120);
+  const amount = requireAmount(input.amount, 'Valor');
+  const date = requireDate(input.date);
+  if (creating && date < today()) throw new Error('A data prevista não pode ser anterior a hoje.');
+  if (date > lastDayOf(shiftMonth(currentMonth(), 24))) throw new Error('A data deve ser de até 24 meses à frente.');
+  const affects = Boolean(input.affects);
+  const payAs: ForecastPayAs | null = input.kind === 'pay' && affects ? (input.payAs === 'daily' ? 'daily' : 'bill') : null;
+  return { kind: input.kind, description, amount, month: monthOf(date), day: Number(date.slice(8, 10)), affects, payAs, recurring: Boolean(input.recurring) };
+}
+
+const findForecast = (state: State, forecastId: number) => {
+  const forecast = state.forecasts.find((f) => f.id === forecastId);
+  if (!forecast) throw new Error('Previsão não encontrada.');
+  return forecast;
+};
+
+function requireForecastOccurrence(state: State, forecastId: number, month: MonthKey) {
+  const forecast = findForecast(state, forecastId);
+  if (!isMonthKey(month) || !forecastOccursIn(forecast, month) || forecastExceptionOf(state, forecastId, month)?.skip) throw new Error('Esta previsão não ocorre neste mês.');
+  return forecast;
+}
+
+const dropForecastExceptionsFrom = (state: State, forecastId: number, month: MonthKey) => {
+  state.forecastExceptions = state.forecastExceptions.filter((e) => e.forecastId !== forecastId || e.month < month);
+};
+
+const setForecastException = (state: State, forecastId: number, month: MonthKey, patch: Partial<StoredForecastException>) => {
+  const previous = forecastExceptionOf(state, forecastId, month);
+  state.forecastExceptions = state.forecastExceptions.filter((e) => !(e.forecastId === forecastId && e.month === month));
+  state.forecastExceptions.push({ ...previous, forecastId, month, skip: false, ...patch });
+};
+
+export function createForecast(input: ForecastInput) {
+  return mutate((state) => {
+    const { month, ...fields } = requireForecast(input, true);
+    const forecast: StoredForecast = { id: state.nextId++, firstMonth: month, lastMonth: null, ...fields };
+    state.forecasts.push(forecast);
+    return forecast;
+  });
+}
+
+// D9, RN-05, RN-06: like the recurring bills, "month" adjusts one month (description, value and day) and "forward" splits the rule.
+export function updateForecast(forecastId: number, month: MonthKey, scope: IncomeScope, input: ForecastInput) {
+  return mutate((state) => {
+    const forecast = requireForecastOccurrence(state, forecastId, month);
+    const { month: inputMonth, ...fields } = requireForecast(input, false);
+    if (!forecast.recurring) {
+      state.forecastExceptions = state.forecastExceptions.filter((e) => e.forecastId !== forecastId);
+      Object.assign(forecast, { ...fields, firstMonth: inputMonth, lastMonth: null });
+      return forecast;
+    }
+    if (inputMonth !== month) throw new Error(`A data deve estar dentro de ${monthLabel(month)}.`);
+    if (scope === 'month') {
+      setForecastException(state, forecastId, month, { amount: fields.amount, description: fields.description, day: fields.day });
+      return forecast;
+    }
+    dropForecastExceptionsFrom(state, forecastId, month);
+    if (month === forecast.firstMonth) {
+      Object.assign(forecast, fields);
+      return forecast;
+    }
+    forecast.lastMonth = shiftMonth(month, -1);
+    const next: StoredForecast = { id: state.nextId++, firstMonth: month, lastMonth: null, ...fields };
+    state.forecasts.push(next);
+    return next;
+  });
+}
+
+// RF-08, RN-03, RN-06, RN-12: one occurrence ("month") or this one and the next ones ("forward"); undoable.
+export function deleteForecast(forecastId: number, month: MonthKey, scope: IncomeScope) {
+  return mutateUndoable((state) => {
+    const forecast = requireForecastOccurrence(state, forecastId, month);
+    if (!forecast.recurring || (scope === 'forward' && month === forecast.firstMonth)) {
+      state.forecasts = state.forecasts.filter((f) => f.id !== forecastId);
+      state.forecastExceptions = state.forecastExceptions.filter((e) => e.forecastId !== forecastId);
+      return;
+    }
+    if (scope === 'month') {
+      setForecastException(state, forecastId, month, { skip: true });
+      return;
+    }
+    forecast.lastMonth = shiftMonth(month, -1);
+    dropForecastExceptionsFrom(state, forecastId, month);
+  });
+}
+
+// RN-05: "Editar valor" changes one occurrence only.
+export function setForecastAmount(forecastId: number, month: MonthKey, amount: number) {
+  return mutate((state) => {
+    requireForecastOccurrence(state, forecastId, month);
+    setForecastException(state, forecastId, month, { amount: requireAmount(amount, 'Valor') });
+  });
+}
+
+// D6, RN-04: "Colocar no saldo" turns a reminder into a balance forecast for that occurrence only.
+export function putForecastInBalance(forecastId: number, month: MonthKey) {
+  return mutate((state) => {
+    const forecast = requireForecastOccurrence(state, forecastId, month);
+    if (forecast.affects) throw new Error('Esta previsão já mexe no saldo.');
+    setForecastException(state, forecastId, month, { putInBalance: true });
+  });
+}
+
+export type ForecastMonth = { month: MonthKey; items: ForecastOccurrence[] };
+export type ForecastDay = { date: string; items: ForecastOccurrence[]; totalAmount: number };
+
+export async function getForecasts(month: MonthKey): Promise<ForecastMonth> {
+  return { month, items: forecastsOf(await load(), month) };
+}
+
+// RF-04: the day's total is what moves the balance (signed), counting the occurrences that affect it.
+export async function getForecastDay(date: string): Promise<ForecastDay> {
+  const items = forecastsOf(await load(), monthOf(date)).filter((o) => o.date === date);
+  return { date, items, totalAmount: cents(items.filter((o) => o.affects).reduce((total, o) => total + signedForecast(o), 0)) };
+}
+
+// RN-10: from the oldest month with a forecast (or the current one) to 24 months ahead of the current one.
+export async function getForecastRange(): Promise<{ first: MonthKey; last: MonthKey }> {
+  const state = await load();
+  const now = currentMonth();
+  return { first: state.forecasts.reduce((min, f) => (f.firstMonth < min ? f.firstMonth : min), now), last: shiftMonth(now, 24) };
+}
+
+// RN-08: today's balance plus the forecasts that affect it with a date after today and up to `date`.
+function projectedBalance(state: State, balanceToday: number, date: string) {
+  let total = balanceToday;
+  for (let m = currentMonth(); m <= monthOf(date); m = shiftMonth(m, 1)) {
+    for (const o of forecastsOf(state, m)) if (o.affects && o.date > today() && o.date <= date) total = cents(total + signedForecast(o));
+  }
+  return total;
+}
+
+export type ForecastSummary = { balanceToday: number; targetDate: string | null; projected: number | null };
+
+// RN-09: "Previsto em ‹último dia do mês aberto›"; "—" (null) in a past month.
+export async function getForecastSummary(month: MonthKey): Promise<ForecastSummary> {
+  const state = await load();
+  const balanceToday = balanceOf(state, currentMonth());
+  if (month < currentMonth()) return { balanceToday, targetDate: null, projected: null };
+  const targetDate = lastDayOf(month);
+  return { balanceToday, targetDate, projected: projectedBalance(state, balanceToday, targetDate) };
+}
+
+export type BalanceForecast = {
+  balanceToday: number; endDate: string; endBalance: number;
+  points: { date: string; balance: number }[]; upcoming: ForecastOccurrence[];
+};
+
+// D11, RN-08: the balance day by day from today to `days` ahead, adding only the forecasts that affect it.
+export async function getBalanceForecast(days = 21): Promise<BalanceForecast> {
+  const state = await load();
+  const start = today();
+  const endDate = addDays(start, days);
+  const balanceToday = balanceOf(state, currentMonth());
+  const upcoming: ForecastOccurrence[] = [];
+  for (let m = currentMonth(); m <= monthOf(endDate); m = shiftMonth(m, 1)) {
+    for (const o of forecastsOf(state, m)) if (o.date > start && o.date <= endDate) upcoming.push(o);
+  }
+  upcoming.sort((a, b) => a.date.localeCompare(b.date) || a.forecastId - b.forecastId);
+  let balance = balanceToday;
+  const points = Array.from({ length: days + 1 }, (_, i) => {
+    const date = addDays(start, i);
+    for (const o of upcoming) if (o.date === date && o.affects) balance = cents(balance + signedForecast(o));
+    return { date, balance };
+  });
+  return { balanceToday, endDate, endBalance: points[points.length - 1].balance, points, upcoming };
+}
+
+// RN-11: what entered the balance after the date of the last "Está certo" (up to today), looking back at most 31 days.
+export async function getForecastAlerts(since: string | null): Promise<ForecastOccurrence[]> {
+  const state = await load();
+  const now = today();
+  const floor = addDays(now, -31);
+  const from = since && since > floor ? since : floor;
+  const alerts: ForecastOccurrence[] = [];
+  for (let m = monthOf(from); m <= currentMonth(); m = shiftMonth(m, 1)) {
+    for (const o of forecastEntered(state, m)) if (o.date > from && o.date <= now) alerts.push(o);
+  }
+  return alerts;
+}
+
 // --- month cash -----------------------------------------------------------------
 
 // RN-03 to RN-06: the month on its own: what comes in minus bills, daily expenses and what the
 // cards used. It only reads the cards (D7).
 function cashOf(state: State, month: MonthKey) {
-  const incomeAmount = sum(state.incomes.map((i) => occurrenceOf(state, i, month)).filter((o): o is IncomeOccurrence => o !== null).map((o) => o.amount));
-  const billsAmount = sum(billsOf(state, month).map((b) => b.amount));
-  const dailyAmount = sum(state.dailyExpenses.filter((x) => monthOf(x.date) === month).map((x) => x.amount));
+  // Previsões que mexem no saldo e já chegaram entram nas três linhas (previsoes RN-01).
+  const fx = forecastCash(state, month);
+  const incomeAmount = cents(fx.income + sum(state.incomes.map((i) => occurrenceOf(state, i, month)).filter((o): o is IncomeOccurrence => o !== null).map((o) => o.amount)));
+  const billsAmount = cents(fx.bills + sum(billsOf(state, month).map((b) => b.amount)));
+  const dailyAmount = cents(fx.daily + sum(state.dailyExpenses.filter((x) => monthOf(x.date) === month).map((x) => x.amount)));
   const cardsAmount = consolidatedOf(state, month).invoiceAmount;
   return { incomeAmount, billsAmount, dailyAmount, cardsAmount, resultAmount: cents(incomeAmount - billsAmount - dailyAmount - cardsAmount) };
 }
 
 // RN-16: the balance starts at the oldest income, bill or daily expense. The cards don't set it.
 function cashStart(state: State): MonthKey | null {
-  const firsts = [...state.incomes.map((i) => i.firstMonth), ...state.bills.map((b) => b.firstMonth), ...state.dailyExpenses.map((x) => monthOf(x.date))];
+  const firsts = [...state.incomes.map((i) => i.firstMonth), ...state.bills.map((b) => b.firstMonth), ...state.dailyExpenses.map((x) => monthOf(x.date)),
+    ...state.forecasts.filter((f) => f.firstMonth <= currentMonth()).map((f) => f.firstMonth)];
   return firsts.length ? firsts.reduce((min, m) => (m < min ? m : min)) : null;
 }
 
