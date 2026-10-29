@@ -13,7 +13,7 @@ import {
   type Cards, type Category, type Movement, type PlannedInstallment,
 } from '@workspace/api-client-react';
 import {
-  ArrowDownLeft, ArrowUpRight, CalendarDays, Check, ChevronDown, CircleHelp, CreditCard,
+  ArrowDownLeft, CalendarDays, ChevronRight, Check, ChevronDown, CircleHelp, CreditCard,
   LayoutDashboard, MoreHorizontal, Plus, X,
 } from 'lucide-react';
 import { CardPicker, type CarouselCard } from '@/components/card-picker';
@@ -22,8 +22,7 @@ import { CardMenu } from '@/components/card-menu';
 import { ChartLegend } from '@/components/charts/chart-legend';
 import { Columns } from '@/components/charts/columns';
 import { HBars } from '@/components/charts/hbars';
-import { StepLine } from '@/components/charts/step-line';
-import { invoiceColumns, paceSteps, topCategories } from '@/lib/card-series';
+import { invoiceColumns, topCategories } from '@/lib/card-series';
 import { AppHeader } from '@/components/app-header';
 import { ScopeDialog } from '@/components/scope-dialog';
 import { FormActions, FormSheet, SheetHeader } from '@/components/bottom-sheet';
@@ -34,9 +33,12 @@ import { dialogPanel } from '@/lib/dialog-styles';
 import { useRememberMonth } from '@/lib/last-month';
 import { CARD_COLOR_KEYS, CARD_COLORS, type CardColor } from '@/lib/card-colors';
 import {
-  capitalize, currentMonth, dateLabel, today, defaultDateFor, firstDayOf, isFutureMonth, lastDayOf,
+  capitalize, currentMonth, dateLabel, defaultDateFor, firstDayOf, isFutureMonth, lastDayOf,
   money, monthLabel, monthName, monthOf, plural, shiftMonth, type MonthKey,
 } from '@/lib/format';
+
+// D4: a lista "Compras" da aba mostra só as mais recentes; o resto fica em "Todas as compras".
+const RECENT_PURCHASES = 3;
 
 type DialogKind = 'card' | 'movement';
 export type DialogRecord = {
@@ -170,7 +172,6 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   const [dialog, setDialog] = useState<{ kind: DialogKind; initial: DialogRecord; onDelete?: () => void } | null>(null);
   const confirm = useConfirm();
   const { notice, notify, failed, formError } = useNotice(Boolean(dialog));
-  const [showAll, setShowAll] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // RF-04 / RF-05: editing or deleting a charge of a recurring purchase asks for the scope first.
   const [scopeAsk, setScopeAsk] = useState<{ action: 'edit' | 'delete'; charge: RecurringCharge } | null>(null);
@@ -216,17 +217,14 @@ export default function Dashboard({ month }: { month: MonthKey }) {
     ...movements.map((movement): Row => ({ key: `m${movement.id}`, description: movement.description, date: movement.date, amount: movement.amount, categoryId: movement.categoryId, categoryName: movement.categoryName, installment: movement.installment, installmentCount: movement.purchase?.installmentCount ?? movement.installmentCount, recurring: movement.recurringId !== undefined, movement })),
     ...(isFuture ? (preview?.installments ?? []).map((planned): Row => ({ key: `p${planned.kind}${planned.purchaseId ?? planned.recurringId}-${planned.installment ?? 0}`, description: planned.description, date: planned.date, amount: planned.amount, categoryId: planned.categoryId, categoryName: planned.categoryName, installment: planned.installment, installmentCount: planned.installmentCount, recurring: planned.kind === 'recurring', planned })) : []),
   ].sort(sortRows);
-  const chips = summary.map((item) => ({ key: filterKey(item.categoryId), label: item.name ?? 'Sem categoria' }));
-  const activeFilter = chips.some((chip) => chip.key === filter) ? filter : 'all';
+  // RF-06: o filtro vale só enquanto a categoria existe no resumo; trocar de mês (a tela é recriada) ou de cartão o remove.
+  const activeFilter = summary.some((item) => filterKey(item.categoryId) === filter) ? filter : 'all';
   const visibleRows = rows.filter((row) => activeFilter === 'all' || filterKey(row.categoryId) === activeFilter);
   const visibleTotal = Math.round(visibleRows.reduce((total, row) => total + row.amount, 0) * 100) / 100;
-  const pace = paceSteps(rows.map((row) => ({ date: row.date, amount: row.amount, description: row.description })));
   const columns = invoiceColumns(month, history, futureInstallments);
   const nextInvoice = columns[1]?.amount ?? 0;
   const categoryRows = topCategories(summary.map((item) => ({ key: filterKey(item.categoryId), label: item.name ?? 'Sem categoria', amount: item.amount, percent: item.percent })));
-  const daysInMonth = Number(lastDayOf(month).slice(8, 10));
-  const todayDay = isCurrentMonth ? Number(today().slice(8, 10)) : null;
-  // D7: tapping a category filters the purchases and scrolls to them; tapping it again clears the filter.
+  // D5: tapping a category filters the purchases and scrolls to them; tapping it again clears the filter.
   const pickCategory = (key: string) => {
     setFilter(activeFilter === key ? 'all' : key);
     document.getElementById('compras')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -322,67 +320,62 @@ export default function Dashboard({ month }: { month: MonthKey }) {
       {card && <section data-testid="section-invoice" aria-label="Fatura" className="enter mt-6" style={{ animationDelay: '.08s' }}>
         <p className="text-sm font-medium text-ink-soft">{isFuture ? 'Fatura prevista de' : 'Fatura de'} {monthLabel(month)}</p>
         <div className="flex items-start justify-between gap-3">
-          <p data-testid="text-invoice" className="min-w-0 font-display text-[44px] leading-[1.1] tracking-[-.02em] text-ink [overflow-wrap:anywhere] min-[380px]:text-[52px]">{money(card.invoiceAmount)}</p>
-          <button aria-label="Mais opções do cartão" data-testid="button-card-menu" onClick={() => setMenuOpen(true)} className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-soft transition hover:bg-hover"><MoreHorizontal size={22}/></button>
+          <p data-testid="text-invoice" className="min-w-0 font-display text-[36px] leading-[1.1] tracking-[-.02em] text-ink [overflow-wrap:anywhere] min-[380px]:text-[42px] min-[420px]:text-[48px]">{money(card.invoiceAmount)}</p>
+          <button aria-label="Mais opções do cartão" data-testid="button-card-menu" onClick={() => setMenuOpen(true)} className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-ink-soft transition hover:bg-hover"><MoreHorizontal size={22}/></button>
         </div>
         <p className="mt-1 text-[15px] text-ink-soft">{card.movementCount === 0 ? 'Nenhuma compra neste mês.' : plural(card.movementCount, 'compra', 'compras')}{nextInvoice > 0 && <> · próxima fatura prevista {money(nextInvoice)}</>}</p>
       </section>}
 
-      {card && <section data-testid="section-pace" aria-label="Ritmo do mês" className="enter mt-8" style={{ animationDelay: '.1s' }}>
-        <h2 className="font-display text-2xl text-ink">Ritmo do mês</h2>
-        <p className="mb-3 text-sm text-ink-soft">Gasto acumulado no cartão, dia a dia</p>
-        {pace.length ? <StepLine month={month} days={daysInMonth} points={pace} todayDay={todayDay} light={isFuture} endDay={todayDay ?? daysInMonth}/>
-          : <p data-testid="text-pace-empty" className="py-4 text-[15px] text-ink-soft">Nenhuma compra neste mês.</p>}
-      </section>}
-
-      {card && <section data-testid="section-where" aria-label="Para onde foi" className="enter mt-8" style={{ animationDelay: '.12s' }}>
-        <h2 className="font-display text-2xl text-ink">Para onde foi</h2>
-        <p className="mb-3 text-sm text-ink-soft">Por categoria, no mês</p>
-        {categoryRows.length ? <HBars rows={categoryRows} fill="bg-chart-violet" label="Gasto por categoria" activeKey={activeFilter} onSelect={pickCategory} testId="list-category-summary" rowTestId={(key) => `row-summary-${key}`}/>
-          : <p className="py-4 text-[15px] text-ink-soft">O resumo por categoria aparece quando houver compras no mês.</p>}
-      </section>}
-
-      {card && <section data-testid="section-next" aria-label="Próximas faturas" className="enter mt-8" style={{ animationDelay: '.14s' }}>
-        <div className="flex items-start justify-between gap-3">
-          <div><h2 className="font-display text-2xl text-ink">Próximas faturas</h2><p className="mb-3 text-sm text-ink-soft">Sete meses, a partir de {monthName(month)}</p></div>
-          <button data-testid="button-history" aria-label={`Ver histórico de ${card.name}`} onClick={() => navigate('/historico')} className="flex min-h-11 shrink-0 items-center text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Histórico</button>
+      {card && <section data-testid="section-next" aria-label="Próximas faturas" className="enter mt-8" style={{ animationDelay: '.1s' }}>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display text-[20px] text-ink">Próximas faturas</h2>
+          <button data-testid="button-history" aria-label={`Ver histórico de ${card.name}`} onClick={() => navigate('/historico')} className="-mr-2 flex h-12 items-center gap-1 rounded-full px-3 text-[15px] font-semibold text-brand transition hover:bg-hover">Histórico<ChevronRight size={18}/></button>
         </div>
+        <p className="mb-3 text-sm text-ink-soft">Sete meses, a partir de {monthName(month)}</p>
         <Columns columns={columns} caption="Fatura do cartão por mês" ariaLabel={`Fatura do cartão nos próximos sete meses: ${columns.map((col) => `${capitalize(monthName(col.month))} ${money(col.amount)}`).join(', ')}`}/>
         <ChartLegend items={[{ label: 'Lançada', swatch: 'bg-chart-violet' }, { label: 'Prevista', swatch: 'bg-chart-violet/[.38]' }]}/>
       </section>}
+
+      {card && <section data-testid="section-where" aria-label="Para onde foi" className="enter mt-8" style={{ animationDelay: '.14s' }}>
+        <h2 className="font-display text-[20px] text-ink">Para onde foi</h2>
+        <p className="mb-3 text-sm text-ink-soft">Por categoria, no mês. Toque numa categoria para ver só as compras dela.</p>
+        {categoryRows.length ? <HBars rows={categoryRows} fill="bg-chart-violet" label="Gasto por categoria" activeKey={activeFilter} activeClass="bg-tint" onSelect={pickCategory} testId="list-category-summary" rowTestId={(key) => `row-summary-${key}`}/>
+          : <p className="py-4 text-[15px] text-ink-soft">O resumo por categoria aparece quando houver compras no mês.</p>}
+      </section>}
       </>}
 
-      <section id="compras" className="mt-8 scroll-mt-4">
-        <div className="enter min-w-0" style={{ animationDelay: '.16s' }}>
+      <section id="compras" data-testid="section-purchases" aria-label="Compras" className="mt-8 scroll-mt-4">
+        <div className="enter min-w-0" style={{ animationDelay: '.18s' }}>
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-eyebrow"><ArrowDownLeft size={16}/><p className="font-mono-data text-[12px] uppercase tracking-[.14em]">Compras</p></div>
-            {card && <button data-testid="button-all-purchases" onClick={() => navigate('/compras')} className="flex min-h-11 items-center text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Todas as compras</button>}
+            <h2 className="font-display text-[20px] text-ink">Compras</h2>
+            {card && <button data-testid="button-all-purchases" onClick={() => navigate('/compras')} className="-mr-2 flex h-12 items-center gap-1 rounded-full px-3 text-[15px] font-semibold text-brand transition hover:bg-hover">Todas as compras<ChevronRight size={18}/></button>}
           </div>
-          <h2 className="font-display text-[28px] leading-tight text-ink">O que já aconteceu</h2>
-          {chips.length > 0 && <div data-testid="filter-categories" role="group" aria-label="Filtrar por categoria" className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4">
-            {[{ key: 'all', label: 'Todas' }, ...chips].map((chip) => <button key={chip.key} data-testid={`filter-${chip.key}`} aria-pressed={activeFilter === chip.key} onClick={() => setFilter(chip.key)} className={`h-11 shrink-0 rounded-full border px-4 text-[14px] font-semibold transition ${activeFilter === chip.key ? 'border-brand bg-brand text-on-brand' : 'border-line-strong bg-surface text-ink-soft hover:bg-hover'}`}>{chip.label}</button>)}
+          {activeFilter !== 'all' && <div className="flex items-center justify-between gap-3">
+            <p data-testid="text-filter-total" className="text-[14px] text-ink-soft">Total do filtro: <b className="font-mono-data font-medium text-ink">{money(visibleTotal)}</b></p>
+            <button data-testid="button-clear-filter" onClick={() => setFilter('all')} className="-mr-2 flex h-12 items-center rounded-full px-3 text-[15px] font-semibold text-brand transition hover:bg-hover">Limpar filtro</button>
           </div>}
-          {activeFilter !== 'all' && <p data-testid="text-filter-total" className="mt-3 text-[13px] text-ink-soft">Total do filtro: <b className="font-mono-data font-medium text-ink">{money(visibleTotal)}</b></p>}
-          <div className="mt-4 border-y border-line">
+          <div className="mt-2 overflow-hidden rounded-2xl border border-line bg-surface">
             {visibleRows.length ? <div data-testid="list-movements" className="divide-y divide-line">
-              {(showAll ? visibleRows : visibleRows.slice(0, 8)).map((row) => {
-                // D3 / D4: a registered purchase or a planned installment opens its edit form; a planned recurring charge has no action.
+              {visibleRows.slice(0, RECENT_PURCHASES).map((row) => {
+                // RF-08: a registered purchase or a planned installment opens its edit form; a planned recurring charge has no action.
                 const open = row.movement ? () => editMovement(row.movement!) : row.planned ? () => editPlanned(row.planned!) : null;
                 const content = <>
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-alert-tint text-alert"><ArrowUpRight size={18}/></span>
                   <span className="block min-w-0 flex-1">
-                    <span className="flex items-center gap-2 text-[15px] font-semibold text-ink"><span className="truncate">{row.description}</span>{row.installment && <span data-testid={row.movement ? `badge-installment-${row.movement.id}` : undefined} className="shrink-0 rounded-full bg-chip px-2 py-0.5 font-mono-data text-[12px] font-medium text-ink-soft">{row.installment}/{row.installmentCount}</span>}{row.recurring && <span data-testid="badge-recurring" className="shrink-0 rounded-full bg-tint px-2 py-0.5 text-[12px] font-semibold text-brand">Mensal</span>}{row.planned && <span className="shrink-0 rounded-full bg-warn-tint px-2 py-0.5 text-[12px] font-medium text-eyebrow">prevista</span>}</span>
-                    <span className="mt-1 flex items-center gap-2 text-[13px] text-ink-soft"><span className="flex items-center gap-1"><CalendarDays size={14}/>{dateLabel(row.date)}</span>{row.categoryName && <span data-testid="text-movement-category" className="truncate rounded-full bg-tint px-2 py-0.5 text-[12px] font-medium text-brand">{row.categoryName}</span>}</span>
+                    <span className="block truncate text-[15px] font-semibold text-ink">{row.description}{row.installment && <span data-testid={row.movement ? `badge-installment-${row.movement.id}` : undefined} className="ml-1.5 font-mono-data text-[13px] font-medium text-ink-soft">{row.installment}/{row.installmentCount}</span>}</span>
+                    <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] text-ink-soft">
+                      <span>{row.categoryName && <span data-testid="text-movement-category">{row.categoryName} · </span>}{dateLabel(row.date)}</span>
+                      {row.recurring && <span data-testid="badge-recurring" className="rounded-full bg-tint px-2 py-0.5 text-[12px] font-semibold text-brand">Mensal</span>}
+                      {row.planned && <span className="rounded-full bg-warn-tint px-2 py-0.5 text-[12px] font-medium text-eyebrow">prevista</span>}
+                    </span>
                   </span>
                   <span className="shrink-0 text-right font-mono-data text-[15px] font-medium text-ink">− {money(row.amount)}</span>
                 </>;
                 const testId = row.movement ? `row-movement-${row.movement.id}` : `row-planned-${row.key}`;
-                const rowClass = 'flex min-h-[72px] w-full items-center gap-3 px-4 py-3 text-left';
+                const rowClass = 'flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left';
                 return open
-                  ? <button type="button" key={row.key} data-testid={testId} aria-label={`Editar compra ${row.description}`} onClick={open} className={`${rowClass} transition hover:bg-paper`}>{content}</button>
+                  ? <button type="button" key={row.key} data-testid={testId} aria-label={`Editar compra ${row.description}`} onClick={open} className={`${rowClass} transition hover:bg-hover`}>{content}</button>
                   : <div key={row.key} data-testid={testId} className={rowClass}>{content}</div>;
               })}
-              {visibleRows.length > 8 && <button onClick={() => setShowAll(!showAll)} className="min-h-11 w-full py-3 text-[13px] font-semibold text-brand hover:bg-paper">{showAll ? 'Mostrar menos' : `Ver mais ${visibleRows.length - 8} compras`}</button>}
             </div> : <div className="px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-ink-mute"><ArrowDownLeft size={18}/></div><h3 data-testid="text-movements-empty" className="mt-3 font-display text-[20px] text-ink">Ainda sem compras</h3><p className="mt-1 text-[13px] leading-5 text-ink-soft">{card ? `As compras de ${monthName(month)} aparecem aqui assim que você registrar.` : 'Cadastre um cartão para começar a registrar suas compras.'}</p>{card && <button onClick={() => setDialog({ kind: 'movement', initial: {} })} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Registrar a primeira compra</button>}</div>}
           </div>
         </div>

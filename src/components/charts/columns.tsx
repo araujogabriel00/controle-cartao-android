@@ -1,6 +1,7 @@
 import { capitalize, money, monthLabel, monthName } from '@/lib/format';
 import { niceScale, type InvoiceColumn } from '@/lib/card-series';
-import { ChartTable } from '@/components/charts/chart-table';
+import { isHidden } from '@/lib/hide-values';
+import { ChartTable, HiddenChart } from '@/components/charts/chart-table';
 
 const W = 358;
 const H = 190;
@@ -17,6 +18,8 @@ const barPath = (x: number, y: number, height: number) => {
 
 // Colunas por mês: cor cheia para o que já foi lançado, 38% para o previsto (specs/redesign-opcao-d-cartoes.md D8).
 export function Columns({ columns, ariaLabel, caption }: { columns: InvoiceColumn[]; ariaLabel: string; caption: string }) {
+  // Com o olho fechado o formato das colunas entregaria o que os valores escondem (specs/redesign-v2-cartoes.md RF-11).
+  if (isHidden()) return <div className="max-w-[440px]"><HiddenChart height={H}/><ChartTable caption={caption} head={['Mês', 'Fatura']} rows={columns.map((col) => ({ label: capitalize(monthLabel(col.month)), value: `${money(col.amount)} (${col.planned ? 'prevista' : 'lançada'})` }))}/></div>;
   const plotH = H - TOP - BOTTOM;
   const base = H - BOTTOM;
   const scale = niceScale(Math.max(...columns.map((c) => c.amount)));

@@ -1,18 +1,6 @@
 // Pure helpers that shape the data of the Cartões charts (specs/redesign-opcao-d-cartoes.md RN-02).
 import { currentMonth, shiftMonth, type MonthKey } from '@/lib/format';
 
-export type PacePoint = { date: string; day: number; amount: number; total: number; description: string };
-
-// Cumulative spend, one step per purchase, in date order (D5).
-export function paceSteps(items: { date: string; amount: number; description: string }[]): PacePoint[] {
-  const sorted = [...items].sort((a, b) => a.date.localeCompare(b.date));
-  let total = 0;
-  return sorted.map((item) => {
-    total = Math.round((total + item.amount) * 100) / 100;
-    return { date: item.date, day: Number(item.date.slice(8, 10)), amount: item.amount, total, description: item.description };
-  });
-}
-
 // 4 round marks, the last one at or just above `max` (1, 1.5, 2, 2.5, 3, 4, 5 x 10^n).
 export function niceScale(max: number, marks = 4) {
   if (!(max > 0)) return { top: marks, ticks: Array.from({ length: marks }, (_, i) => i + 1) };
