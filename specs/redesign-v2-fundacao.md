@@ -24,7 +24,7 @@ A v2 foi desenhada com 13 telas, claras e escuras. Esta spec cobre a **primeira 
 | # | Decisão | Motivo |
 | - | ------- | ------ |
 | D1 | **Barra inferior** com 4 itens, sempre com texto: **Início, Entradas, Cartões, Benefícios**. Item ativo com pílula de 56–64 × 32 px, alvo de toque de 48 px. | Navegação principal ao alcance do polegar; os rótulos evitam ícones ambíguos. |
-| D2 | **Início é a rota `/`**. Cartões passa para `/cartoes` (e `/cartoes/mes/AAAA-MM`). As rotas `/mes/AAAA-MM` antigas **redirecionam** para `/cartoes/mes/AAAA-MM`. | Escolha do usuário: quem abre o app cai no Início. |
+| D2 | **Início é a rota `/`** (mês corrente) e `/inicio/mes/AAAA-MM` (outro mês). Cartões passa para `/cartoes` (e `/cartoes/mes/AAAA-MM`). As rotas `/mes/AAAA-MM` antigas **redirecionam** para `/cartoes/mes/AAAA-MM`. | Escolha do usuário: quem abre o app cai no Início. O Início em outro mês precisa de endereço próprio (D3, RF-02), no mesmo padrão das outras áreas. |
 | D3 | Ao abrir o app com endereço vazio, o app abre o **Início** no mês lembrado (hoje abre Cartões). | Segue o comportamento já existente de lembrar o mês, trocando só o destino. |
 | D4 | O botão **Lançar** vira um botão flutuante estendido (ícone "+" e texto), no canto inferior direito, 88 px acima do fim da tela, sobre a barra. "Categorias" e "Resumo" saem do rodapé. | Libera a barra para a navegação. |
 | D5 | **Categorias** e **Histórico** passam para o menu **⋯** do cabeçalho, junto com **Aparência**. O "Resumo do mês" continua existindo e passa a ser aberto por um link no topo da aba Entradas. | Rotas e telas continuam as mesmas; muda só o jeito de chegar nelas. |
@@ -43,7 +43,7 @@ A v2 foi desenhada com 13 telas, claras e escuras. Esta spec cobre a **primeira 
 | -- | --------- |
 | RF-01 | A barra inferior aparece nas telas de área (Início, Entradas, Cartões, Benefícios) e nas telas abertas a partir delas, com o item da área ativo e `aria-current="page"`. |
 | RF-02 | Tocar num item da barra abre a área **no mês aberto** (mês compartilhado). Tocar no item já ativo volta à tela raiz da área. |
-| RF-03 | `/` abre o Início. `/cartoes` e `/cartoes/mes/AAAA-MM` abrem Cartões. `/mes/AAAA-MM` redireciona para `/cartoes/mes/AAAA-MM`. |
+| RF-03 | `/` abre o Início e `/inicio/mes/AAAA-MM` abre o Início em outro mês. `/cartoes` e `/cartoes/mes/AAAA-MM` abrem Cartões. `/mes/AAAA-MM` redireciona para `/cartoes/mes/AAAA-MM`. |
 | RF-04 | O Início mostra, no mês aberto: **Saldo** (com anterior e resultado), **Entrou** e **Saiu**, **Próxima fatura** (valor e cartão), **Benefícios** (saldo disponível por benefício) e atalhos para cada área. Cada bloco abre a área correspondente. |
 | RF-05 | O Início tem estado vazio com chamada para ação ("Lance sua primeira entrada") e, no primeiro uso, 3 passos: cadastrar um cartão, registrar uma entrada, ver o saldo. |
 | RF-06 | O botão flutuante **Lançar** abre as mesmas cinco opções do menu de hoje e os mesmos formulários, no mês aberto, sem sair da tela. |
