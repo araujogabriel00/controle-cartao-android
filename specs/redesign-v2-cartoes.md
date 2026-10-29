@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Proposta |
+| Status | Implementada |
 | Criada em | 29/10/2026 |
 | Escopo | `src/pages/dashboard.tsx` (corpo da aba Cartões), `src/components/charts/step-line.tsx` (removido), `src/lib/card-series.ts` (só `paceSteps` e o tipo `PacePoint`, removidos), `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`redesign-v2-fundacao.md`](redesign-v2-fundacao.md), [`redesign-opcao-d-cartoes.md`](redesign-opcao-d-cartoes.md), [`multiplos-cartoes.md`](multiplos-cartoes.md), [`parcelamento.md`](parcelamento.md), [`todas-as-compras.md`](todas-as-compras.md), [`compras-em-qualquer-mes.md`](compras-em-qualquer-mes.md) |
@@ -33,6 +33,10 @@ A aba Cartões ainda tem a organização da Opção D: fatura, **Ritmo do mês**
 | D8 | **Próximas faturas** mantém as sete colunas com a legenda Lançada/Prevista e o link "Histórico" no cabeçalho. | Já é o desenho; só ajusta o visual. |
 | D9 | O item de compra é **compacto** como nas outras listas da v2: nome (com a parcela, como "teste 1/7"), "Categoria · data" embaixo, valor com "−" à direita; altura mínima de 64 px. Compra prevista (parcela futura) continua mostrando "prevista". | Consistência com o Início e a tela Entradas. |
 | D10 | O aviso de mês futuro, o estado "Vamos anotar o seu cartão?" e todos os formulários, menus e confirmações não mudam. | Fora do escopo visual desta parte. |
+| D11 | **O valor da Fatura tem 36 px abaixo de 380 px, 42 px até 419 px e 48 px a partir de 420 px** (ajuste da implementação). | Em 360 px "R$ 12.349,54" a 48 px quebraria no meio ao lado do menu ⋯ de 48 px; é o mesmo ajuste do Início e da aba Entradas. |
+| D12 | **Com o olho fechado, o `HBars` e o `Columns` (compartilhados com Benefícios e Histórico) também escondem a forma**: as barras ficam sem preenchimento, o percentual some e as colunas viram uma faixa neutra. | RF-11 pede isso na aba Cartões; como os componentes são os mesmos, a regra do olho vale onde eles aparecem, em vez de deixar o formato das barras de Benefícios e do Histórico revelar a proporção. |
+| D13 | **A dica "Toque numa categoria para ver só as compras dela." só aparece quando há categorias** e a categoria selecionada de `HBars` usa `bg-tint` (nova propriedade `activeClass`, com `bg-surface` como padrão para Benefícios). | Sem categorias a dica não faz sentido; Benefícios não muda de visual. |
+| D14 | O nome da compra e a parcela ficam na mesma linha ("Teste 1/7") sem o selo em pílula; os selos "Mensal" e "prevista" passam para a linha de baixo, ao lado de "Categoria · data". | D9 pede o item compacto com a parcela junto do nome. |
 
 ## 3. Requisitos
 
@@ -164,17 +168,21 @@ Sem mudança no formato salvo, na camada de dados nem nos hooks. Saem apenas o g
 
 ## 8. Critérios de aceite
 
-- [ ] `npm run typecheck` e `npm run build` passam.
-- [ ] A aba mostra as seções na ordem de D1, nos temas claro e escuro, sem "Ritmo do mês".
-- [ ] Fatura, próximas faturas, resumo por categoria e compras batem com os valores de antes da mudança para o mesmo mês.
-- [ ] Tocar numa categoria filtra "Compras", mostra o "Total do filtro" e "Limpar filtro" remove; trocar de mês ou de cartão limpa.
-- [ ] "Compras" mostra 3 itens e "Todas as compras" abre a lista completa sem filtro.
-- [ ] Editar uma compra pela lista continua funcionando; desfazer a exclusão continua funcionando.
-- [ ] Estados vazios (sem cartão, sem compras) aparecem em vez de seções vazias.
-- [ ] Com o olho fechado, nenhum valor e nenhum formato de gráfico aparece.
-- [ ] Sem scroll horizontal em 360 px; itens com no mínimo 64 px e alvos de 48 px.
-- [ ] Nenhum resto do `StepLine`/`paceSteps` no código (busca).
-- [ ] `FUNCIONALIDADES.md` (nova seção e ajuste da seção 28) e `README.md` atualizados.
+Verificado no navegador (`npm run dev`) com dados de teste (um cartão com compras em duas categorias, uma compra em 7 parcelas e uma recorrente; depois dois cartões), nos temas escuro e claro, em janela larga e num `<iframe>` de 360 px. Antes de mudar o código tirei uma linha de base da aba antiga para comparar os valores. Não conferi com um leitor de tela de verdade.
+
+- [x] `npm run typecheck` e `npm run build` passam.
+- [x] A aba mostra as seções na ordem de D1 (seletor, Fatura, Próximas faturas, Para onde foi, Compras), nos temas escuro e claro, sem "Ritmo do mês".
+- [x] Fatura, próximas faturas, resumo por categoria e compras batem com os valores de antes da mudança para o mesmo mês: fatura R$ 320,00 e "5 compras · próxima fatura prevista R$ 130,00"; colunas R$ 320,00 e 6 × R$ 130,00; resumo Mercado R$ 140,00 · 44%, Eletrônicos R$ 100,00 · 31%, Sem categoria R$ 80,00 · 25%; as mesmas compras na mesma ordem (só 3 agora).
+- [x] Tocar numa categoria filtra "Compras" (só as da categoria, com `aria-pressed` e fundo `tint`), mostra o "Total do filtro" (R$ 100,00 e R$ 140,00) e "Limpar filtro" remove; tocar de novo na mesma linha também limpa; trocar de mês e trocar de cartão limpam (e voltar ao primeiro cartão não traz o filtro de volta).
+- [x] "Compras" mostra 3 itens (5 no mês) e "Todas as compras" abre a lista completa (`#/compras`, com todos os meses) sem filtro, mesmo com um filtro ativo.
+- [x] Editar uma compra pela lista abre o formulário dela; excluir pelo formulário não pede confirmação, mostra "Padaria removida." com "Desfazer" e a fatura cai de R$ 320,00 para R$ 300,00; desfazer devolve tudo idêntico ao salvo antes (byte a byte).
+- [x] Estados vazios aparecem em vez de seções vazias: mês sem compras ("O resumo por categoria aparece quando houver compras no mês." e "Ainda sem compras" com "Registrar a primeira compra") e sem nenhum cartão ("Vamos anotar o seu cartão?", sem "Todas as compras").
+- [x] Com o olho fechado, nenhum valor e nenhum formato de gráfico aparece (texto, HTML e `aria-label` sem valor em reais; sem percentual; colunas em faixa neutra; barras sem largura).
+- [x] Sem scroll horizontal em 360 px (documento de 345 px num iframe de 360 px); itens de compra com 70 a 71 px (mínimo 64), alvos de 48 px (menu ⋯, "Histórico", "Todas as compras", "Limpar filtro") e linhas do resumo com 59 px.
+- [x] Nenhum resto do `StepLine`/`paceSteps` no código (busca por `StepLine`, `step-line`, `paceSteps`, `PacePoint`, `section-pace`, `text-pace-empty` e `filter-categories`: nada).
+- [x] `FUNCIONALIDADES.md` (nova seção 36 e ajuste das seções 3 e 28) e `README.md` atualizados.
+
+Não conferido: o aviso falando por um leitor de tela; a exclusão de uma compra recorrente ou parcelada pela lista nesta aba (o fluxo de exclusão com Desfazer não mudou e foi verificado na parte 3); e `prefers-reduced-motion`.
 
 ## 9. Tarefas
 
