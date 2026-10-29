@@ -55,6 +55,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 32. [Nova versão (v2): fundação](#32-nova-versão-v2-fundação)
 33. [Início com mini-gráficos](#33-início-com-mini-gráficos)
 34. [Desfazer a exclusão](#34-desfazer-a-exclusão)
+35. [Aba Entradas no desenho v3](#35-aba-entradas-no-desenho-v3)
 
 ---
 
@@ -1506,6 +1507,8 @@ Funcionalidade: Lançamentos do benefício em tela própria
 ## 23. Redesign da tela Entradas
 
 Resumo. A especificação completa está em [`specs/redesign-entradas.md`](specs/redesign-entradas.md). Nenhuma regra de cálculo muda.
+
+> O conteúdo da aba Entradas foi refeito na v2 (saldo com resultado, "Saldo mês a mês" e origens em linhas): veja a seção 35.
 ## 23. Editar parcela prevista
 
 Resumo. A especificação completa está em [`specs/editar-parcela-prevista.md`](specs/editar-parcela-prevista.md). A prévia de mês futuro (seção 11) deixa de ser só leitura para as parcelas: elas podem ser editadas.
@@ -1686,7 +1689,7 @@ Funcionalidade: Aba Benefícios redesenhada
 
 ## 27. Opção D: Entradas
 
-Resumo. A especificação completa está em [`specs/redesign-opcao-d-entradas.md`](specs/redesign-opcao-d-entradas.md). Nenhuma regra de cálculo muda. A aba Entradas mostra o saldo sem card e o gráfico "Entrou e saiu"; o resumo em quatro linhas virou a tela "Resumo do mês", aberta pelo botão "Resumo" do rodapé (`#/entradas/resumo`, com `/mes/AAAA-MM` no fim para outro mês).
+Resumo. A especificação completa está em [`specs/redesign-opcao-d-entradas.md`](specs/redesign-opcao-d-entradas.md). Nenhuma regra de cálculo muda. A aba Entradas mostrava o saldo sem card e o gráfico "Entrou e saiu" (hoje trocado pelo desenho da seção 35); o resumo em quatro linhas virou a tela "Resumo do mês" (`#/entradas/resumo`, com `/mes/AAAA-MM` no fim para outro mês), aberta pelo link "Resumo" do cartão "Entrou e saiu" da aba.
 
 ```gherkin
 # language: pt
@@ -1695,27 +1698,26 @@ Funcionalidade: Aba Entradas na Opção D
   Contexto:
     Dado que em outubro de 2026 as entradas são R$ 4.527,00, os cartões R$ 520,14 e contas fixas e gastos R$ 0,00
 
-  Cenário: Saldo e gráfico
+  Cenário: Saldo e origens
     Quando eu abro a aba "Entradas"
-    Então vejo "Saldo" e "R$ 4.006,86" sem card
-    E no gráfico "Entrou e saiu" vejo "+4.527" à direita do eixo em Entradas e "−520" à esquerda em Cartões
-    E "0" em Contas fixas e em Gastos do dia a dia, sem barra
-    E "+4.007" à direita em "Resultado do mês"
+    Então vejo "Saldo" e "R$ 4.006,86" sem card, com "+ R$ 4.006,86 neste mês" abaixo (o gráfico de barras divergentes foi trocado, seção 35)
+    E em "Entrou e saiu" vejo "+ R$ 4.527,00" em Entradas e "− R$ 520,14" em Cartões
+    E "R$ 0,00" em Contas fixas e em Gastos do dia a dia, sem sinal
 
   Cenário: Abrir o resumo pelo link de Entradas
-    Quando eu toco em "Resumo do mês" no topo da aba "Entradas"
+    Quando eu toco em "Resumo" no cartão "Entrou e saiu" da aba "Entradas"
     Então abre a tela "Resumo do mês" com "Saldo anterior", "Resultado do mês" e as quatro linhas
 
   Cenário: O link Resumo só existe em Entradas
     Quando eu abro as abas "Cartões" e "Benefícios"
-    Então não há link "Resumo do mês" e o rodapé não tem botão de resumo
+    Então não há link "Resumo" e o rodapé não tem botão de resumo
 
   Cenário: Resultado negativo
     Dado que o resultado do mês é − R$ 300,00
-    Então a barra de "Resultado do mês" fica à esquerda do eixo, em laranja, e o valor em cor de alerta
+    Então o resultado aparece como "− R$ 300,00 neste mês" e, se o saldo ficar negativo, o saldo vem em cor de alerta com o aviso
 
-  Cenário: Acessibilidade do gráfico
-    Então o gráfico tem descrição com os cinco valores por extenso e uma tabela de apoio visível só para leitor de tela
+  Cenário: Acessibilidade
+    Então as linhas de origem têm nome, quantidade, valor e percentual, e uma tabela de apoio visível só para leitor de tela
 ```
 
 ---
@@ -2147,3 +2149,82 @@ Funcionalidade: Desfazer a exclusão
 ```
 
 Detalhes que a spec fecha na implementação: o aviso diz o alcance nas recorrentes ("Salário removido deste mês." ou "deste mês em diante."); o cursor ou o dedo sobre o aviso também pausa a contagem; ao apagar a partir do formulário de edição ("Excluir compra"), o formulário fecha; o aviso de sucesso e o de desfazer nunca aparecem juntos. Identificadores: `snackbar-undo`, `button-undo` e `text-undo`; `button-confirm-ok` e `button-confirm-cancel` continuam só nas exclusões grandes.
+
+---
+
+## 35. Aba Entradas no desenho v3
+
+Resumo. A especificação completa está em [`specs/redesign-v2-entradas.md`](specs/redesign-v2-entradas.md). Nenhuma regra de cálculo muda e a aba só lê. O gráfico de barras divergentes "Entrou e saiu" saiu: a aba mostra o saldo com o resultado do mês, um gráfico de linha "Saldo mês a mês" (saldo ao fim de cada um dos últimos 6 meses, do mesmo `getBalanceSeries` do Início) e as quatro origens como linhas tocáveis com barra. A tela "Resumo do mês" e as quatro listas não mudam.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Aba Entradas na nova versão (desenho v3)
+
+  Cenário: Saldo com o resultado do mês
+    Dado que o resultado do mês é + R$ 4.109,84 e o saldo R$ 12.349,54
+    Quando eu abro a aba "Entradas"
+    Então vejo o saldo R$ 12.349,54
+    E a linha "+ R$ 4.109,84 neste mês"
+
+  Cenário: Saldo mês a mês
+    Dado que o app tem dados desde 6 meses atrás
+    Quando eu olho "Saldo mês a mês"
+    Então vejo uma linha com 6 pontos, os nomes dos meses e as marcas "0", "7 mil" e "14 mil"
+    E o último ponto está destacado, com o valor escrito ao lado
+
+  Cenário: Ver o saldo de outro mês
+    Quando eu toco no ponto de setembro
+    Então o ponto fica destacado
+    E vejo "Set: R$ 8.239,70" abaixo do título
+
+  Cenário: Escolher o mês pelo teclado
+    Dado que o gráfico está com o foco
+    Quando eu aperto a seta para a esquerda
+    Então o mês anterior é escolhido e o texto muda
+
+  Cenário: Pouco histórico
+    Dado que só existe o mês corrente
+    Então a seção mostra "Ainda sem histórico." e não desenha o gráfico
+
+  Cenário: Origens como linhas
+    Dado que o mês tem entradas de R$ 4.527,00 e uma fatura de R$ 417,16
+    Quando eu olho "Entrou e saiu"
+    Então vejo "Entradas" com "+ R$ 4.527,00" e "1 lançamento"
+    E "Cartões" com "− R$ 417,16" e "1 fatura"
+    E "Contas fixas" e "Gastos do dia a dia" com "R$ 0,00", "nenhuma neste mês" / "nenhum neste mês" e sem sinal
+
+  Cenário: Barras proporcionais
+    Dado que entraram R$ 4.527,00 e saíram R$ 417,16 em cartões
+    Então a barra de "Entradas" está cheia
+    E a barra de "Cartões" tem cerca de 9% da largura
+
+  Cenário: Abrir uma lista e o resumo
+    Quando eu toco na linha "Cartões"
+    Então abre a tela de faturas por cartão do mês aberto
+    Quando eu volto e toco em "Resumo"
+    Então abre a tela "Resumo do mês"
+
+  Cenário: Saldo negativo
+    Dado que as saídas passam das entradas e do saldo anterior
+    Então o saldo aparece na cor de alerta com o aviso
+    E o gráfico mostra o ponto abaixo do zero
+
+  Cenário: Valores escondidos
+    Quando eu toco no olho
+    Então os valores, os eixos e o texto do mês escolhido aparecem como "R$ ••••"
+    E o gráfico vira uma faixa neutra e as barras viram barras neutras
+
+  Cenário: Falha na série do gráfico
+    Dado que a leitura da série falha
+    Quando eu abro a aba "Entradas"
+    Então a seção mostra "Gráfico indisponível" e "Tentar novamente"
+    E o saldo e as linhas aparecem normalmente
+
+  Cenário: Leitor de tela
+    Quando um leitor de tela chega ao gráfico
+    Então lê a descrição com os 6 saldos
+    E há uma tabela de apoio com mês e saldo
+```
+
+Detalhes que a spec fecha na implementação: os rótulos do eixo ficam dentro da área do gráfico (as colunas de toque têm 51,6 px em 360 px); abaixo de 400 px o ícone das linhas some e o texto quebra em vez de ser cortado; sem nenhuma entrada no mês, todas as barras ficam em zero; o gráfico tem no máximo 440 px de largura. Identificadores: `chart-balance-line`, `text-balance-selected`, `point-balance-AAAA-MM`, `row-origin-income`, `row-origin-bills`, `row-origin-daily` e `row-origin-cards` (novos), além de `section-balance`, `text-cash-balance`, `text-cash-warning`, `button-summary` e `section-chart` (mantidos; `section-chart` agora é a seção "Saldo mês a mês").

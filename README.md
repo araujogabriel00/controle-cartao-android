@@ -177,9 +177,10 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── pages/dashboard.tsx # painel de um mês
 │   ├── pages/historico.tsx # lista de meses
 │   ├── pages/compras.tsx # todas as compras do cartão, de qualquer mês
-│   ├── pages/entradas.tsx  # saldo e gráfico "Entrou e saiu"
+│   ├── pages/entradas.tsx  # saldo com o resultado, gráfico "Saldo mês a mês" e as quatro origens em linhas
+│   ├── components/origin-rows.tsx # linhas de origem (valor com sinal, quantidade e barra) da aba Entradas
 │   ├── pages/entradas-resumo.tsx # tela "Resumo do mês" (aberta por um link em Entradas)
-│   ├── components/charts/  # gráficos em SVG e barras (divergentes, degraus, colunas, horizontais, legenda, tabela de apoio; do Início: sparkline, mini-colunas, barra de uso)
+│   ├── components/charts/  # gráficos em SVG e barras (linha do saldo mês a mês, degraus, colunas, horizontais, legenda, tabela de apoio; do Início: sparkline, mini-colunas, barra de uso)
 │   ├── pages/entradas-lista.tsx # listas de entradas, contas fixas e gastos
 │   ├── components/entry-dialogs.tsx # formulários de entrada, conta fixa e gasto
 │   ├── pages/beneficios.tsx # benefícios do mês
