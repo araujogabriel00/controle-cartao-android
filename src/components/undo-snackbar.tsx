@@ -24,6 +24,11 @@ export function showUndo({ undoId, label, text }: { undoId: number; label: strin
   set({ key: ++seq, kind: 'undo', undoId, label, text });
 }
 
+// Atalho das telas: `mutate(vars, undoable('Mercado', 'Mercado removido.'))` abre o aviso depois de apagar (D1).
+export const undoable = (label: string, text: string) => ({ onSuccess: (result: { undoId: number }) => showUndo({ undoId: result.undoId, label, text }) });
+// RF-07: o aviso diz o alcance escolhido.
+export const scopeSuffix = (scope: 'month' | 'forward') => (scope === 'month' ? ' deste mês' : ' deste mês em diante');
+
 export const useUndoActive = () => useSyncExternalStore(subscribe, () => current !== null);
 
 export function UndoSnackbar() {

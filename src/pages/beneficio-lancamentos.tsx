@@ -8,7 +8,7 @@ import {
 } from '@workspace/api-client-react';
 import { CalendarDays, CircleHelp, Receipt } from 'lucide-react';
 import { BackButton } from '@/components/back-button';
-import { removeAsk, useConfirm } from '@/components/confirm-dialog';
+import { scopeSuffix, undoable } from '@/components/undo-snackbar';
 import { Notice, useNotice } from '@/components/notice';
 import { RowMenu } from '@/components/row-menu';
 import { rememberBenefit, SpendDialog } from '@/pages/beneficios';
@@ -25,7 +25,6 @@ export default function BeneficioLancamentos({ benefitId, filter, month }: { ben
   useRememberMonth(month);
   const [, navigate] = useLocation();
   const client = useQueryClient();
-  const confirm = useConfirm();
   const benefits = useGetBenefits(month, { query: { queryKey: getGetBenefitsQueryKey(month), refetchOnWindowFocus: true } });
   const categories = useGetCategories({ query: { queryKey: getGetCategoriesQueryKey() } }).data ?? [];
   const [editing, setEditing] = useState<BenefitSpend | null>(null);
@@ -40,9 +39,10 @@ export default function BeneficioLancamentos({ benefitId, filter, month }: { ben
     }
   };
   const updateSpend = useUpdateBenefitSpend({ mutation: { onSuccess: () => { refresh(); setEditing(null); notify('Gasto atualizado.'); }, onError: failed } });
-  const deleteSpend = useDeleteBenefitSpend({ mutation: { onSuccess: () => { refresh(); notify('Gasto excluído.'); }, onError: failed } });
-  const removeSpend = async (spend: BenefitSpend) => {
-    if (await confirm(removeAsk(`o gasto “${spend.description}”`))) deleteSpend.mutate({ spendId: spend.id });
+  // D1: apagar não pergunta; o aviso com Desfazer abre depois. O formulário de edição, se estava aberto, fecha.
+  const deleteSpend = useDeleteBenefitSpend({ mutation: { onSuccess: () => { refresh(); setEditing(null); }, onError: failed } });
+  const removeSpend = (spend: BenefitSpend) => {
+    deleteSpend.mutate({ spendId: spend.id }, undoable(spend.description, `${spend.description} removido.`));
   };
 
   const spends = (benefit?.spends ?? []).filter((spend) => filter === 'todos' || (filter === 'sem' ? spend.categoryId === null : spend.categoryId === filter));

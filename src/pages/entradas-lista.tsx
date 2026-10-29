@@ -10,7 +10,7 @@ import {
 import { CalendarDays, ChevronRight, CircleHelp, CreditCard, HandCoins, Receipt, Repeat, ShoppingBasket } from 'lucide-react';
 import { BackButton } from '@/components/back-button';
 import { HBars } from '@/components/charts/hbars';
-import { removeAsk, useConfirm } from '@/components/confirm-dialog';
+import { scopeSuffix, undoable } from '@/components/undo-snackbar';
 import { Notice, useNotice } from '@/components/notice';
 import { RowMenu } from '@/components/row-menu';
 import { BillDialog, DailyDialog, IncomeDialog, KIND_LABELS, type BillForm, type BillValues, type DailyValues, type IncomeForm } from '@/components/entry-dialogs';
@@ -46,7 +46,6 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
   const [billForm, setBillForm] = useState<BillForm | null>(null);
   const [dailyForm, setDailyForm] = useState<{ item?: DailyExpense } | null>(null);
   const [scopeAsk, setScopeAsk] = useState<ScopeAsk | null>(null);
-  const confirm = useConfirm();
   const { notice, notify, failed, formError } = useNotice(Boolean(incomeForm || billForm || dailyForm));
   const incomeItems = incomes.data?.items ?? [];
   const billItems = bills.data?.items ?? [];
@@ -58,32 +57,32 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
     }
   };
   const closing = (text: string) => ({ onSuccess: () => { refresh(); setIncomeForm(null); setBillForm(null); setDailyForm(null); notify(text); }, onError: failed });
-  const done = (text: string) => ({ onSuccess: () => { refresh(); notify(text); }, onError: failed });
+  // D1: apagar não pergunta; o aviso com Desfazer abre depois (specs/desfazer-exclusao.md).
+  const removed = { onSuccess: () => refresh(), onError: failed };
   // D11: a card row opens the Cartões tab, in this month, with that card selected.
   const selectCard = useSelectCard({ mutation: { onSuccess: () => { refresh(); navigate(areaPath('cards', month)); }, onError: failed } });
   const updateIncome = useUpdateIncome({ mutation: closing('Entrada atualizada.') });
-  const deleteIncome = useDeleteIncome({ mutation: done('Entrada removida.') });
+  const deleteIncome = useDeleteIncome({ mutation: removed });
   const updateBill = useUpdateBill({ mutation: closing('Conta fixa atualizada.') });
-  const deleteBill = useDeleteBill({ mutation: done('Conta fixa removida.') });
+  const deleteBill = useDeleteBill({ mutation: removed });
   const updateDaily = useUpdateDailyExpense({ mutation: closing('Gasto atualizado.') });
-  const deleteDaily = useDeleteDailyExpense({ mutation: done('Gasto excluído.') });
+  const deleteDaily = useDeleteDailyExpense({ mutation: removed });
 
   const incomeLabel = (item: IncomeOccurrence) => item.description || KIND_LABELS[item.kind];
-  const scopeText = (name: string, scope: IncomeScope) => (scope === 'month' ? `“${name}” só em ${monthLabel(month)}` : `“${name}” de ${monthLabel(month)} em diante`);
-  const confirmDeleteIncome = async (item: IncomeOccurrence, scope: IncomeScope) => {
-    const what = item.recurring ? scopeText(incomeLabel(item), scope) : `“${incomeLabel(item)}”`;
-    if (await confirm(removeAsk(what))) deleteIncome.mutate({ incomeId: item.incomeId, month, scope });
+  const deleteIncomeNow = (item: IncomeOccurrence, scope: IncomeScope) => {
+    const label = incomeLabel(item);
+    deleteIncome.mutate({ incomeId: item.incomeId, month, scope }, undoable(label, item.recurring ? `${label} removido${scopeSuffix(scope)}.` : `${label} removido.`));
   };
-  const confirmDeleteBill = async (item: BillOccurrence, scope: IncomeScope) => {
-    if (await confirm(removeAsk(scopeText(item.name, scope)))) deleteBill.mutate({ billId: item.billId, month, scope });
+  const deleteBillNow = (item: BillOccurrence, scope: IncomeScope) => {
+    deleteBill.mutate({ billId: item.billId, month, scope }, undoable(item.name, `${item.name} removida${scopeSuffix(scope)}.`));
   };
   const chooseScope = (scope: IncomeScope) => {
     if (!scopeAsk) return;
     const ask = scopeAsk;
     setScopeAsk(null);
-    if (ask.kind === 'income') { if (ask.action === 'edit') setIncomeForm({ item: ask.item, scope }); else confirmDeleteIncome(ask.item, scope); }
+    if (ask.kind === 'income') { if (ask.action === 'edit') setIncomeForm({ item: ask.item, scope }); else deleteIncomeNow(ask.item, scope); }
     else if (ask.action === 'edit') setBillForm({ item: ask.item, scope });
-    else confirmDeleteBill(ask.item, scope);
+    else deleteBillNow(ask.item, scope);
   };
   const saveIncome: Parameters<typeof IncomeDialog>[0]['onSave'] = (values) => {
     if (incomeForm?.item) updateIncome.mutate({ incomeId: incomeForm.item.incomeId, month, scope: incomeForm.scope ?? 'forward', data: values });
@@ -96,8 +95,8 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
     if (dailyForm?.item) updateDaily.mutate({ expenseId: dailyForm.item.id, categoryId: values.categoryId, data });
   };
 
-  const removeDaily = async (item: DailyExpense) => {
-    if (await confirm(removeAsk(`o gasto “${item.description}”`))) deleteDaily.mutate({ expenseId: item.id });
+  const removeDaily = (item: DailyExpense) => {
+    deleteDaily.mutate({ expenseId: item.id }, undoable(item.description, `${item.description} removido.`));
   };
   const cardItems = cards.data?.cards ?? [];
   const query = kind === 'entradas' ? incomes : kind === 'contas-fixas' ? bills : kind === 'cartoes' ? cards : daily;
@@ -132,7 +131,7 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
               </span>
               <span className="shrink-0 font-mono-data text-[15px] text-brand">{money(item.amount)}</span>
             </button>
-            <RowMenu title={incomeLabel(item)} editTestId={`button-edit-income-${item.incomeId}`} deleteTestId={`button-delete-income-${item.incomeId}`} onEdit={edit} onDelete={() => (item.recurring ? setScopeAsk({ kind: 'income', action: 'delete', item }) : void confirmDeleteIncome(item, 'forward'))}/>
+            <RowMenu title={incomeLabel(item)} editTestId={`button-edit-income-${item.incomeId}`} deleteTestId={`button-delete-income-${item.incomeId}`} onEdit={edit} onDelete={() => (item.recurring ? setScopeAsk({ kind: 'income', action: 'delete', item }) : void deleteIncomeNow(item, 'forward'))}/>
           </li>;
         })}
       </ul> : emptyBox('text-income-empty', <HandCoins size={16}/>, 'Nenhuma entrada neste mês.'))}

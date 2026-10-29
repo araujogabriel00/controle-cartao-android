@@ -28,6 +28,7 @@ import { AppHeader } from '@/components/app-header';
 import { ScopeDialog } from '@/components/scope-dialog';
 import { FormActions, FormSheet, SheetHeader } from '@/components/bottom-sheet';
 import { removeAsk, useConfirm } from '@/components/confirm-dialog';
+import { scopeSuffix, undoable } from '@/components/undo-snackbar';
 import { Notice, useNotice } from '@/components/notice';
 import { dialogPanel } from '@/lib/dialog-styles';
 import { useRememberMonth } from '@/lib/last-month';
@@ -193,13 +194,15 @@ export default function Dashboard({ month }: { month: MonthKey }) {
   };
   const createMovement = useCreateMovement({ mutation: { onSuccess: (movement) => { refresh(); setDialog(null); notify(monthOf(movement.date) === month ? 'Compra registrada.' : `Compra registrada em ${monthLabel(monthOf(movement.date))}.`); }, onError: failed } });
   const updateMovement = useUpdateMovement({ mutation: { onSuccess: () => { refresh(); setDialog(null); notify('Compra atualizada.'); }, onError: failed } });
-  const deleteMovement = useDeleteMovement({ mutation: { onSuccess: () => { refresh(); notify('Compra excluída.'); }, onError: failed } });
+  // D1: apagar não pergunta; o aviso com Desfazer abre depois. O formulário de edição, se estava aberto, fecha.
+  const removed = { onSuccess: () => { refresh(); setDialog(null); }, onError: failed };
+  const deleteMovement = useDeleteMovement({ mutation: removed });
   const createPurchase = useCreatePurchase({ mutation: { onSuccess: () => { refresh(); setDialog(null); notify('Compra parcelada registrada.'); }, onError: failed } });
   const updatePurchase = useUpdatePurchase({ mutation: { onSuccess: () => { refresh(); setDialog(null); notify('Compra parcelada atualizada.'); }, onError: failed } });
-  const deletePurchase = useDeletePurchase({ mutation: { onSuccess: () => { refresh(); notify('Compra parcelada removida.'); }, onError: failed } });
+  const deletePurchase = useDeletePurchase({ mutation: removed });
   const createRecurring = useCreateRecurring({ mutation: { onSuccess: () => { refresh(); setDialog(null); notify('Compra recorrente registrada.'); }, onError: failed } });
   const updateRecurring = useUpdateRecurring({ mutation: { onSuccess: () => { refresh(); setDialog(null); notify('Compra recorrente atualizada.'); }, onError: failed } });
-  const deleteRecurring = useDeleteRecurring({ mutation: { onSuccess: () => { refresh(); notify('Compra recorrente removida.'); }, onError: failed } });
+  const deleteRecurring = useDeleteRecurring({ mutation: removed });
   const startMonth = useStartMonth({ mutation: { onSuccess: () => refresh(), onError: failed } });
   // RF-12: the new month starts by itself, with no question.
   useEffect(() => {
@@ -271,10 +274,10 @@ export default function Dashboard({ month }: { month: MonthKey }) {
       initial: { id: planned.purchase.id, categoryId: planned.categoryId, description: planned.description, amount: planned.purchase.totalAmount, date: planned.date, isPurchase: true, purchaseId: planned.purchase.id, installmentCount: planned.purchase.installmentCount, installment: planned.installment, firstInstallment: planned.purchase.firstInstallment },
     });
   };
-  const removePlanned = async (planned: PlannedInstallment) => {
+  const removePlanned = (planned: PlannedInstallment) => {
     const charge = chargeOfPlanned(planned);
     if (charge) setScopeAsk({ action: 'delete', charge });
-    else if (planned.purchase && await askDelete(`a compra parcelada “${planned.description}” e todas as suas parcelas`)) deletePurchase.mutate({ purchaseId: planned.purchase.id });
+    else if (planned.purchase) deletePurchase.mutate({ purchaseId: planned.purchase.id }, undoable(planned.description, `${planned.description} removida.`));
   };
   const chooseScope = async (scope: 'month' | 'forward') => {
     if (!scopeAsk) return;
@@ -285,13 +288,13 @@ export default function Dashboard({ month }: { month: MonthKey }) {
       setDialog({ kind: 'movement', onDelete: () => setScopeAsk({ action: 'delete', charge }), initial: chargeDialog(charge, scope) });
       return;
     }
-    const what = scope === 'month' ? `“${charge.description}” só em ${monthLabel(chargeMonth)}` : `“${charge.description}” de ${monthLabel(chargeMonth)} em diante`;
-    if (await askDelete(what)) deleteRecurring.mutate({ recurringId: charge.recurringId, month: chargeMonth, scope });
+    deleteRecurring.mutate({ recurringId: charge.recurringId, month: chargeMonth, scope }, undoable(charge.description, `${charge.description} removida${scopeSuffix(scope)}.`));
   };
-  const removeMovement = async (movement: Movement) => {
+  const removeMovement = (movement: Movement) => {
     if (movement.recurring) { setScopeAsk({ action: 'delete', charge: chargeOfMovement(movement)! }); return; }
-    if (movement.purchase) { if (await askDelete(`a compra parcelada “${movement.description}” e todas as suas parcelas`)) deletePurchase.mutate({ purchaseId: movement.purchase.id }); }
-    else if (await askDelete(`a compra “${movement.description}”`)) deleteMovement.mutate({ movementId: movement.id });
+    const text = `${movement.description} removida.`;
+    if (movement.purchase) deletePurchase.mutate({ purchaseId: movement.purchase.id }, undoable(movement.description, text));
+    else deleteMovement.mutate({ movementId: movement.id }, undoable(movement.description, text));
   };
 
   if (loading) return <main className="min-h-safe bg-paper p-5 sm:p-10"><div className="mx-auto max-w-6xl animate-pulse"><div className="h-5 w-36 rounded bg-chip"/><div className="mt-8 h-12 w-64 rounded bg-chip"/><div className="mt-10 grid gap-5 md:grid-cols-2"><div className="h-64 rounded-3xl bg-chip"/><div className="h-64 rounded-3xl bg-chip"/></div><div className="mt-6 h-72 rounded-3xl bg-chip"/></div></main>;
