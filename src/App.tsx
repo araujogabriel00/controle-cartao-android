@@ -2,11 +2,12 @@ import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 're
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { getGetBenefitRangeQueryKey, getGetBenefitsQueryKey, getGetIncomeRangeQueryKey, getGetLastFutureMonthQueryKey, useGetBenefitRange, useGetBenefits, useGetIncomeRange, useGetLastFutureMonth } from '@workspace/api-client-react';
+import { getGetBenefitRangeQueryKey, getGetBenefitsQueryKey, getGetForecastRangeQueryKey, getGetIncomeRangeQueryKey, getGetLastFutureMonthQueryKey, useGetBenefitRange, useGetBenefits, useGetForecastRange, useGetIncomeRange, useGetLastFutureMonth } from '@workspace/api-client-react';
 import { type Area, areaPath, benefitSpendsPath, currentMonth, isFutureMonth, isMonthKey, listPath, summaryPath, type ListKind } from '@/lib/format';
 import { readLastMonth } from '@/lib/last-month';
 import { loadTheme } from '@/lib/theme';
 import { loadHideValues, useHideValues } from '@/lib/hide-values';
+import { loadForecastAck } from '@/lib/forecast-ack';
 import { FooterMenu } from '@/components/quick-add';
 import { ConfirmProvider } from '@/components/confirm-dialog';
 import { UndoSnackbar } from '@/components/undo-snackbar';
@@ -19,6 +20,10 @@ import Entradas from '@/pages/entradas';
 import EntradasResumo from '@/pages/entradas-resumo';
 import EntradasLista from '@/pages/entradas-lista';
 import Beneficios from '@/pages/beneficios';
+import Previsoes from '@/pages/previsoes';
+import PrevisaoDia from '@/pages/previsao-dia';
+import PrevisaoSaldo from '@/pages/previsao-saldo';
+import PrevisaoForm from '@/pages/previsao-form';
 import BeneficioLancamentos, { type SpendFilter } from '@/pages/beneficio-lancamentos';
 import Categorias from '@/pages/categorias';
 import {
@@ -64,6 +69,23 @@ function RangedMonthRoute({ area, month, range, children }: {
 function HomeMonthRoute({ month }: { month: string }) {
   const range = useGetIncomeRange({ query: { queryKey: getGetIncomeRangeQueryKey() } });
   return <RangedMonthRoute area="home" month={month} range={range}><Inicio key={month} month={month} /></RangedMonthRoute>;
+}
+
+// Previsões (specs/previsoes.md RN-10): do mês mais antigo com previsão até 24 meses à frente; fora disso, o mais próximo.
+function ForecastMonthRoute({ month }: { month: string }) {
+  const range = useGetForecastRange({ query: { queryKey: getGetForecastRangeQueryKey() } });
+  return <RangedMonthRoute area="forecasts" month={month} range={range}><Previsoes key={month} month={month} /></RangedMonthRoute>;
+}
+
+// A data de um dia de Previsões vem do endereço: uma data inválida volta para a área.
+function ForecastDayRoute({ date }: { date: string }) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isMonthKey(date.slice(0, 7)) || Number.isNaN(Date.parse(`${date}T12:00:00`))) return <Redirect to="/previsoes" replace />;
+  return <PrevisaoDia key={date} date={date} />;
+}
+
+function ForecastEditRoute({ id, month }: { id: string; month: string }) {
+  if (!/^\d+$/.test(id) || !isMonthKey(month)) return <Redirect to="/previsoes" replace />;
+  return <PrevisaoForm key={`${id}-${month}`} forecastId={Number(id)} month={month} />;
 }
 
 function IncomeMonthRoute({ month }: { month: string }) {
@@ -140,6 +162,12 @@ function Router() {
         <Route path="/mes/:month">{(params) => <Redirect to={`/cartoes/mes/${params.month}`} replace />}</Route>
         <Route path="/historico" component={Historico} />
         <Route path="/compras" component={Compras} />
+        <Route path="/previsoes">{() => <Previsoes key={currentMonth()} month={currentMonth()} />}</Route>
+        <Route path="/previsoes/mes/:month">{(params) => <ForecastMonthRoute month={params.month} />}</Route>
+        <Route path="/previsoes/dia/:date">{(params) => <ForecastDayRoute date={params.date} />}</Route>
+        <Route path="/previsoes/saldo" component={PrevisaoSaldo} />
+        <Route path="/previsoes/nova">{() => <PrevisaoForm />}</Route>
+        <Route path="/previsoes/editar/:id/:month">{(params) => <ForecastEditRoute id={params.id} month={params.month} />}</Route>
         <Route path="/entradas">{() => <Entradas key={currentMonth()} month={currentMonth()} />}</Route>
         <Route path="/entradas/resumo">{() => <SummaryRoute />}</Route>
         <Route path="/entradas/resumo/mes/:month">{(params) => <SummaryRoute month={params.month} />}</Route>
@@ -170,7 +198,7 @@ function Bootstrap({ children }: { children: ReactNode }) {
   useEffect(() => {
     let alive = true;
     // O tema e o olho são lidos junto com o mês, antes da primeira tela (RN-09, RN-07).
-    void Promise.all([readLastMonth(), loadTheme(), loadHideValues()]).then(([last]) => {
+    void Promise.all([readLastMonth(), loadTheme(), loadHideValues(), loadForecastAck()]).then(([last]) => {
       if (!alive) return;
       const hash = window.location.hash;
       if (last && last !== currentMonth() && (hash === '' || hash === '#' || hash === '#/')) window.history.replaceState(null, '', `#${areaPath('home', last)}`);

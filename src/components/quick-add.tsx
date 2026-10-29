@@ -12,7 +12,7 @@ import { AppTabs } from '@/components/app-tabs';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { Notice, useNotice } from '@/components/notice';
 import { hasFooter } from '@/lib/footer';
-import { defaultDateFor, monthInPath, monthLabel, monthOf, type MonthKey } from '@/lib/format';
+import { areaOf, defaultDateFor, monthInPath, monthLabel, monthOf, type MonthKey } from '@/lib/format';
 import { BillDialog, DailyDialog, IncomeDialog } from '@/components/entry-dialogs';
 import { Dialog as PurchaseDialog } from '@/pages/dashboard';
 import { SpendDialog } from '@/pages/beneficios';
@@ -29,10 +29,11 @@ export const openQuickAdd = (kind: Kind) => window.dispatchEvent(new CustomEvent
 export function FooterMenu() {
   const [location] = useLocation();
   if (!hasFooter(location)) return null;
-  return <FooterBar month={monthInPath(location)}/>;
+  return <FooterBar month={monthInPath(location)} location={location}/>;
 }
 
-function FooterBar({ month }: { month: MonthKey }) {
+function FooterBar({ month, location }: { month: MonthKey; location: string }) {
+  const [, navigate] = useLocation();
   const client = useQueryClient();
   const [sheet, setSheet] = useState(false);
   const [form, setForm] = useState<Kind | null>(null);
@@ -81,7 +82,10 @@ function FooterBar({ month }: { month: MonthKey }) {
     {/* Keeps the end of the page clear of the bar and of the button above it (botao-lancar D10). */}
     <div aria-hidden className="h-36"/>
     <AppTabs/>
-    <button data-testid="button-quick-add" onClick={() => setSheet(true)} className="fixed right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand shadow-[0_8px_18px_-10px_rgba(0,0,0,.7)] transition hover:bg-brand-hover bottom-[calc(88px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]"><Plus size={22} strokeWidth={2.2}/>Lançar</button>
+    {/* previsoes D14: na área Previsões o botão faz o que a área é. */}
+    {areaOf(location) === 'forecasts'
+      ? <button data-testid="button-new-forecast" onClick={() => navigate('/previsoes/nova')} className="fixed right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand shadow-[0_8px_18px_-10px_rgba(0,0,0,.7)] transition hover:bg-brand-hover bottom-[calc(88px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]"><Plus size={22} strokeWidth={2.2}/>Nova previsão</button>
+      : <button data-testid="button-quick-add" onClick={() => setSheet(true)} className="fixed right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand shadow-[0_8px_18px_-10px_rgba(0,0,0,.7)] transition hover:bg-brand-hover bottom-[calc(88px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]"><Plus size={22} strokeWidth={2.2}/>Lançar</button>}
 
     {sheet && <BottomSheet title="Lançar" onClose={() => setSheet(false)}>
       <div className="space-y-2">

@@ -51,13 +51,14 @@ export const defaultDateFor = (month: MonthKey) => monthOf(today()) === month ? 
 // The areas of the app (the bottom bar). The current month always lives at the area's short route
 // ("/" for the Início); any other month at "<area>/mes/AAAA-MM" (shared-month RN-02,
 // specs/redesign-v2-fundacao.md D2).
-export type Area = 'home' | 'cards' | 'income' | 'benefits';
-const AREA_ROOT: Record<Area, string> = { home: '/inicio', cards: '/cartoes', income: '/entradas', benefits: '/beneficios' };
+export type Area = 'home' | 'cards' | 'income' | 'forecasts' | 'benefits';
+const AREA_ROOT: Record<Area, string> = { home: '/inicio', cards: '/cartoes', income: '/entradas', forecasts: '/previsoes', benefits: '/beneficios' };
 export const areaPath = (area: Area, month: MonthKey) => (month === currentMonth() ? (area === 'home' ? '/' : AREA_ROOT[area]) : `${AREA_ROOT[area]}/mes/${month}`);
 // The area an address belongs to, or null for the screens that are in none (history, categories, all purchases).
 export const areaOf = (path: string): Area | null => {
   if (path === '/' || path === '/inicio' || path.startsWith('/inicio/')) return 'home';
   if (path.startsWith('/entradas')) return 'income';
+  if (path === '/previsoes' || path.startsWith('/previsoes/')) return 'forecasts';
   if (path.startsWith('/beneficios')) return 'benefits';
   if (path === '/cartoes' || path.startsWith('/cartoes/')) return 'cards';
   return null;
@@ -66,6 +67,9 @@ export const areaOf = (path: string): Area | null => {
 export type ListKind = 'entradas' | 'contas-fixas' | 'gastos' | 'cartoes';
 export const listPath = (kind: ListKind, month: MonthKey) => `/entradas/lista/${kind}${month === currentMonth() ? '' : `/mes/${month}`}`;
 // Tela "Resumo do mês" da aba Entradas (specs/redesign-opcao-d-entradas.md D7).
+// Telas de Previsões (specs/previsoes.md D1): o dia, o saldo previsto e o formulário (nova e edição).
+export const forecastDayPath = (date: string) => `/previsoes/dia/${date}`;
+export const forecastEditPath = (forecastId: number, month: MonthKey) => `/previsoes/editar/${forecastId}/${month}`;
 export const summaryPath = (month: MonthKey) => `/entradas/resumo${month === currentMonth() ? '' : `/mes/${month}`}`;
 // Screen with the spends of a benefit in a month: all of them, the ones without category ('sem') or one category.
 export const benefitSpendsPath = (benefitId: number, category: number | 'todos' | 'sem', month: MonthKey) =>
@@ -73,7 +77,8 @@ export const benefitSpendsPath = (benefitId: number, category: number | 'todos' 
 export const monthPath = (month: MonthKey) => areaPath('cards', month);
 // RN-01: the open month is the one at the end of the address; without it, the current month.
 export const monthInPath = (path: string): MonthKey => {
-  const month = path.match(/\/mes\/(\d{4}-\d{2})$/)?.[1];
+  // The day screen of Previsões (/previsoes/dia/AAAA-MM-DD) belongs to the month of its date.
+  const month = path.match(/\/mes\/(\d{4}-\d{2})$/)?.[1] ?? path.match(/^\/previsoes\/dia\/(\d{4}-\d{2})-\d{2}$/)?.[1];
   return month && isMonthKey(month) ? month : currentMonth();
 };
 
