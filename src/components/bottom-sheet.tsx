@@ -1,4 +1,5 @@
 import { type MouseEvent, type ReactNode, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { dialogOverlay } from '@/lib/dialog-styles';
 
@@ -16,13 +17,14 @@ function useEscape(onClose: () => void) {
 // Fecha ao tocar fora, em "Fechar", com Escape ou quando quem a usa decide fechar ao escolher.
 export function BottomSheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   useEscape(onClose);
-  return <div className={`${dialogOverlay} flex items-end`} onMouseDown={backdrop(onClose)}>
+  // In a portal so the sheet stays above the bottom bar even when opened from inside a page.
+  return createPortal(<div className={`${dialogOverlay} flex items-end`} onMouseDown={backdrop(onClose)}>
     <div role="dialog" aria-modal="true" aria-label={title} className="enter mx-auto w-full max-w-[440px] rounded-t-[24px] border border-line bg-surface p-5 pb-6">
       <h2 className="mb-2 truncate font-display text-[22px] text-ink">{title}</h2>
       {children}
       <button type="button" onClick={onClose} className="mt-2 h-12 w-full rounded-full border border-line text-[15px] font-semibold text-ink-soft transition hover:bg-paper">Fechar</button>
     </div>
-  </div>;
+  </div>, document.body);
 }
 
 // Moldura dos formulários (D3): a folha sobe do rodapé, rola quando o teclado encolhe a tela, fecha com Escape
@@ -33,11 +35,11 @@ export function FormSheet({ onClose, children }: { onClose: () => void; children
   useEffect(() => {
     ref.current?.querySelector<HTMLElement>('input:not([type=date]):not([type=month]):not([type=hidden]), select, textarea')?.focus({ preventScroll: true });
   }, []);
-  return <div className={dialogOverlay} onMouseDown={backdrop(onClose)}>
+  return createPortal(<div className={dialogOverlay} onMouseDown={backdrop(onClose)}>
     <div ref={ref} className="h-full overflow-y-auto overscroll-contain" onMouseDown={backdrop(onClose)}>
       <div className="flex min-h-full items-end" onMouseDown={backdrop(onClose)}>{children}</div>
     </div>
-  </div>;
+  </div>, document.body);
 }
 
 // Cabeçalho comum dos formulários: faixa pequena, título em Fraunces e "Fechar" de 44 px.
