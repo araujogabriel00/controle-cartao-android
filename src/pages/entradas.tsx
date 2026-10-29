@@ -44,9 +44,9 @@ export default function Entradas({ month }: { month: MonthKey }) {
 
   // RF-04 a RF-06: as quatro origens, na ordem de sempre, cada uma abrindo a lista do mês aberto.
   const origins = [
-    { id: 'income', label: 'Entradas', icon: <HandCoins size={18}/>, value: cash?.incomeAmount ?? 0, kind: 'in' as const, count: countText(incomes.data?.items.length, 'lançamento', 'lançamentos', 'nenhum neste mês'), list: 'entradas' as ListKind },
-    { id: 'bills', label: 'Contas fixas', icon: <Receipt size={18}/>, value: cash?.billsAmount ?? 0, kind: 'out' as const, count: countText(bills.data?.items.length, 'conta', 'contas', 'nenhuma neste mês'), list: 'contas-fixas' as ListKind },
-    { id: 'daily', label: 'Gastos do dia a dia', icon: <ShoppingBasket size={18}/>, value: cash?.dailyAmount ?? 0, kind: 'out' as const, count: countText(daily.data?.items.length, 'gasto', 'gastos', 'nenhum neste mês'), list: 'gastos' as ListKind },
+    { id: 'income', label: 'Entradas', icon: <HandCoins size={18}/>, value: cash?.incomeAmount ?? 0, kind: 'in' as const, count: countText(incomes.data ? incomes.data.items.length + incomes.data.forecastItems.length : undefined, 'lançamento', 'lançamentos', 'nenhum neste mês'), list: 'entradas' as ListKind },
+    { id: 'bills', label: 'Contas fixas', icon: <Receipt size={18}/>, value: cash?.billsAmount ?? 0, kind: 'out' as const, count: countText(bills.data ? bills.data.items.length + bills.data.forecastItems.length : undefined, 'conta', 'contas', 'nenhuma neste mês'), list: 'contas-fixas' as ListKind },
+    { id: 'daily', label: 'Gastos do dia a dia', icon: <ShoppingBasket size={18}/>, value: cash?.dailyAmount ?? 0, kind: 'out' as const, count: countText(daily.data ? daily.data.items.length + daily.data.forecastItems.length : undefined, 'gasto', 'gastos', 'nenhum neste mês'), list: 'gastos' as ListKind },
     { id: 'cards', label: 'Cartões', icon: <CreditCard size={18}/>, value: cash?.cardsAmount ?? 0, kind: 'out' as const, count: countText(cards.data?.cards.filter((card) => card.invoiceAmount > 0).length, 'fatura', 'faturas', 'nenhuma neste mês'), list: 'cartoes' as ListKind },
   ].map(({ list, ...row }) => ({ ...row, onOpen: () => navigate(listPath(list, month)) }));
 

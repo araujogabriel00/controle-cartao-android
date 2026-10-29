@@ -2,15 +2,17 @@ import { type ReactNode } from 'react';
 import { useLocation } from 'wouter';
 import {
   getGetBenefitsQueryKey, getGetCardsQueryKey, getGetIncomeRangeQueryKey, getGetMonthCashQueryKey,
-  useGetBalanceSeries, useGetBenefits, useGetCards, useGetIncomeRange, useGetInvoiceSeries, useGetMonthCash, useGetRecentSpends,
+  useGetBalanceSeries, useGetBenefits, useGetCards, useGetForecastAlerts, useGetIncomeRange, useGetInvoiceSeries, useGetMonthCash, useGetRecentSpends,
 } from '@workspace/api-client-react';
-import { ChevronRight, CircleHelp, CreditCard, HandCoins, Plus, Utensils } from 'lucide-react';
+import { CalendarCheck, ChevronRight, CircleHelp, CreditCard, HandCoins, Plus, Utensils } from 'lucide-react';
 import { AppHeader } from '@/components/app-header';
+import { shortDate, signedAmount } from '@/components/forecast-parts';
 import { openQuickAdd } from '@/components/quick-add';
 import { MiniColumns } from '@/components/charts/mini-columns';
 import { Sparkline } from '@/components/charts/sparkline';
 import { UsageBar } from '@/components/charts/usage-bar';
-import { type Area, areaPath, dateLabel, money, monthLabel, monthName, summaryPath, type MonthKey } from '@/lib/format';
+import { saveForecastAck, useForecastAck } from '@/lib/forecast-ack';
+import { type Area, areaPath, dateLabel, forecastDayPath, today, money, monthLabel, monthName, summaryPath, type MonthKey } from '@/lib/format';
 import { isHidden } from '@/lib/hide-values';
 import { useRememberMonth } from '@/lib/last-month';
 
@@ -52,6 +54,9 @@ export default function Inicio({ month }: { month: MonthKey }) {
   const invoiceSeries = useGetInvoiceSeries(month, INVOICE_MONTHS);
   const recent = useGetRecentSpends(month, RECENT_LIMIT);
   const range = useGetIncomeRange({ query: { queryKey: getGetIncomeRangeQueryKey() } }).data;
+  // D12, RN-11: as previsões que entraram no saldo desde o último "Está certo"; uma leitura que falha só esconde o aviso.
+  const ack = useForecastAck();
+  const alerts = useGetForecastAlerts(ack).data ?? [];
   const canGoPrevious = !range || month > range.first;
   const canGoNext = !range || month < range.last;
   const go = (area: Exclude<Area, 'home'>) => navigate(areaPath(area, month));
@@ -101,6 +106,18 @@ export default function Inicio({ month }: { month: MonthKey }) {
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
       <AppHeader area="home" month={month} canGoPrevious={canGoPrevious} canGoNext={canGoNext}/>
+
+      {/* D12, RF-10: nada entra no saldo sem a pessoa saber. "Revisar" abre o dia; "Está certo" dispensa até entrar outra previsão. */}
+      {alerts.length > 0 && <section data-testid="card-home-forecast-alert" role="status" aria-label="Previsões que entraram no saldo" className="enter mt-4 rounded-2xl border-2 border-brand bg-surface p-4">
+        <p className="flex items-center gap-2 text-[16px] font-semibold text-ink"><CalendarCheck aria-hidden size={18} className="shrink-0 text-brand"/>{alerts.every((item) => item.date === today()) ? (alerts.length === 1 ? 'Hoje entrou 1 previsão no saldo' : `Hoje entraram ${alerts.length} previsões no saldo`) : `${alerts.length === 1 ? 'Entrou 1 previsão' : `Entraram ${alerts.length} previsões`} no saldo desde ${shortDate(alerts[0].date)}`}</p>
+        <ul className="mt-2 divide-y divide-line">
+          {alerts.map((item) => <li key={`${item.forecastId}-${item.month}`} className="flex items-center justify-between gap-3 py-2 text-[15px]"><span className="min-w-0 truncate text-ink">{item.description}</span><span className="shrink-0 font-mono-data text-ink">{signedAmount(item.kind, item.amount)}</span></li>)}
+        </ul>
+        <div className="mt-3 flex gap-2">
+          <button data-testid="button-review" onClick={() => navigate(forecastDayPath(alerts[alerts.length - 1].date))} className="h-12 flex-1 rounded-full bg-brand text-[15px] font-semibold text-on-brand transition hover:bg-brand-hover">Revisar</button>
+          <button data-testid="button-ack" onClick={() => saveForecastAck(today())} className="h-12 flex-1 rounded-full border border-line text-[15px] font-semibold text-ink-soft transition hover:bg-hover">Está certo</button>
+        </div>
+      </section>}
 
       {failed ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-brand"><CircleHelp size={18}/></div><h2 className="mt-3 font-display text-xl text-ink">Não deu para carregar o Início</h2><p className="mt-1 text-[14px] text-ink-soft">Seus dados continuam salvos. Tente de novo.</p><button onClick={() => { void cashQuery.refetch(); void cardsQuery.refetch(); void benefitsQuery.refetch(); }} className="mt-4 h-12 rounded-full bg-brand px-6 text-[15px] font-semibold text-on-brand transition hover:bg-brand-hover">Tentar de novo</button></div>
         : loading || !cash ? <div aria-busy="true" className="mt-6 space-y-3"><div className="h-[132px] animate-pulse rounded-2xl bg-line"/><div className="h-[132px] animate-pulse rounded-2xl bg-line"/><div className="h-[132px] animate-pulse rounded-2xl bg-line"/></div>

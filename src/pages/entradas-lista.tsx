@@ -5,9 +5,9 @@ import {
   getGetBillsQueryKey, getGetCategoriesQueryKey, getGetDailyExpensesQueryKey, getGetIncomeRangeQueryKey, getGetIncomesQueryKey, getGetMonthCashQueryKey,
   getGetCardsQueryKey, useDeleteBill, useDeleteDailyExpense, useDeleteIncome, useGetBills, useGetCards, useGetCategories, useGetDailyExpenses, useGetIncomes,
   useSelectCard, useUpdateBill, useUpdateDailyExpense, useUpdateIncome,
-  type BillOccurrence, type DailyExpense, type IncomeOccurrence, type IncomeScope,
+  type BillOccurrence, type DailyExpense, type ForecastOccurrence, type IncomeOccurrence, type IncomeScope,
 } from '@workspace/api-client-react';
-import { CalendarDays, ChevronRight, CircleHelp, CreditCard, HandCoins, Receipt, Repeat, ShoppingBasket } from 'lucide-react';
+import { CalendarClock, CalendarDays, ChevronRight, CircleHelp, CreditCard, HandCoins, Receipt, Repeat, ShoppingBasket } from 'lucide-react';
 import { BackButton } from '@/components/back-button';
 import { HBars } from '@/components/charts/hbars';
 import { scopeSuffix, undoable } from '@/components/undo-snackbar';
@@ -16,7 +16,7 @@ import { RowMenu } from '@/components/row-menu';
 import { BillDialog, DailyDialog, IncomeDialog, KIND_LABELS, type BillForm, type BillValues, type DailyValues, type IncomeForm } from '@/components/entry-dialogs';
 import { ScopeDialog } from '@/components/scope-dialog';
 import { CARD_COLORS } from '@/lib/card-colors';
-import { areaPath, capitalize, dateLabel, money, monthLabel, type ListKind, type MonthKey } from '@/lib/format';
+import { areaPath, capitalize, dateLabel, forecastDayPath, money, monthLabel, type ListKind, type MonthKey } from '@/lib/format';
 import { useRememberMonth } from '@/lib/last-month';
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
@@ -50,6 +50,10 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
   const incomeItems = incomes.data?.items ?? [];
   const billItems = bills.data?.items ?? [];
   const dailyItems = daily.data?.items ?? [];
+  // D13: as previsões que já entraram no saldo somam nesta linha do caixa e aparecem na lista com a marca "Previsão".
+  const forecastIncome = incomes.data?.forecastItems ?? [];
+  const forecastBills = bills.data?.forecastItems ?? [];
+  const forecastDaily = daily.data?.forecastItems ?? [];
 
   const refresh = () => {
     for (const queryKey of [getGetIncomesQueryKey(), getGetIncomeRangeQueryKey(), getGetBillsQueryKey(), getGetDailyExpensesQueryKey(), getGetMonthCashQueryKey(), getGetCategoriesQueryKey(), ['movements'], ['category-summary'], ['benefits']]) {
@@ -105,6 +109,16 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
   const { kicker, title } = TITLES[kind];
   const subtitle = 'mt-0.5 flex flex-wrap items-center gap-2 text-[13px] text-ink-soft';
   const tag = 'inline-flex shrink-0 items-center gap-1 rounded-full bg-tint px-2 py-0.5 text-[12px] font-semibold text-brand';
+  // Linha de uma previsão que entrou no saldo: sem menu, e tocar abre o dia dela em Previsões (D13).
+  const forecastRows = (items: ForecastOccurrence[]) => items.map((item) => <li key={`forecast-${item.forecastId}-${item.month}`} data-testid={`row-forecast-${item.forecastId}`}>
+    <button type="button" aria-label={`Previsão ${item.description}. Abrir o dia em Previsões.`} onClick={() => navigate(forecastDayPath(item.date))} className={`${rowButton} w-full`}>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[15px] font-semibold text-ink">{item.description}</span>
+        <span className={subtitle}><span className="flex items-center gap-1"><CalendarDays size={13}/>{dateLabel(item.date)}</span><span data-testid="badge-forecast" className={tag}><CalendarClock size={11}/> Previsão</span></span>
+      </span>
+      <span className={`shrink-0 font-mono-data text-[15px] ${item.kind === 'receive' ? 'text-brand' : 'text-ink'}`}>{item.kind === 'receive' ? money(item.amount) : `− ${money(item.amount)}`}</span>
+    </button>
+  </li>);
   const rowButton = 'flex min-h-16 min-w-0 flex-1 items-center gap-3 py-3 text-left transition hover:bg-surface';
 
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
@@ -120,7 +134,7 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
       {query.isLoading ? <div className="mt-6 space-y-3 animate-pulse"><div className="h-16 rounded-2xl bg-line"/><div className="h-16 rounded-2xl bg-line"/></div>
       : query.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir esta lista.</h3><button onClick={() => void query.refetch()} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
       : <>
-      {kind === 'entradas' && (incomeItems.length ? <ul data-testid="list-incomes" className="mt-5 divide-y divide-line border-y border-line">
+      {kind === 'entradas' && (incomeItems.length + forecastIncome.length ? <ul data-testid="list-incomes" className="mt-5 divide-y divide-line border-y border-line">
         {incomeItems.map((item) => {
           const edit = () => (item.recurring ? setScopeAsk({ kind: 'income', action: 'edit', item }) : setIncomeForm({ item }));
           return <li key={item.incomeId} data-testid={`row-income-${item.incomeId}`} className="flex items-center gap-1">
@@ -134,9 +148,10 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
             <RowMenu title={incomeLabel(item)} editTestId={`button-edit-income-${item.incomeId}`} deleteTestId={`button-delete-income-${item.incomeId}`} onEdit={edit} onDelete={() => (item.recurring ? setScopeAsk({ kind: 'income', action: 'delete', item }) : void deleteIncomeNow(item, 'forward'))}/>
           </li>;
         })}
+        {forecastRows(forecastIncome)}
       </ul> : emptyBox('text-income-empty', <HandCoins size={16}/>, 'Nenhuma entrada neste mês.'))}
 
-      {kind === 'contas-fixas' && (billItems.length ? <ul data-testid="list-bills" className="mt-5 divide-y divide-line border-y border-line">
+      {kind === 'contas-fixas' && (billItems.length + forecastBills.length ? <ul data-testid="list-bills" className="mt-5 divide-y divide-line border-y border-line">
         {billItems.map((item) => <li key={item.billId} data-testid={`row-bill-${item.billId}`} className="flex items-center gap-1">
           <button type="button" aria-label={`Editar ${item.name}`} onClick={() => setScopeAsk({ kind: 'bill', action: 'edit', item })} className={rowButton}>
             <span className="min-w-0 flex-1">
@@ -147,6 +162,7 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
           </button>
           <RowMenu title={item.name} editTestId={`button-edit-bill-${item.billId}`} deleteTestId={`button-delete-bill-${item.billId}`} onEdit={() => setScopeAsk({ kind: 'bill', action: 'edit', item })} onDelete={() => setScopeAsk({ kind: 'bill', action: 'delete', item })}/>
         </li>)}
+        {forecastRows(forecastBills)}
       </ul> : emptyBox('text-bills-empty', <Receipt size={16}/>, 'Nenhuma conta fixa neste mês.'))}
 
       {kind === 'cartoes' && (cardItems.length ? <ul data-testid="list-cards" className="mt-5 divide-y divide-line border-y border-line">
@@ -159,7 +175,7 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
       </ul> : emptyBox('text-cards-empty', <CreditCard size={16}/>, 'Nenhum cartão cadastrado.'))}
 
       {kind === 'gastos' && <>
-        {dailyItems.length ? <ul data-testid="list-daily" className="mt-5 divide-y divide-line border-y border-line">
+        {dailyItems.length + forecastDaily.length ? <ul data-testid="list-daily" className="mt-5 divide-y divide-line border-y border-line">
           {dailyItems.map((item) => <li key={item.id} data-testid={`row-daily-${item.id}`} className="flex items-center gap-1">
             <button type="button" aria-label={`Editar ${item.description}`} onClick={() => setDailyForm({ item })} className={rowButton}>
               <span className="min-w-0 flex-1">
@@ -170,10 +186,11 @@ export default function EntradasLista({ kind, month }: { kind: ListKind; month: 
             </button>
             <RowMenu title={item.description} editTestId={`button-edit-daily-${item.id}`} deleteTestId={`button-delete-daily-${item.id}`} onEdit={() => setDailyForm({ item })} onDelete={() => void removeDaily(item)}/>
           </li>)}
+          {forecastRows(forecastDaily)}
         </ul> : emptyBox('text-daily-empty', <ShoppingBasket size={16}/>, 'Nenhum gasto neste mês.')}
         {(daily.data?.summary.length ?? 0) > 0 && <section className="mt-8">
           <h2 className="font-display text-2xl text-ink">Por categoria</h2>
-          <p className="mb-3 text-sm text-ink-soft">{plural(dailyItems.length, 'gasto', 'gastos')} no mês</p>
+          <p className="mb-3 text-sm text-ink-soft">{plural(dailyItems.length + forecastDaily.length, 'gasto', 'gastos')} no mês</p>
           <HBars fill="bg-chart-out" label="Gastos por categoria" testId="list-daily-summary" rowTestId={(key) => `row-daily-summary-${key}`}
             rows={(daily.data?.summary ?? []).map((row) => ({ key: String(row.categoryId ?? 'none'), label: row.name ?? 'Sem categoria', amount: row.amount, percent: row.percent }))}/>
         </section>}
