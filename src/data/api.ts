@@ -13,7 +13,7 @@ export type {
   IncomeInput, IncomeKind, IncomeOccurrence, IncomeRange, IncomeScope, Incomes, StoredIncome,
   RecurringInput, StoredRecurring,
   Bills, BillOccurrence, BillInput, DailyExpense, DailyExpenses, DailyExpenseInput, MonthCash, StoredBill, StoredDailyExpense,
-  BalancePoint, InvoicePoint, RecentSpend,
+  BalancePoint, InvoicePoint, RecentSpend, UndoResult,
   Benefits, BenefitItem, BenefitSpend, BenefitRange, BenefitInput, BenefitUpdate, BenefitSpendInput, BenefitSplitItem, BenefitCategoryRow, StoredBenefit, StoredBenefitSpend,
 } from './store';
 export { INCOME_KINDS } from './store';
@@ -130,7 +130,7 @@ export const useCreateMovement = (options?: MutationOpts<store.StoredMovement, {
 export const useUpdateMovement = (options?: MutationOpts<store.StoredMovement, { movementId: number; categoryId: number | null; data: store.MovementInput }>) =>
   useMutation({ mutationFn: ({ movementId, categoryId, data }) => store.updateMovement(movementId, categoryId, data), ...options?.mutation });
 
-export const useDeleteMovement = (options?: MutationOpts<void, { movementId: number }>) =>
+export const useDeleteMovement = (options?: MutationOpts<store.UndoResult, { movementId: number }>) =>
   useMutation({ mutationFn: ({ movementId }) => store.deleteMovement(movementId), ...options?.mutation });
 
 export const useCreatePurchase = (options?: MutationOpts<store.StoredPurchase, { cardId: number; categoryId: number | null; data: store.PurchaseInput }>) =>
@@ -139,7 +139,7 @@ export const useCreatePurchase = (options?: MutationOpts<store.StoredPurchase, {
 export const useUpdatePurchase = (options?: MutationOpts<store.StoredPurchase, { purchaseId: number; categoryId: number | null; data: store.PurchaseInput }>) =>
   useMutation({ mutationFn: ({ purchaseId, categoryId, data }) => store.updatePurchase(purchaseId, categoryId, data), ...options?.mutation });
 
-export const useDeletePurchase = (options?: MutationOpts<void, { purchaseId: number }>) =>
+export const useDeletePurchase = (options?: MutationOpts<store.UndoResult, { purchaseId: number }>) =>
   useMutation({ mutationFn: ({ purchaseId }) => store.deletePurchase(purchaseId), ...options?.mutation });
 
 export const useGetIncomes = (month: store.MonthKey, options?: QueryOpts<store.Incomes>) =>
@@ -154,7 +154,7 @@ export const useCreateIncome = (options?: MutationOpts<store.StoredIncome, { dat
 export const useUpdateIncome = (options?: MutationOpts<store.StoredIncome, { incomeId: number; month: store.MonthKey; scope: store.IncomeScope; data: store.IncomeInput }>) =>
   useMutation({ mutationFn: ({ incomeId, month, scope, data }) => store.updateIncome(incomeId, month, scope, data), ...options?.mutation });
 
-export const useDeleteIncome = (options?: MutationOpts<void, { incomeId: number; month: store.MonthKey; scope: store.IncomeScope }>) =>
+export const useDeleteIncome = (options?: MutationOpts<store.UndoResult, { incomeId: number; month: store.MonthKey; scope: store.IncomeScope }>) =>
   useMutation({ mutationFn: ({ incomeId, month, scope }) => store.deleteIncome(incomeId, month, scope), ...options?.mutation });
 
 export const useGetBenefits = (month: store.MonthKey, options?: QueryOpts<store.Benefits>) =>
@@ -178,7 +178,7 @@ export const useCreateBenefitSpend = (options?: MutationOpts<store.StoredBenefit
 export const useUpdateBenefitSpend = (options?: MutationOpts<store.StoredBenefitSpend, { spendId: number; categoryId: number | null; data: store.BenefitSpendInput }>) =>
   useMutation({ mutationFn: ({ spendId, categoryId, data }) => store.updateBenefitSpend(spendId, categoryId, data), ...options?.mutation });
 
-export const useDeleteBenefitSpend = (options?: MutationOpts<void, { spendId: number }>) =>
+export const useDeleteBenefitSpend = (options?: MutationOpts<store.UndoResult, { spendId: number }>) =>
   useMutation({ mutationFn: ({ spendId }) => store.deleteBenefitSpend(spendId), ...options?.mutation });
 
 export const useCloseBenefitCategory = (options?: MutationOpts<void, { benefitId: number; categoryId: number; month: store.MonthKey }>) =>
@@ -199,7 +199,7 @@ export const useCreateBill = (options?: MutationOpts<store.StoredBill, { data: s
 export const useUpdateBill = (options?: MutationOpts<store.StoredBill, { billId: number; month: store.MonthKey; scope: store.IncomeScope; data: store.BillInput }>) =>
   useMutation({ mutationFn: ({ billId, month, scope, data }) => store.updateBill(billId, month, scope, data), ...options?.mutation });
 
-export const useDeleteBill = (options?: MutationOpts<void, { billId: number; month: store.MonthKey; scope: store.IncomeScope }>) =>
+export const useDeleteBill = (options?: MutationOpts<store.UndoResult, { billId: number; month: store.MonthKey; scope: store.IncomeScope }>) =>
   useMutation({ mutationFn: ({ billId, month, scope }) => store.deleteBill(billId, month, scope), ...options?.mutation });
 
 export const useGetDailyExpenses = (month: store.MonthKey, options?: QueryOpts<store.DailyExpenses>) =>
@@ -211,7 +211,7 @@ export const useCreateDailyExpense = (options?: MutationOpts<store.StoredDailyEx
 export const useUpdateDailyExpense = (options?: MutationOpts<store.StoredDailyExpense, { expenseId: number; categoryId: number | null; data: store.DailyExpenseInput }>) =>
   useMutation({ mutationFn: ({ expenseId, categoryId, data }) => store.updateDailyExpense(expenseId, categoryId, data), ...options?.mutation });
 
-export const useDeleteDailyExpense = (options?: MutationOpts<void, { expenseId: number }>) =>
+export const useDeleteDailyExpense = (options?: MutationOpts<store.UndoResult, { expenseId: number }>) =>
   useMutation({ mutationFn: ({ expenseId }) => store.deleteDailyExpense(expenseId), ...options?.mutation });
 
 export const useCreateRecurring = (options?: MutationOpts<store.StoredRecurring, { cardId: number; categoryId: number | null; data: store.RecurringInput }>) =>
@@ -220,7 +220,7 @@ export const useCreateRecurring = (options?: MutationOpts<store.StoredRecurring,
 export const useUpdateRecurring = (options?: MutationOpts<store.StoredRecurring, { recurringId: number; month: store.MonthKey; scope: store.IncomeScope; categoryId: number | null; data: store.RecurringInput }>) =>
   useMutation({ mutationFn: ({ recurringId, month, scope, categoryId, data }) => store.updateRecurring(recurringId, month, scope, categoryId, data), ...options?.mutation });
 
-export const useDeleteRecurring = (options?: MutationOpts<void, { recurringId: number; month: store.MonthKey; scope: store.IncomeScope }>) =>
+export const useDeleteRecurring = (options?: MutationOpts<store.UndoResult, { recurringId: number; month: store.MonthKey; scope: store.IncomeScope }>) =>
   useMutation({ mutationFn: ({ recurringId, month, scope }) => store.deleteRecurring(recurringId, month, scope), ...options?.mutation });
 
 export const useGetBalanceSeries = (endMonth: store.MonthKey, count: number, options?: QueryOpts<store.BalancePoint[]>) =>
@@ -231,3 +231,11 @@ export const useGetInvoiceSeries = (startMonth: store.MonthKey, count: number, o
 
 export const useGetRecentSpends = (month: store.MonthKey, limit: number, options?: QueryOpts<store.RecentSpend[]>) =>
   useLocalQuery(getGetRecentSpendsQueryKey(month, limit), () => store.getRecentSpends(month, limit), { query: { retry: false, ...options?.query } });
+
+// Desfazer a exclusão (specs/desfazer-exclusao.md): as exclusões de lançamento devolvem { undoId }; o aviso usa
+// estes dois hooks. O desfazer só vive na memória (D7).
+export const useUndoDeletion = (options?: MutationOpts<void, { undoId: number }>) =>
+  useMutation({ mutationFn: ({ undoId }: { undoId: number }) => store.undoDeletion(undoId), ...options?.mutation });
+
+export const useDiscardUndo = (options?: MutationOpts<void, { undoId: number }>) =>
+  useMutation({ mutationFn: ({ undoId }: { undoId: number }) => store.discardUndo(undoId), ...options?.mutation });
