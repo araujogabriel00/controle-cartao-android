@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import {
@@ -7,27 +7,32 @@ import {
   useGetBenefits, useGetCards, useGetCategories,
   type BenefitItem,
 } from '@workspace/api-client-react';
-import { CreditCard, HandCoins, List, Plus, Receipt, ShoppingBasket, Tag, Utensils } from 'lucide-react';
+import { CreditCard, HandCoins, Plus, Receipt, ShoppingBasket, Utensils } from 'lucide-react';
+import { AppTabs } from '@/components/app-tabs';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { Notice, useNotice } from '@/components/notice';
 import { hasFooter } from '@/lib/footer';
-import { defaultDateFor, monthInPath, monthLabel, monthOf, summaryPath, type MonthKey } from '@/lib/format';
+import { defaultDateFor, monthInPath, monthLabel, monthOf, type MonthKey } from '@/lib/format';
 import { BillDialog, DailyDialog, IncomeDialog } from '@/components/entry-dialogs';
 import { Dialog as PurchaseDialog } from '@/pages/dashboard';
 import { SpendDialog } from '@/pages/beneficios';
 
 type Kind = 'income' | 'bill' | 'daily' | 'purchase' | 'spend';
 
-// Footer menu with the "Lançar" button (specs/botao-lancar.md): any entry can be registered from any
-// area. It opens the forms the areas already have, in the open month, and stays on the same screen.
+// Event the screens fire to open a form of the "Lançar" menu without going through it
+// (the Início's "Lançar entrada", specs/redesign-v2-fundacao.md RF-05).
+export const QUICK_ADD_EVENT = 'quick-add';
+export const openQuickAdd = (kind: Kind) => window.dispatchEvent(new CustomEvent<Kind>(QUICK_ADD_EVENT, { detail: kind }));
+
+// Bottom bar plus the floating "Lançar" button (specs/botao-lancar.md, redesign-v2-fundacao.md D4): any entry can be
+// registered from any area. It opens the forms the areas already have, in the open month, and stays on the same screen.
 export function FooterMenu() {
   const [location] = useLocation();
   if (!hasFooter(location)) return null;
-  return <FooterBar month={monthInPath(location)} location={location}/>;
+  return <FooterBar month={monthInPath(location)}/>;
 }
 
-function FooterBar({ month, location }: { month: MonthKey; location: string }) {
-  const [, navigate] = useLocation();
+function FooterBar({ month }: { month: MonthKey }) {
   const client = useQueryClient();
   const [sheet, setSheet] = useState(false);
   const [form, setForm] = useState<Kind | null>(null);
@@ -58,6 +63,12 @@ function FooterBar({ month, location }: { month: MonthKey; location: string }) {
     setForm(kind);
   };
 
+  useEffect(() => {
+    const onOpen = (event: Event) => open((event as CustomEvent<Kind>).detail);
+    window.addEventListener(QUICK_ADD_EVENT, onOpen);
+    return () => window.removeEventListener(QUICK_ADD_EVENT, onOpen);
+  });
+
   const options: { kind: Kind; label: string; icon: typeof Plus; disabled?: string }[] = [
     { kind: 'income', label: 'Entrada', icon: HandCoins },
     { kind: 'bill', label: 'Conta fixa', icon: Receipt },
@@ -67,18 +78,10 @@ function FooterBar({ month, location }: { month: MonthKey; location: string }) {
   ];
 
   return <>
-    {/* Keeps the end of the page clear of the fixed bar (D10). */}
-    <div aria-hidden className="h-28"/>
-    <nav aria-label="Menu de lançamentos" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 pb-[var(--safe-area-inset-bottom,env(safe-area-inset-bottom))] backdrop-blur">
-      <div className="mx-auto grid h-20 max-w-[860px] grid-cols-[1fr_auto_1fr] items-center px-4">
-        {/* specs/redesign-opcao-d-entradas.md D8: o "Resumo" só existe nas telas de Entradas. */}
-        {location.startsWith('/entradas')
-          ? <div className="justify-self-start"><button data-testid="button-summary" aria-current={location.startsWith('/entradas/resumo') ? 'page' : undefined} onClick={() => navigate(summaryPath(month))} className={`flex h-[52px] min-w-[60px] flex-col items-center justify-center gap-0.5 rounded-[14px] px-1.5 text-xs font-semibold transition hover:bg-hover ${location.startsWith('/entradas/resumo') ? 'bg-tint text-brand' : 'text-ink-soft'}`}><List size={20}/>Resumo</button></div>
-          : <div/>}
-        <button data-testid="button-quick-add" onClick={() => setSheet(true)} className="flex h-[52px] items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand shadow-[0_8px_18px_-10px_rgba(38,80,61,.7)] transition hover:bg-brand-hover"><Plus size={20} strokeWidth={2.2}/>Lançar</button>
-        <div className="justify-self-end"><button data-testid="button-categories" onClick={() => navigate('/categorias')} className="flex h-[52px] min-w-[60px] flex-col items-center justify-center gap-0.5 rounded-[14px] px-1.5 text-xs font-semibold text-ink-soft transition hover:bg-hover"><Tag size={20}/>Categorias</button></div>
-      </div>
-    </nav>
+    {/* Keeps the end of the page clear of the bar and of the button above it (botao-lancar D10). */}
+    <div aria-hidden className="h-36"/>
+    <AppTabs/>
+    <button data-testid="button-quick-add" onClick={() => setSheet(true)} className="fixed right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand shadow-[0_8px_18px_-10px_rgba(0,0,0,.7)] transition hover:bg-brand-hover bottom-[calc(88px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]"><Plus size={22} strokeWidth={2.2}/>Lançar</button>
 
     {sheet && <BottomSheet title="Lançar" onClose={() => setSheet(false)}>
       <div className="space-y-2">

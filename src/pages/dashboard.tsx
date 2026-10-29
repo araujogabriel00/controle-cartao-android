@@ -24,8 +24,7 @@ import { Columns } from '@/components/charts/columns';
 import { HBars } from '@/components/charts/hbars';
 import { StepLine } from '@/components/charts/step-line';
 import { invoiceColumns, paceSteps, topCategories } from '@/lib/card-series';
-import { AppTabs } from '@/components/app-tabs';
-import { MonthNav } from '@/components/month-nav';
+import { AppHeader } from '@/components/app-header';
 import { ScopeDialog } from '@/components/scope-dialog';
 import { FormActions, FormSheet, SheetHeader } from '@/components/bottom-sheet';
 import { removeAsk, useConfirm } from '@/components/confirm-dialog';
@@ -303,8 +302,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
       <header className="enter hidden items-center justify-between border-b border-line pb-5 sm:flex">
         <div className="flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-2 text-[11px] text-ink-mute"><span className={`h-1.5 w-1.5 rounded-full ${health.isError ? 'bg-alert' : 'bg-brand'}`}/>{health.isError ? 'Sincronização pausada' : 'Seu caderno está em dia'}</div>
       </header>
-      <MonthNav area="cards" month={month} canGoNext={canGoNext}/>
-      <AppTabs/>
+      <AppHeader area="cards" month={month} canGoNext={canGoNext}/>
 
       {isFuture && <p data-testid="text-preview-banner" className="enter mt-3 flex items-start gap-2 rounded-2xl border border-line bg-warn-tint px-4 py-3 text-[13px] leading-5 text-eyebrow"><CalendarDays size={14} className="mt-0.5 shrink-0"/><span><b className="font-semibold">{capitalize(monthName(month))} ainda não começou:</b> aparecem as parcelas e cobranças previstas e as compras já registradas.</span></p>}
 

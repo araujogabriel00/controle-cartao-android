@@ -4,7 +4,6 @@ import {
   useGetCards, useGetConsolidatedHistory, useGetFutureInstallments, useGetMonthHistory,
 } from '@workspace/api-client-react';
 import { CalendarClock, ChevronRight, CircleHelp, History } from 'lucide-react';
-import { AppTabs } from '@/components/app-tabs';
 import { BackButton } from '@/components/back-button';
 import { Columns } from '@/components/charts/columns';
 import { capitalize, currentMonth, money, monthLabel, monthPath } from '@/lib/format';
@@ -30,8 +29,7 @@ export default function Historico() {
 
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
-      <BackButton onClick={() => navigate('/')}/>
-      <AppTabs/>
+      <BackButton onClick={() => { if (window.history.length > 1) window.history.back(); else navigate('/'); }}/>
 
       <section className="enter mt-5" style={{ animationDelay: '.06s' }}>
         <div className="flex items-center gap-2 text-eyebrow"><History size={14}/><p className="font-mono-data text-xs uppercase tracking-[.08em]">Histórico</p></div>

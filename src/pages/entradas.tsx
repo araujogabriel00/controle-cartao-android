@@ -1,15 +1,16 @@
 import { getGetIncomeRangeQueryKey, getGetMonthCashQueryKey, useGetIncomeRange, useGetMonthCash } from '@workspace/api-client-react';
-import { CircleHelp } from 'lucide-react';
-import { AppTabs } from '@/components/app-tabs';
+import { ChevronRight, CircleHelp } from 'lucide-react';
+import { useLocation } from 'wouter';
+import { AppHeader } from '@/components/app-header';
 import { ChartLegend } from '@/components/charts/chart-legend';
 import { DivergingBars } from '@/components/charts/diverging-bars';
-import { MonthNav } from '@/components/month-nav';
 import { useRememberMonth } from '@/lib/last-month';
-import { money, type MonthKey } from '@/lib/format';
+import { money, summaryPath, type MonthKey } from '@/lib/format';
 
 // specs/redesign-opcao-d-entradas.md: a aba mostra o saldo sem card e o gráfico "Entrou e saiu".
 // O resumo em quatro linhas, o saldo anterior e o resultado ficam na tela Resumo do mês.
 export default function Entradas({ month }: { month: MonthKey }) {
+  const [, navigate] = useLocation();
   useRememberMonth(month);
   const cashQuery = useGetMonthCash(month, { query: { queryKey: getGetMonthCashQueryKey(month), refetchOnWindowFocus: true } });
   const cash = cashQuery.data;
@@ -20,8 +21,9 @@ export default function Entradas({ month }: { month: MonthKey }) {
 
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
-      <MonthNav area="income" month={month} canGoPrevious={canGoPrevious} canGoNext={canGoNext}/>
-      <AppTabs/>
+      <AppHeader area="income" month={month} canGoPrevious={canGoPrevious} canGoNext={canGoNext}/>
+      {/* RF-10: o "Resumo do mês" saiu do rodapé e abre daqui. */}
+      <div className="mt-3 flex justify-end"><button data-testid="button-summary" onClick={() => navigate(summaryPath(month))} className="-mr-2 flex h-12 items-center gap-1 rounded-full px-3 text-[15px] font-semibold text-brand transition hover:bg-hover">Resumo do mês<ChevronRight size={18}/></button></div>
 
       {cashQuery.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-brand"><CircleHelp size={18}/></div><h3 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir as entradas.</h3><button onClick={() => void cashQuery.refetch()} className="mt-3 min-h-11 text-[14px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar novamente</button></div>
         : !cash ? <div aria-busy="true" className="mt-6 space-y-4"><div className="h-[84px] animate-pulse rounded-2xl bg-line"/><div className="h-[320px] animate-pulse rounded-2xl bg-line"/></div>

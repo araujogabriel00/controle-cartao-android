@@ -8,13 +8,12 @@ import {
   type BenefitCategoryRow, type BenefitItem, type BenefitSpend, type Category,
 } from '@workspace/api-client-react';
 import { Check, ChevronDown, ChevronRight, CircleHelp, MoreHorizontal, Plus, Trash2, TriangleAlert, Utensils, X } from 'lucide-react';
-import { AppTabs } from '@/components/app-tabs';
+import { AppHeader } from '@/components/app-header';
 import { CardMenu } from '@/components/card-menu';
 import { CardPicker } from '@/components/card-picker';
 import { ChartLegend } from '@/components/charts/chart-legend';
 import { HBars, type HBarRow } from '@/components/charts/hbars';
 import { StackedBar } from '@/components/charts/stacked-bar';
-import { MonthNav } from '@/components/month-nav';
 import { FormActions, FormSheet, SheetHeader } from '@/components/bottom-sheet';
 import { removeAsk, useConfirm } from '@/components/confirm-dialog';
 import { Notice, useNotice } from '@/components/notice';
@@ -168,8 +167,7 @@ export default function Beneficios({ month }: { month: MonthKey }) {
 
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
-      <MonthNav area="benefits" month={month} canGoPrevious={canGoPrevious} canGoNext={canGoNext}/>
-      <AppTabs/>
+      <AppHeader area="benefits" month={month} canGoPrevious={canGoPrevious} canGoNext={canGoNext}/>
 
 
 

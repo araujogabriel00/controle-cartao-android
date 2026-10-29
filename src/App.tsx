@@ -3,13 +3,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { getGetBenefitRangeQueryKey, getGetBenefitsQueryKey, getGetIncomeRangeQueryKey, getGetLastFutureMonthQueryKey, useGetBenefitRange, useGetBenefits, useGetIncomeRange, useGetLastFutureMonth } from '@workspace/api-client-react';
-import { areaPath, benefitSpendsPath, currentMonth, isFutureMonth, isMonthKey, listPath, summaryPath, type ListKind } from '@/lib/format';
+import { type Area, areaPath, benefitSpendsPath, currentMonth, isFutureMonth, isMonthKey, listPath, summaryPath, type ListKind } from '@/lib/format';
 import { readLastMonth } from '@/lib/last-month';
 import { loadTheme } from '@/lib/theme';
 import { loadHideValues, useHideValues } from '@/lib/hide-values';
 import { FooterMenu } from '@/components/quick-add';
 import { ConfirmProvider } from '@/components/confirm-dialog';
 import NotFound from '@/pages/not-found';
+import Inicio from '@/pages/inicio';
 import Dashboard from '@/pages/dashboard';
 import Historico from '@/pages/historico';
 import Compras from '@/pages/compras';
@@ -36,19 +37,20 @@ const queryClient = new QueryClient();
 // always lives at the area's short route.
 function MonthRoute({ month }: { month: string }) {
   const lastPlanned = useGetLastFutureMonth({ query: { queryKey: getGetLastFutureMonthQueryKey(), enabled: isMonthKey(month) && isFutureMonth(month) } });
-  if (!isMonthKey(month) || month === currentMonth()) return <Redirect to="/" replace />;
+  if (!isMonthKey(month) || month === currentMonth()) return <Redirect to={areaPath('cards', currentMonth())} replace />;
   if (isFutureMonth(month)) {
     if (lastPlanned.isLoading) return null;
-    if (!lastPlanned.data) return <Redirect to="/" replace />;
+    if (!lastPlanned.data) return <Redirect to={areaPath('cards', currentMonth())} replace />;
     if (month > lastPlanned.data) return <Redirect to={areaPath('cards', lastPlanned.data)} replace />;
   }
   return <Dashboard key={month} month={month} />;
 }
 
 // Income and benefit months open from the oldest one (never after now) to now + 12
-// months (income RN-09, benefits RN-12); outside that, the nearest one opens.
+// months (income RN-09, benefits RN-12); outside that, the nearest one opens. The Início
+// uses the Entradas range (redesign-v2-fundacao RF-11).
 function RangedMonthRoute({ area, month, range, children }: {
-  area: 'income' | 'benefits'; month: string; range: { data?: { first: string; last: string }; isLoading: boolean }; children: ReactNode;
+  area: Exclude<Area, 'cards'>; month: string; range: { data?: { first: string; last: string }; isLoading: boolean }; children: ReactNode;
 }) {
   if (!isMonthKey(month) || month === currentMonth()) return <Redirect to={areaPath(area, currentMonth())} replace />;
   if (range.isLoading) return null;
@@ -56,6 +58,11 @@ function RangedMonthRoute({ area, month, range, children }: {
   const target = month < range.data.first ? range.data.first : month > range.data.last ? range.data.last : month;
   if (target !== month) return <Redirect to={areaPath(area, target)} replace />;
   return <>{children}</>;
+}
+
+function HomeMonthRoute({ month }: { month: string }) {
+  const range = useGetIncomeRange({ query: { queryKey: getGetIncomeRangeQueryKey() } });
+  return <RangedMonthRoute area="home" month={month} range={range}><Inicio key={month} month={month} /></RangedMonthRoute>;
 }
 
 function IncomeMonthRoute({ month }: { month: string }) {
@@ -123,8 +130,13 @@ function Router() {
     // survives a page crash.
     <RoutedErrorBoundary>
       <Switch>
-        <Route path="/">{() => <Dashboard key={currentMonth()} month={currentMonth()} />}</Route>
-        <Route path="/mes/:month">{(params) => <MonthRoute month={params.month} />}</Route>
+        <Route path="/">{() => <Inicio key={currentMonth()} month={currentMonth()} />}</Route>
+        <Route path="/inicio"><Redirect to="/" replace /></Route>
+        <Route path="/inicio/mes/:month">{(params) => <HomeMonthRoute month={params.month} />}</Route>
+        <Route path="/cartoes">{() => <Dashboard key={currentMonth()} month={currentMonth()} />}</Route>
+        <Route path="/cartoes/mes/:month">{(params) => <MonthRoute month={params.month} />}</Route>
+        {/* The old address of Cartões (redesign-v2-fundacao RF-03, RN-10). */}
+        <Route path="/mes/:month">{(params) => <Redirect to={`/cartoes/mes/${params.month}`} replace />}</Route>
         <Route path="/historico" component={Historico} />
         <Route path="/compras" component={Compras} />
         <Route path="/entradas">{() => <Entradas key={currentMonth()} month={currentMonth()} />}</Route>
@@ -149,8 +161,8 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
-// RF-08 / RN-10: on start, an empty address ("#/" or none) opens Cartões in the remembered
-// month. It is read before the first screen shows, so the current month never flashes, and
+// RF-08 / RN-10: on start, an empty address ("#/" or none) opens the Início in the remembered
+// month (redesign-v2-fundacao D3). It is read before the first screen shows, so the current month never flashes, and
 // an address with a month, or of another area, is left alone (D9).
 function Bootstrap({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -160,7 +172,7 @@ function Bootstrap({ children }: { children: ReactNode }) {
     void Promise.all([readLastMonth(), loadTheme(), loadHideValues()]).then(([last]) => {
       if (!alive) return;
       const hash = window.location.hash;
-      if (last && last !== currentMonth() && (hash === '' || hash === '#' || hash === '#/')) window.history.replaceState(null, '', `#${areaPath('cards', last)}`);
+      if (last && last !== currentMonth() && (hash === '' || hash === '#' || hash === '#/')) window.history.replaceState(null, '', `#${areaPath('home', last)}`);
       setReady(true);
     });
     return () => { alive = false; };

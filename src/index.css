@@ -513,4 +513,4 @@ body { padding-top: var(--safe-area-inset-top, env(safe-area-inset-top)); paddin
 body::after { content: ""; position: fixed; inset: 0 0 auto 0; height: var(--safe-area-inset-top, env(safe-area-inset-top)); background: var(--paper); z-index: 40; pointer-events: none; }
 /* Full screen minus the body's safe-area padding, so short pages don't scroll. */
 .min-h-safe { min-height: calc(100dvh - var(--safe-area-inset-top, env(safe-area-inset-top)) - var(--safe-area-inset-bottom, env(safe-area-inset-bottom))); }
-[data-testid="status-toast"] { bottom: calc(6rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom))); }
+[data-testid="status-toast"] { bottom: calc(10.5rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom))); }

@@ -15,7 +15,7 @@ import { RowMenu } from '@/components/row-menu';
 import { Dialog, type DialogRecord } from '@/pages/dashboard';
 import { ScopeDialog } from '@/components/scope-dialog';
 import { chargeDialog, chargeOfMovement, chargeOfPlanned, type RecurringCharge } from '@/lib/recurring-charge';
-import { capitalize, currentMonth, dateLabel, money, monthLabel, monthOf, type MonthKey } from '@/lib/format';
+import { areaPath, capitalize, currentMonth, dateLabel, money, monthLabel, monthOf, type MonthKey } from '@/lib/format';
 
 // One line of the list: a registered purchase or a planned installment.
 type Row = {
@@ -122,7 +122,7 @@ export default function Compras() {
 
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
-      <BackButton onClick={() => navigate('/')}/>
+      <BackButton onClick={() => navigate(areaPath('cards', currentMonth()))}/>
 
       <section className="enter mt-3" style={{ animationDelay: '.06s' }}>
         <p className="font-mono-data text-xs uppercase tracking-[.08em] text-eyebrow">{card?.name ?? 'Cartão'} · Todos os meses</p>

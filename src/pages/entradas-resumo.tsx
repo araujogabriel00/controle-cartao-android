@@ -11,7 +11,7 @@ const signed = (value: number | undefined, kind: 'in' | 'out') =>
 const tone = (value: number | undefined, kind: 'in' | 'out') =>
   (value ?? 0) > 0 ? (kind === 'in' ? 'font-medium text-brand' : 'font-medium text-ink') : 'text-ink-soft';
 
-// specs/redesign-opcao-d-entradas.md D9: tela de apoio aberta pelo botão "Resumo" do rodapé.
+// specs/redesign-opcao-d-entradas.md D9: tela de apoio aberta pelo link "Resumo do mês" no topo de Entradas (redesign-v2-fundacao RF-10).
 export default function EntradasResumo({ month }: { month: MonthKey }) {
   useRememberMonth(month);
   const [, navigate] = useLocation();
