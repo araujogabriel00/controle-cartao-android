@@ -362,6 +362,123 @@ async function mutate<T>(change: (state: State) => T): Promise<T> {
   return result;
 }
 
+
+// --- desfazer a exclusão (specs/desfazer-exclusao.md) -----------------------------------------------------
+// Uma exclusão de lançamento guarda um "remendo reverso": para cada lista que ela mexeu, o que saiu (com a posição
+// que tinha), o que mudou (valor de antes e de depois) e o que foi acrescentado (as exceções de mês). Desfazer
+// repõe só isso, por registro (RN-02), e nada mais é tocado: o que foi lançado depois continua lá (D5).
+// Fica só na memória (D7): não há formato salvo novo nem migração.
+
+type AnyRecord = Record<string, unknown>;
+const UNDO_KEYS = {
+  incomes: (r: AnyRecord) => String(r.id),
+  incomeExceptions: (r: AnyRecord) => `${r.incomeId}:${r.month}`,
+  bills: (r: AnyRecord) => String(r.id),
+  billExceptions: (r: AnyRecord) => `${r.billId}:${r.month}`,
+  dailyExpenses: (r: AnyRecord) => String(r.id),
+  movements: (r: AnyRecord) => String(r.id),
+  purchases: (r: AnyRecord) => String(r.id),
+  recurrings: (r: AnyRecord) => String(r.id),
+  recurringExceptions: (r: AnyRecord) => `${r.recurringId}:${r.month}`,
+  benefitSpends: (r: AnyRecord) => String(r.id),
+} as const;
+type UndoList = keyof typeof UNDO_KEYS;
+const UNDO_LISTS = Object.keys(UNDO_KEYS) as UndoList[];
+type ListPatch = { removed: { index: number; record: AnyRecord }[]; added: AnyRecord[]; changed: { before: AnyRecord; after: AnyRecord }[] };
+type UndoPatch = Partial<Record<UndoList, ListPatch>>;
+
+const UNDO_FAILED = 'Não foi possível desfazer.';
+const sameRecord = (a: AnyRecord, b: AnyRecord) => JSON.stringify(a) === JSON.stringify(b);
+const recordsOf = (state: State, list: UndoList) => state[list] as unknown as AnyRecord[];
+
+function diffUndo(before: State, after: State): UndoPatch {
+  const patch: UndoPatch = {};
+  for (const list of UNDO_LISTS) {
+    const key = UNDO_KEYS[list];
+    const was = recordsOf(before, list);
+    const now = recordsOf(after, list);
+    const wasByKey = new Map(was.map((r) => [key(r), r]));
+    const nowByKey = new Map(now.map((r) => [key(r), r]));
+    const removed = was.flatMap((record, index) => (nowByKey.has(key(record)) ? [] : [{ index, record: structuredClone(record) }]));
+    const added = now.filter((r) => !wasByKey.has(key(r))).map((r) => structuredClone(r));
+    const changed = was.flatMap((record) => {
+      const next = nowByKey.get(key(record));
+      return next && !sameRecord(next, record) ? [{ before: structuredClone(record), after: structuredClone(next) }] : [];
+    });
+    if (removed.length || added.length || changed.length) patch[list] = { removed, added, changed };
+  }
+  return patch;
+}
+
+// D8: first checks that everything the exclusion touched is still as it left it, then applies; it never undoes half.
+function applyUndo(state: State, patch: UndoPatch) {
+  for (const list of UNDO_LISTS) {
+    const part = patch[list];
+    if (!part) continue;
+    const key = UNDO_KEYS[list];
+    const byKey = new Map(recordsOf(state, list).map((r) => [key(r), r]));
+    for (const { record } of part.removed) {
+      const existing = byKey.get(key(record));
+      if (existing && !sameRecord(existing, record)) throw new Error(UNDO_FAILED);
+    }
+    for (const record of part.added) {
+      const existing = byKey.get(key(record));
+      if (existing && !sameRecord(existing, record)) throw new Error(UNDO_FAILED);
+    }
+    for (const { after } of part.changed) {
+      const existing = byKey.get(key(after));
+      if (!existing || !sameRecord(existing, after)) throw new Error(UNDO_FAILED);
+    }
+  }
+  for (const list of UNDO_LISTS) {
+    const part = patch[list];
+    if (!part) continue;
+    const key = UNDO_KEYS[list];
+    const addedKeys = new Set(part.added.map(key));
+    const restored = new Map(part.changed.map(({ before }) => [key(before), before]));
+    const next = recordsOf(state, list).filter((r) => !addedKeys.has(key(r))).map((r) => structuredClone(restored.get(key(r)) ?? r));
+    const present = new Set(next.map(key));
+    for (const { index, record } of [...part.removed].sort((a, b) => a.index - b.index)) {
+      if (!present.has(key(record))) next.splice(Math.min(index, next.length), 0, structuredClone(record));
+    }
+    (state as unknown as Record<UndoList, AnyRecord[]>)[list] = next;
+  }
+}
+
+// RN-03: at most one undo is pending; a new exclusion replaces it (D4), and it dies with the app (D7).
+let pendingUndo: { id: number; patch: UndoPatch } | null = null;
+let undoSeq = 0;
+
+// Same as `mutate`, but it compares the state before and after the change and keeps the reverse patch.
+// If the change throws, nothing is saved and nothing is kept (RN-06).
+async function mutateUndoable(change: (state: State) => void): Promise<{ undoId: number }> {
+  const state = await load();
+  const draft = structuredClone(state);
+  change(draft);
+  const patch = diffUndo(state, draft);
+  await persist(draft);
+  Object.assign(state, draft);
+  pendingUndo = { id: ++undoSeq, patch };
+  return { undoId: pendingUndo.id };
+}
+
+export type UndoResult = { undoId: number };
+
+export async function undoDeletion(undoId: number): Promise<void> {
+  const pending = pendingUndo;
+  if (!pending || pending.id !== undoId) throw new Error(UNDO_FAILED);
+  try {
+    await mutate((state) => applyUndo(state, pending.patch));
+  } finally {
+    if (pendingUndo === pending) pendingUndo = null;
+  }
+}
+
+// The notice expired or was closed: the exclusion is final.
+export async function discardUndo(undoId: number): Promise<void> {
+  if (pendingUndo?.id === undoId) pendingUndo = null;
+}
+
 const cents = (value: number) => Math.round(value * 100) / 100;
 const sum = (values: number[]) => cents(values.reduce((total, value) => total + value, 0));
 const percent = (used: number, total: number) => (total > 0 ? (used / total) * 100 : 0);
@@ -887,7 +1004,7 @@ export function updateMovement(movementId: number, categoryId: number | null, in
 }
 
 export function deleteMovement(movementId: number) {
-  return mutate((state) => {
+  return mutateUndoable((state) => {
     const movement = findMovement(state, movementId);
     requireStandalone(state, movement);
     state.movements = state.movements.filter((m) => m.id !== movement.id);
@@ -920,7 +1037,7 @@ export function updatePurchase(purchaseId: number, categoryId: number | null, in
 
 // RN-10
 export function deletePurchase(purchaseId: number) {
-  return mutate((state) => {
+  return mutateUndoable((state) => {
     const purchase = findPurchase(state, purchaseId);
     state.movements = state.movements.filter((m) => m.purchaseId !== purchase.id);
     state.purchases = state.purchases.filter((p) => p.id !== purchase.id);
@@ -1054,7 +1171,7 @@ export function updateIncome(incomeId: number, month: MonthKey, scope: IncomeSco
 
 // RN-07 / RN-08
 export function deleteIncome(incomeId: number, month: MonthKey, scope: IncomeScope) {
-  return mutate((state) => {
+  return mutateUndoable((state) => {
     const income = requireOccurrence(state, incomeId, month);
     if (!income.recurring || (scope === 'forward' && month === income.firstMonth)) return removeIncome(state, incomeId);
     if (scope === 'month') {
@@ -1333,7 +1450,7 @@ export function updateBenefitSpend(spendId: number, categoryId: number | null, i
 }
 
 export function deleteBenefitSpend(spendId: number) {
-  return mutate((state) => {
+  return mutateUndoable((state) => {
     const spend = state.benefitSpends.find((x) => x.id === spendId);
     if (!spend) throw new Error('Gasto não encontrado.');
     requireCategoryOpen(state, findBenefit(state, spend.benefitId), spend.categoryId, spend.date);
@@ -1459,7 +1576,7 @@ export function updateBill(billId: number, month: MonthKey, scope: IncomeScope, 
 
 // RN-10
 export function deleteBill(billId: number, month: MonthKey, scope: IncomeScope) {
-  return mutate((state) => {
+  return mutateUndoable((state) => {
     const bill = requireBillOccurrence(state, billId, month);
     if (scope === 'month') {
       state.billExceptions = state.billExceptions.filter((e) => !(e.billId === billId && e.month === month));
@@ -1524,7 +1641,7 @@ export function updateDailyExpense(expenseId: number, categoryId: number | null,
 }
 
 export function deleteDailyExpense(expenseId: number) {
-  return mutate((state) => {
+  return mutateUndoable((state) => {
     if (!state.dailyExpenses.some((x) => x.id === expenseId)) throw new Error('Gasto não encontrado.');
     state.dailyExpenses = state.dailyExpenses.filter((x) => x.id !== expenseId);
   });
@@ -1690,7 +1807,7 @@ export function updateRecurring(recurringId: number, month: MonthKey, scope: Inc
 
 // RN-07 / RN-08
 export function deleteRecurring(recurringId: number, month: MonthKey, scope: IncomeScope) {
-  return mutate((state) => {
+  return mutateUndoable((state) => {
     const recurring = requireCharge(state, recurringId, month);
     if (scope === 'month') {
       state.movements = state.movements.filter((m) => !(m.recurringId === recurringId && monthOf(m.date) === month));

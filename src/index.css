@@ -91,6 +91,7 @@
   --color-warn-line: var(--warn-line);
   --color-gold: var(--gold);
   --color-card-face-text: var(--card-face-text);
+  --color-snack-action: var(--snack-action);
   --color-chart-in: var(--chart-in);
   --color-chart-out: var(--chart-out);
   --color-chart-neutral: var(--chart-neutral);
@@ -124,6 +125,7 @@
   --warn-line: #e6d7b8;
   --gold: #d5ad58;
   --card-face-text: #fffaf0;
+  --snack-action: #8fd0b1;
   --chart-in: #2a78d6;
   --chart-out: #c8501f;
   --chart-neutral: #6b7a70;
@@ -277,6 +279,7 @@
   --warn-line: #5a4d2c;
   --gold: #e0bb6a;
   --card-face-text: #fffaf0;
+  --snack-action: #28513f;
   --chart-in: #6aaaf2;
   --chart-out: #f2905f;
   --chart-neutral: #8d9d92;
@@ -374,6 +377,9 @@ button, input, select { font: inherit; }
 button { cursor: pointer; }
 .notebook-grain::before { content: ""; position: fixed; inset: 0; z-index: 20; pointer-events: none; opacity: .13; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.16'/%3E%3C/svg%3E"); }
 .enter { animation: rise-in .55s cubic-bezier(.2,.7,.25,1) both; }
+/* Aviso de desfazer (specs/desfazer-exclusao.md seção 6): fade de 150 ms; sem animação com prefers-reduced-motion (regra mais abaixo). */
+.fade-in { animation: fade-in .15s ease both; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rise-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 .progress-fill { transition: transform .7s cubic-bezier(.2,.8,.2,1); transform-origin: left; }
 .lift { transition: transform .2s ease, box-shadow .2s ease; }

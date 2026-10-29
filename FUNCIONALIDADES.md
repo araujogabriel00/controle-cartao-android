@@ -54,6 +54,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 31. [Compras do cartão em qualquer mês](#31-compras-do-cartão-em-qualquer-mês)
 32. [Nova versão (v2): fundação](#32-nova-versão-v2-fundação)
 33. [Início com mini-gráficos](#33-início-com-mini-gráficos)
+34. [Desfazer a exclusão](#34-desfazer-a-exclusão)
 
 ---
 
@@ -272,9 +273,8 @@ Funcionalidade: Registrar e acompanhar compras
   Cenário: Excluir uma compra
     Dado que existe a compra "Feira"
     Quando eu clico em "Excluir compra"
-    Então o sistema pede confirmação para "Remover a compra “Feira”? Esta ação não pode ser desfeita."
-    Quando eu confirmo
-    Então vejo a mensagem "Compra excluída." e a fatura do mês diminui o valor dela
+    Então a compra é apagada na hora, sem pedir confirmação (seção 34)
+    E vejo o aviso "Feira removida." com o botão "Desfazer", e a fatura do mês diminui o valor dela
     Mas se a compra for uma parcela, a exclusão remove a compra parcelada inteira (seção 11)
 ```
 
@@ -662,8 +662,8 @@ Funcionalidade: Parcelamento
   @regra
   Cenário: Excluir a compra parcelada remove todas as parcelas
     Quando eu clico em "Excluir compra" numa parcela
-    Então o sistema pede confirmação para remover a compra parcelada e todas as suas parcelas
-    E depois de confirmar, as parcelas gravadas e as previstas somem
+    Então a compra parcelada é apagada na hora, sem confirmação, e as parcelas gravadas e as previstas somem
+    E o aviso "Fone removida." tem "Desfazer", que devolve todas as parcelas (seção 34)
 
   @regra
   Cenário: Parcela não se altera sozinha
@@ -828,8 +828,9 @@ Funcionalidade: Benefícios
     Dado que "VR" tem o gasto "Almoço"
     Quando eu edito o valor e salvo
     Então o gasto e o disponível mudam
-    Quando eu excluo o gasto e confirmo
-    Então o gasto some e o disponível volta ao crédito
+    Quando eu excluo o gasto
+    Então o gasto some na hora, sem confirmação, e o disponível volta ao crédito
+    E o aviso "Almoço removido." tem "Desfazer" (seção 34)
 
   Cenário: Excluir um benefício
     Dado que "VR" tem 3 gastos
@@ -1051,8 +1052,9 @@ Funcionalidade: Contas fixas e gastos do dia a dia
   Cenário: Editar e excluir um gasto
     Quando eu edito o valor de um gasto e salvo
     Então o gasto e o saldo mudam
-    Quando eu excluo o gasto e confirmo
-    Então o gasto some e o saldo volta
+    Quando eu excluo o gasto
+    Então o gasto some na hora, sem confirmação, e o saldo volta
+    E o aviso "‹Gasto› removido." tem "Desfazer" (seção 34)
 
   Cenário: Resumo dos gastos por categoria
     Dado que há R$ 300,00 em "Mercado", R$ 100,00 em "Lazer" e R$ 100,00 sem categoria
@@ -1148,8 +1150,9 @@ Funcionalidade: Compra recorrente
     E outubro e os meses seguintes têm R$ 55,00
 
   Cenário: Pular um mês e encerrar uma assinatura
-    Quando eu excluo a cobrança de outubro com "Só este mês" e confirmo
-    Então só outubro perde a cobrança, e a fatura diminui
+    Quando eu excluo a cobrança de outubro com "Só este mês"
+    Então só outubro perde a cobrança, sem confirmação depois da escolha, e a fatura diminui
+    E o aviso diz "‹Assinatura› removida deste mês." e tem "Desfazer" (seção 34)
     Quando eu excluo uma cobrança com "Este e os próximos"
     Então esse mês e os seguintes perdem a cobrança, e os anteriores ficam
 
@@ -1577,12 +1580,12 @@ Funcionalidade: Todas as compras do cartão
   Cenário: Editar ou excluir uma compra de um mês antigo
     Quando edito "Mercado" para R$ 95,00 em 07/09/2026
     Então "Mercado" passa para o grupo setembro de 2026
-    Quando excluo "Mercado" e confirmo
-    Então o grupo some
+    Quando excluo "Mercado"
+    Então o grupo some, sem confirmação, e o aviso "Mercado removida." tem "Desfazer" (seção 34)
 
   Cenário: Excluir uma parcela exclui a compra parcelada
-    Quando excluo "Fone" "1/3" e confirmo
-    Então "Fone" some de todos os meses
+    Quando excluo "Fone" "1/3"
+    Então "Fone" some de todos os meses, sem confirmação, e o "Desfazer" do aviso devolve todas as parcelas (seção 34)
 
   Cenário: Compra recorrente pergunta o escopo
     Quando excluo uma cobrança de compra recorrente
@@ -1624,7 +1627,7 @@ Funcionalidade: Aba Cartões redesenhada
 
   Cenário: Excluir pelo formulário
     Quando eu toco em "Excluir compra" numa compra comum, parcelada ou recorrente
-    Então vejo a confirmação da compra, a da compra parcelada inteira ou a pergunta "Só este mês" / "Este e os próximos"
+    Então a compra comum ou a compra parcelada inteira é apagada na hora, com o aviso "Desfazer" (seção 34), ou vejo antes a pergunta "Só este mês" / "Este e os próximos" se for recorrente
 
   Cenário: Criar uma compra não mostra "Excluir compra"
     Quando eu toco em "Lançar" e em "Compra no cartão"
@@ -1847,11 +1850,11 @@ Funcionalidade: Telas de apoio na Opção D
   Cenário: Excluir item recorrente
     Quando eu toco em "⋯" e em "Excluir" numa entrada recorrente
     Então vejo a folha com "Só este mês" e "Este e os próximos"
-    E ao escolher uma opção vejo a confirmação com o texto da consequência
-    E o item só é apagado se eu confirmar
+    E ao escolher uma opção o item é apagado na hora, sem confirmação (seção 34)
+    E vejo o aviso "‹Item› removido deste mês." (ou "deste mês em diante.") com o botão "Desfazer"
 
   Cenário: Cancelar confirmação
-    Quando a confirmação aparece e eu toco em "Cancelar"
+    Quando a confirmação de um cartão, benefício ou categoria aparece e eu toco em "Cancelar"
     Então nada é apagado
     E "Cancelar" é o botão que já vem com o foco
 
@@ -2061,3 +2064,86 @@ Funcionalidade: Início com mini-gráficos
 ```
 
 O que mudou em relação à seção 32 (Início da fundação): os blocos "Entrou", "Saiu", "Próxima fatura" e a lista de benefícios saíram (`card-home-in`, `card-home-out` e `row-home-benefit-N`). "Entrou" e "Saiu" continuam na aba Entradas e no Resumo do mês. O painel Saldo mostra o resultado do mês ("+ R$ X neste mês"), o painel Cartões mostra a fatura total do mês aberto e o Benefícios soma todos os benefícios.
+
+---
+
+## 34. Desfazer a exclusão
+
+Resumo. A especificação completa está em [`specs/desfazer-exclusao.md`](specs/desfazer-exclusao.md). Nenhuma regra de cálculo muda e nenhum formato salvo muda. Apagar um lançamento (entrada, conta fixa, gasto do dia a dia, compra do cartão avulsa, parcelada ou recorrente, e gasto de benefício) é imediato e abre um aviso com **Desfazer** por 6 segundos. Cartão, benefício e categoria continuam pedindo confirmação, sem "Desfazer". O desfazer fica só na memória: se o app fechar durante o aviso, a exclusão é definitiva.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Desfazer a exclusão
+
+  Cenário: Apagar e desfazer um gasto
+    Dado um gasto do dia a dia "Mercado" de R$ 80,00
+    Quando eu apago "Mercado"
+    Então ele some da lista sem pedir confirmação
+    E aparece o aviso "Mercado removido." com o botão "Desfazer"
+    Quando eu toco em "Desfazer"
+    Então "Mercado" volta à lista, com o mesmo valor e a mesma data
+    E o aviso diz "Mercado de volta."
+
+  Cenário: O aviso some sozinho
+    Dado que apaguei um gasto
+    Quando passam 6 segundos
+    Então o aviso desaparece
+    E a exclusão fica definitiva
+
+  Cenário: O aviso espera enquanto há foco no botão
+    Dado que apaguei um gasto
+    E o botão "Desfazer" está com o foco
+    Quando passam 6 segundos
+    Então o aviso continua na tela
+
+  Cenário: Desfazer uma compra parcelada
+    Dado uma compra "Fone" em 3 parcelas
+    Quando eu apago a compra e desfaço
+    Então as 3 parcelas voltam, cada uma no seu mês
+    E a fatura de cada mês é a de antes
+
+  Cenário: Desfazer uma recorrente daqui para a frente
+    Dado uma conta fixa "Internet" que começou em janeiro
+    Quando eu apago "Internet" em junho, "deste mês em diante", e desfaço
+    Então "Internet" volta sem data final, e junho e os meses seguintes mostram a conta
+
+  Cenário: Desfazer uma exceção de mês
+    Dado uma entrada recorrente "Salário"
+    Quando eu apago "Salário" só em julho e desfaço
+    Então julho volta a mostrar "Salário"
+
+  Cenário: Apagar outro lançamento antes do prazo
+    Dado que apaguei o gasto A e o aviso está aberto
+    Quando eu apago o gasto B
+    Então o aviso passa a falar do gasto B
+    E desfazer devolve só o gasto B
+    E o gasto A continua apagado
+
+  Cenário: Lançar depois de apagar não se perde ao desfazer
+    Dado que apaguei o gasto A
+    E lancei o gasto C
+    Quando eu toco em "Desfazer"
+    Então os gastos A e C aparecem
+
+  Cenário: Exclusão grande continua pedindo confirmação
+    Dado um cartão com compras
+    Quando eu peço para excluir o cartão
+    Então aparece o diálogo "Remover …?" com "Cancelar" e "Remover"
+    E não aparece "Desfazer" depois
+
+  Cenário: Desfazer que não pode ser aplicado
+    Dado que apaguei uma compra recorrente
+    E o mesmo item foi alterado antes de eu desfazer
+    Quando eu toco em "Desfazer"
+    Então vejo "Não foi possível desfazer."
+    E nada muda
+
+  Cenário: Falha ao apagar
+    Dado que a exclusão falha
+    Quando eu apago um gasto
+    Então o gasto continua na lista
+    E aparece o aviso de erro, sem "Desfazer"
+```
+
+Detalhes que a spec fecha na implementação: o aviso diz o alcance nas recorrentes ("Salário removido deste mês." ou "deste mês em diante."); o cursor ou o dedo sobre o aviso também pausa a contagem; ao apagar a partir do formulário de edição ("Excluir compra"), o formulário fecha; o aviso de sucesso e o de desfazer nunca aparecem juntos. Identificadores: `snackbar-undo`, `button-undo` e `text-undo`; `button-confirm-ok` e `button-confirm-cancel` continuam só nas exclusões grandes.

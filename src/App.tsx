@@ -9,6 +9,7 @@ import { loadTheme } from '@/lib/theme';
 import { loadHideValues, useHideValues } from '@/lib/hide-values';
 import { FooterMenu } from '@/components/quick-add';
 import { ConfirmProvider } from '@/components/confirm-dialog';
+import { UndoSnackbar } from '@/components/undo-snackbar';
 import NotFound from '@/pages/not-found';
 import Inicio from '@/pages/inicio';
 import Dashboard from '@/pages/dashboard';
@@ -198,7 +199,7 @@ function App() {
         {/* Hash routes: the bundle uses a relative base, so nested paths would
             break asset URLs on reload. */}
         <WouterRouter hook={useHashLocation}>
-          <Bootstrap><ConfirmProvider><HiddenValuesKey><Router /><FooterMenu /></HiddenValuesKey></ConfirmProvider></Bootstrap>
+          <Bootstrap><ConfirmProvider><HiddenValuesKey><Router /><FooterMenu /></HiddenValuesKey><UndoSnackbar /></ConfirmProvider></Bootstrap>
         </WouterRouter>
       </TooltipProvider>
     </QueryClientProvider>

@@ -9,7 +9,7 @@ import {
 } from '@workspace/api-client-react';
 import { CalendarDays, CircleHelp, Receipt, Search } from 'lucide-react';
 import { BackButton } from '@/components/back-button';
-import { removeAsk, useConfirm } from '@/components/confirm-dialog';
+import { scopeSuffix, undoable } from '@/components/undo-snackbar';
 import { Notice, useNotice } from '@/components/notice';
 import { RowMenu } from '@/components/row-menu';
 import { Dialog, type DialogRecord } from '@/pages/dashboard';
@@ -40,8 +40,6 @@ export default function Compras() {
   const [dialog, setDialog] = useState<DialogRecord | null>(null);
   // RF-04 / RF-05 of compra-recorrente: a charge of a recurring purchase asks for the scope first.
   const [scopeAsk, setScopeAsk] = useState<{ action: 'edit' | 'delete'; charge: RecurringCharge } | null>(null);
-  const confirm = useConfirm();
-  const askDelete = (label: string) => confirm(removeAsk(label));
   const { notice, notify, failed, formError } = useNotice(Boolean(dialog));
 
   const refresh = () => {
@@ -50,13 +48,14 @@ export default function Compras() {
     }
   };
   const saved = (text: string) => ({ mutation: { onSuccess: () => { refresh(); setDialog(null); notify(text); }, onError: failed } });
-  const removed = (text: string) => ({ mutation: { onSuccess: () => { refresh(); notify(text); }, onError: failed } });
+  // D1: apagar não pergunta; o aviso com Desfazer abre depois. O formulário de edição, se estava aberto, fecha.
+  const removed = { mutation: { onSuccess: () => { refresh(); setDialog(null); }, onError: failed } };
   const updateMovement = useUpdateMovement(saved('Compra atualizada.'));
   const updatePurchase = useUpdatePurchase(saved('Compra parcelada atualizada.'));
   const updateRecurring = useUpdateRecurring(saved('Compra recorrente atualizada.'));
-  const deleteMovement = useDeleteMovement(removed('Compra excluída.'));
-  const deletePurchase = useDeletePurchase(removed('Compra parcelada removida.'));
-  const deleteRecurring = useDeleteRecurring(removed('Compra recorrente removida.'));
+  const deleteMovement = useDeleteMovement(removed);
+  const deletePurchase = useDeletePurchase(removed);
+  const deleteRecurring = useDeleteRecurring(removed);
   const busy = updateMovement.isPending || updatePurchase.isPending || updateRecurring.isPending;
 
   const rows: Row[] = [
@@ -86,15 +85,15 @@ export default function Compras() {
   const removePlanned = (planned: PlannedInstallment) => {
     const charge = chargeOfPlanned(planned);
     if (charge) setScopeAsk({ action: 'delete', charge });
-    else if (planned.purchase) void removePurchase(planned.purchase.id, planned.description);
+    else if (planned.purchase) removePurchase(planned.purchase.id, planned.description);
   };
-  const removePurchase = async (purchaseId: number, description: string) => {
-    if (await askDelete(`a compra parcelada “${description}” e todas as suas parcelas`)) deletePurchase.mutate({ purchaseId });
+  const removePurchase = (purchaseId: number, description: string) => {
+    deletePurchase.mutate({ purchaseId }, undoable(description, `${description} removida.`));
   };
-  const removeMovement = async (movement: Movement) => {
+  const removeMovement = (movement: Movement) => {
     if (movement.recurring) setScopeAsk({ action: 'delete', charge: chargeOfMovement(movement)! });
-    else if (movement.purchase) await removePurchase(movement.purchase.id, movement.description);
-    else if (await askDelete(`a compra “${movement.description}”`)) deleteMovement.mutate({ movementId: movement.id });
+    else if (movement.purchase) removePurchase(movement.purchase.id, movement.description);
+    else deleteMovement.mutate({ movementId: movement.id }, undoable(movement.description, `${movement.description} removida.`));
   };
   const chooseScope = async (scope: 'month' | 'forward') => {
     if (!scopeAsk) return;
@@ -102,8 +101,7 @@ export default function Compras() {
     const chargeMonth = monthOf(charge.date);
     setScopeAsk(null);
     if (action === 'edit') { setDialog(chargeDialog(charge, scope)); return; }
-    const what = scope === 'month' ? `“${charge.description}” só em ${monthLabel(chargeMonth)}` : `“${charge.description}” de ${monthLabel(chargeMonth)} em diante`;
-    if (await askDelete(what)) deleteRecurring.mutate({ recurringId: charge.recurringId, month: chargeMonth, scope });
+    deleteRecurring.mutate({ recurringId: charge.recurringId, month: chargeMonth, scope }, undoable(charge.description, `${charge.description} removida${scopeSuffix(scope)}.`));
   };
   const submit = (values: DialogRecord) => {
     if (!dialog) return;
