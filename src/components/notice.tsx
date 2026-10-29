@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { Check } from 'lucide-react';
 import { hasFooter } from '@/lib/footer';
+import { useUndoActive } from '@/components/undo-snackbar';
 
 export type NoticeState = { text: string; error?: boolean } | null;
 
@@ -33,9 +34,11 @@ export function useNotice(formOpen = false) {
 }
 
 // Fica acima do rodapé nas telas que têm rodapé; sucesso é `status`, erro é `alert`.
+// O aviso de desfazer ocupa o lugar deste: os dois nunca aparecem juntos (specs/desfazer-exclusao.md RN-05).
 export function Notice({ notice }: { notice: NoticeState }) {
   const [location] = useLocation();
-  if (!notice) return null;
+  const undoOpen = useUndoActive();
+  if (!notice || undoOpen) return null;
   return <div role={notice.error ? 'alert' : 'status'} data-testid="status-toast" className={`fixed inset-x-4 z-[60] mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-2 rounded-full px-4 py-3 text-[14px] font-semibold text-on-brand shadow-lg ${hasFooter(location) ? 'bottom-[calc(10.5rem+env(safe-area-inset-bottom))]' : 'bottom-6'} ${notice.error ? 'bg-alert' : 'bg-brand'}`}>
     <Check size={16} className="shrink-0"/><span className="min-w-0">{notice.text}</span>
   </div>;
