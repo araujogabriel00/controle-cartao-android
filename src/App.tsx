@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { getGetBenefitRangeQueryKey, getGetBenefitsQueryKey, getGetIncomeRangeQueryKey, getGetLastFutureMonthQueryKey, useGetBenefitRange, useGetBenefits, useGetIncomeRange, useGetLastFutureMonth } from '@workspace/api-client-react';
 import { areaPath, benefitSpendsPath, currentMonth, isFutureMonth, isMonthKey, listPath, summaryPath, type ListKind } from '@/lib/format';
 import { readLastMonth } from '@/lib/last-month';
+import { loadTheme } from '@/lib/theme';
 import { FooterMenu } from '@/components/quick-add';
 import { ConfirmProvider } from '@/components/confirm-dialog';
 import NotFound from '@/pages/not-found';
@@ -154,7 +155,8 @@ function Bootstrap({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   useEffect(() => {
     let alive = true;
-    void readLastMonth().then((last) => {
+    // O tema é lido junto com o mês, antes da primeira tela (RN-09).
+    void Promise.all([readLastMonth(), loadTheme()]).then(([last]) => {
       if (!alive) return;
       const hash = window.location.hash;
       if (last && last !== currentMonth() && (hash === '' || hash === '#' || hash === '#/')) window.history.replaceState(null, '', `#${areaPath('cards', last)}`);
