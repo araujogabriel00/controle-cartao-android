@@ -56,6 +56,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 33. [Início com mini-gráficos](#33-início-com-mini-gráficos)
 34. [Desfazer a exclusão](#34-desfazer-a-exclusão)
 35. [Aba Entradas no desenho v3](#35-aba-entradas-no-desenho-v3)
+36. [Aba Cartões na nova versão](#36-aba-cartões-na-nova-versão)
 
 ---
 
@@ -220,7 +221,7 @@ Funcionalidade: Registrar e acompanhar compras
     Quando eu preencho "O que foi?" com "Feira", escolho "Mercado" e preencho o valor com "120"
     E clico em "Adicionar"
     Então vejo a mensagem "Compra registrada."
-    E "Feira" aparece em "O que já aconteceu" com a categoria "Mercado"
+    E "Feira" aparece em "Compras" com a categoria "Mercado"
 
   @regra
   Cenário: A compra entra na fatura
@@ -240,14 +241,14 @@ Funcionalidade: Registrar e acompanhar compras
 
   Cenário: Lista do mês
     Dado que o mês tem compras
-    Então a lista mostra da mais recente para a mais antiga
+    Então "Compras" mostra as 3 mais recentes, da mais recente para a mais antiga (seção 36)
     E cada compra mostra a descrição, a categoria, a data e o valor com sinal de menos
 
   Cenário: Filtrar por categoria
     Dado que há compras em "Mercado", "Lazer" e sem categoria
-    Quando eu escolho o filtro "Mercado"
-    Então a lista mostra só as compras de "Mercado"
-    E vejo "Total do filtro" com a soma delas
+    Quando eu toco em "Mercado" em "Para onde foi"
+    Então "Compras" mostra só as compras de "Mercado"
+    E vejo "Total do filtro" com a soma delas e o botão "Limpar filtro"
 
   Cenário: Resumo por categoria
     Dado que há R$ 300,00 em "Mercado", R$ 100,00 em "Lazer" e R$ 100,00 sem categoria
@@ -255,9 +256,8 @@ Funcionalidade: Registrar e acompanhar compras
 
   Cenário: Lista longa de compras
     Dado que o mês tem 11 compras
-    Então vejo apenas 8 compras e o botão "Ver mais 3 compras"
-    Quando eu clico em "Ver mais 3 compras"
-    Então vejo as 11 compras e o botão "Mostrar menos"
+    Então "Compras" mostra só as 3 mais recentes
+    E o link "Todas as compras" abre a lista completa, sem filtro (seção 24)
 
   Cenário: Mês sem compras
     Dado que o mês não tem compras
@@ -1724,7 +1724,7 @@ Funcionalidade: Aba Entradas na Opção D
 
 ## 28. Opção D: Cartões
 
-Resumo. A especificação completa está em [`specs/redesign-opcao-d-cartoes.md`](specs/redesign-opcao-d-cartoes.md). Nenhuma regra de fatura, parcela, categoria ou histórico muda. A face colorida do cartão saiu: a aba mostra uma fileira de botões de cartão, a fatura em texto grande e três gráficos ("Ritmo do mês", "Para onde foi" e "Próximas faturas") antes da lista de compras.
+Resumo. A especificação completa está em [`specs/redesign-opcao-d-cartoes.md`](specs/redesign-opcao-d-cartoes.md). Nenhuma regra de fatura, parcela, categoria ou histórico muda. A face colorida do cartão saiu: a aba mostra uma fileira de botões de cartão, a fatura em texto grande e três gráficos ("Ritmo do mês", "Para onde foi" e "Próximas faturas") antes da lista de compras. Na v2 o "Ritmo do mês" foi removido e a lista de compras ficou com as 3 mais recentes (seção 36).
 
 ```gherkin
 # language: pt
@@ -1745,14 +1745,13 @@ Funcionalidade: Aba Cartões na Opção D
     Quando eu toco em "Inter" na fileira
     Então o cartão selecionado passa a ser "Inter" e a tela mostra a fatura dele
 
-  Cenário: Ritmo do mês
-    Então vejo o gráfico "Ritmo do mês" com degraus em 02, 15 e 17 de outubro
-    E "+R$ 357,16" ao lado da maior alta e a linha "hoje"
+  Cenário: Ritmo do mês (removido)
+    Então a aba não tem mais o gráfico "Ritmo do mês" (seção 36)
 
   Cenário: Para onde foi
     Então vejo "testes R$ 357,16 · 86%" e "Eletrônicos R$ 60,00 · 14%", na mesma cor
     Quando eu toco em "Eletrônicos"
-    Então a lista de Compras mostra só "Fone" e "Cabo"
+    Então a lista de Compras mostra só "Fone" e "Cabo", com o "Total do filtro" e o botão "Limpar filtro"
 
   Cenário: Próximas faturas
     Então vejo sete colunas: outubro cheia com R$ 417,16
@@ -1768,17 +1767,16 @@ Funcionalidade: Aba Cartões na Opção D
 
   Cenário: Mês passado
     Quando eu volto para setembro de 2026
-    Então "Ritmo do mês" não mostra a linha "hoje"
-    E a primeira coluna de "Próximas faturas" é setembro, em cor cheia
+    Então a primeira coluna de "Próximas faturas" é setembro, em cor cheia
 
   Cenário: Mês futuro
     Quando eu abro novembro de 2026
     Então o rótulo é "Fatura prevista de novembro de 2026"
-    E o ritmo mostra as parcelas previstas em tom claro, com o rótulo "prevista"
+    E "Compras" mostra as parcelas previstas com o selo "prevista"
 
   Cenário: Mês sem compras
     Dado que um mês não tem compras
-    Então "Ritmo do mês" mostra "Nenhuma compra neste mês."
+    Então "Compras" mostra o estado vazio com a chamada para lançar
     E "Para onde foi" mostra a mensagem de resumo vazio
 ```
 
@@ -2228,3 +2226,71 @@ Funcionalidade: Aba Entradas na nova versão (desenho v3)
 ```
 
 Detalhes que a spec fecha na implementação: os rótulos do eixo ficam dentro da área do gráfico (as colunas de toque têm 51,6 px em 360 px); abaixo de 400 px o ícone das linhas some e o texto quebra em vez de ser cortado; sem nenhuma entrada no mês, todas as barras ficam em zero; o gráfico tem no máximo 440 px de largura. Identificadores: `chart-balance-line`, `text-balance-selected`, `point-balance-AAAA-MM`, `row-origin-income`, `row-origin-bills`, `row-origin-daily` e `row-origin-cards` (novos), além de `section-balance`, `text-cash-balance`, `text-cash-warning`, `button-summary` e `section-chart` (mantidos; `section-chart` agora é a seção "Saldo mês a mês").
+
+---
+
+## 36. Aba Cartões na nova versão
+
+Resumo. A especificação completa está em [`specs/redesign-v2-cartoes.md`](specs/redesign-v2-cartoes.md). Nenhuma regra de cálculo muda. A aba fica com: seletor de cartão, Fatura, Próximas faturas, Para onde foi e Compras. O gráfico "Ritmo do mês" (e o `StepLine`) foi removido, e a lista longa "O que já aconteceu", com chips de categoria e "Ver mais", virou "Compras" com as 3 mais recentes.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Aba Cartões na nova versão
+
+  Cenário: Ordem das seções
+    Dado um cartão com compras no mês
+    Quando eu abro a aba "Cartões"
+    Então vejo, nesta ordem, o seletor de cartão, "Fatura", "Próximas faturas", "Para onde foi" e "Compras"
+    E não vejo "Ritmo do mês"
+
+  Cenário: Fatura em destaque
+    Dado que a fatura de outubro é R$ 417,16 e a de novembro é R$ 397,16
+    Então vejo "Fatura de outubro" e "R$ 417,16"
+    E "3 compras · próxima fatura prevista R$ 397,16"
+
+  Cenário: Próximas faturas
+    Dado uma compra parcelada em 7 vezes
+    Então vejo 7 colunas, a do mês aberto mais forte
+    E a legenda "Lançada" e "Prevista"
+    Quando eu toco em "Histórico"
+    Então abre o histórico de faturas
+
+  Cenário: Resumo por categoria mantido
+    Dado compras em "Eletrônicos" e em "Mercado"
+    Então "Para onde foi" lista as duas categorias com valor e barra
+
+  Cenário: Filtrar as compras por categoria
+    Dado compras em "Eletrônicos" e em "Mercado"
+    Quando eu toco em "Eletrônicos" em "Para onde foi"
+    Então "Compras" mostra só as de "Eletrônicos", com "Total do filtro"
+    E aparece o botão "Limpar filtro"
+    Quando eu toco em "Limpar filtro"
+    Então "Compras" volta a mostrar as 3 mais recentes do mês
+
+  Cenário: Três compras mais recentes
+    Dado que o mês tem 5 compras
+    Então "Compras" mostra as 3 mais recentes
+    E o link "Todas as compras" leva à lista completa, sem filtro
+
+  Cenário: Editar uma compra pela lista
+    Quando eu toco numa compra registrada
+    Então abre o formulário de edição dela
+
+  Cenário: Mês sem compras
+    Dado um cartão sem compras no mês
+    Então "Para onde foi" mostra "O resumo por categoria aparece quando houver compras no mês."
+    E "Compras" mostra o estado vazio com a chamada para lançar
+
+  Cenário: Valores escondidos
+    Quando eu toco no olho
+    Então os valores aparecem como "R$ ••••"
+    E as colunas e as barras viram formas neutras
+
+  Cenário: Trocar de mês limpa o filtro
+    Dado um filtro de categoria ativo
+    Quando eu vou para o mês seguinte
+    Então o filtro some
+```
+
+Detalhes que a spec fecha na implementação: o valor da Fatura tem 36 px abaixo de 380 px, 42 px até 419 px e 48 px a partir de 420 px; trocar de cartão também remove o filtro; com o olho fechado as barras de `Para onde foi` e as colunas (e as de Benefícios e do Histórico, que usam os mesmos componentes) perdem a forma e o percentual. O item de compra tem a parcela junto do nome ("Teste 1/7"), "Categoria · data" embaixo e os selos "Mensal" e "prevista" ao lado; o mínimo é de 64 px. Identificadores: sai `section-pace`, `text-pace-empty`, `filter-categories` e os `filter-…`; entram `section-purchases` e `button-clear-filter`; os demais ficam (`section-invoice`, `text-invoice`, `button-card-menu`, `section-where`, `list-category-summary`, `row-summary-…`, `section-next`, `button-history`, `button-all-purchases`, `list-movements`, `row-movement-…`, `row-planned-…`, `text-movements-empty`, `text-filter-total`, `button-create-card`).
