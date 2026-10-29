@@ -13,6 +13,7 @@ export type {
   IncomeInput, IncomeKind, IncomeOccurrence, IncomeRange, IncomeScope, Incomes, StoredIncome,
   RecurringInput, StoredRecurring,
   Bills, BillOccurrence, BillInput, DailyExpense, DailyExpenses, DailyExpenseInput, MonthCash, StoredBill, StoredDailyExpense,
+  BalancePoint, InvoicePoint, RecentSpend,
   Benefits, BenefitItem, BenefitSpend, BenefitRange, BenefitInput, BenefitUpdate, BenefitSpendInput, BenefitSplitItem, BenefitCategoryRow, StoredBenefit, StoredBenefitSpend,
 } from './store';
 export { INCOME_KINDS } from './store';
@@ -46,6 +47,11 @@ export const getGetIncomeRangeQueryKey = () => ['income-range'] as const;
 export const getGetBillsQueryKey = (month?: store.MonthKey) => key('bills', month);
 export const getGetDailyExpensesQueryKey = (month?: store.MonthKey) => key('daily', month);
 export const getGetMonthCashQueryKey = (month?: store.MonthKey) => key('cash', month);
+// Leituras do Início (specs/inicio-com-minigraficos.md; sem nova tentativa: uma leitura local que falha falha de novo, e o painel mostra o aviso logo, RN-08): sob os prefixos 'cash', 'cards' e 'movements', para
+// as mudanças que já atualizam esses prefixos atualizarem os mini-gráficos também.
+export const getGetBalanceSeriesQueryKey = (endMonth: store.MonthKey, count: number) => ['cash', 'series', endMonth, count] as const;
+export const getGetInvoiceSeriesQueryKey = (startMonth: store.MonthKey, count: number) => ['cards', 'invoice-series', startMonth, count] as const;
+export const getGetRecentSpendsQueryKey = (month: store.MonthKey, limit: number) => ['movements', 'recent', month, limit] as const;
 export const getGetBenefitsQueryKey = (month?: store.MonthKey) => key('benefits', month);
 export const getGetBenefitRangeQueryKey = () => ['benefit-range'] as const;
 
@@ -216,3 +222,12 @@ export const useUpdateRecurring = (options?: MutationOpts<store.StoredRecurring,
 
 export const useDeleteRecurring = (options?: MutationOpts<void, { recurringId: number; month: store.MonthKey; scope: store.IncomeScope }>) =>
   useMutation({ mutationFn: ({ recurringId, month, scope }) => store.deleteRecurring(recurringId, month, scope), ...options?.mutation });
+
+export const useGetBalanceSeries = (endMonth: store.MonthKey, count: number, options?: QueryOpts<store.BalancePoint[]>) =>
+  useLocalQuery(getGetBalanceSeriesQueryKey(endMonth, count), () => store.getBalanceSeries(endMonth, count), { query: { retry: false, ...options?.query } });
+
+export const useGetInvoiceSeries = (startMonth: store.MonthKey, count: number, options?: QueryOpts<store.InvoicePoint[]>) =>
+  useLocalQuery(getGetInvoiceSeriesQueryKey(startMonth, count), () => store.getInvoiceSeries(startMonth, count), { query: { retry: false, ...options?.query } });
+
+export const useGetRecentSpends = (month: store.MonthKey, limit: number, options?: QueryOpts<store.RecentSpend[]>) =>
+  useLocalQuery(getGetRecentSpendsQueryKey(month, limit), () => store.getRecentSpends(month, limit), { query: { retry: false, ...options?.query } });

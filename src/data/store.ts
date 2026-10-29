@@ -1,6 +1,6 @@
 import { Preferences } from '@capacitor/preferences';
 import { CARD_COLOR_KEYS, isCardColor, type CardColor } from '@/lib/card-colors';
-import { currentMonth, isFutureMonth, isMonthKey, lastDayOf, money, monthLabel, monthOf, shiftMonth, type MonthKey } from '@/lib/format';
+import { currentMonth, isFutureMonth, isMonthKey, lastDayOf, money, monthLabel, monthOf, shiftMonth, today, type MonthKey } from '@/lib/format';
 
 const STORAGE_KEY = 'controle-cartao:v1';
 
@@ -1557,6 +1557,56 @@ export async function getMonthCash(month: MonthKey): Promise<MonthCash> {
   let previousAmount = 0;
   if (first) for (let m = first; m < month; m = shiftMonth(m, 1)) previousAmount = cents(previousAmount + cashOf(state, m).resultAmount);
   return { month, ...current, previousAmount, balanceAmount: cents(previousAmount + current.resultAmount) };
+}
+
+// --- Início: leituras para os mini-gráficos (specs/inicio-com-minigraficos.md RN-01, RN-02) ---------
+// Só leitura: repetem cashOf, consolidatedOf e os gastos já existentes para outros meses.
+
+export type BalancePoint = { month: MonthKey; balanceAmount: number };
+export type InvoicePoint = { month: MonthKey; invoiceAmount: number };
+export type RecentSpend = {
+  id: number; area: 'cards' | 'income' | 'benefits'; description: string; origin: string; date: string; amount: number;
+};
+
+// D3, RN-03: the balance at the end of each of the last `count` months up to `endMonth`; months before
+// cashStart don't exist yet, so they don't enter. Same sum as getMonthCash (previous + result).
+export async function getBalanceSeries(endMonth: MonthKey, count: number): Promise<BalancePoint[]> {
+  const state = await load();
+  const first = cashStart(state);
+  if (!first || endMonth < first) return [];
+  const from = shiftMonth(endMonth, -(count - 1));
+  const points: BalancePoint[] = [];
+  let balance = 0;
+  for (let m = first; m <= endMonth; m = shiftMonth(m, 1)) {
+    balance = cents(balance + cashOf(state, m).resultAmount);
+    if (m >= from) points.push({ month: m, balanceAmount: balance });
+  }
+  return points;
+}
+
+// D4, RN-04: the invoices total of `count` months from `startMonth`; a month without invoice is 0, never missing.
+export async function getInvoiceSeries(startMonth: MonthKey, count: number): Promise<InvoicePoint[]> {
+  const state = await load();
+  return Array.from({ length: count }, (_, i) => {
+    const month = shiftMonth(startMonth, i);
+    return { month, invoiceAmount: consolidatedOf(state, month).invoiceAmount };
+  });
+}
+
+// D7: the last `limit` spends (card purchases, daily expenses, benefit spends) of the month up to today, newest
+// first; in a future month, the first ones of the month (its planned installments count as card spends).
+export async function getRecentSpends(month: MonthKey, limit: number): Promise<RecentSpend[]> {
+  const state = await load();
+  const future = isFutureMonth(month);
+  const spends: RecentSpend[] = [
+    ...state.movements.filter((m) => monthOf(m.date) === month).map((m): RecentSpend => ({ id: m.id, area: 'cards', description: m.description, origin: cardOf(state, m.cardId)?.name ?? 'Cartão', date: m.date, amount: m.amount })),
+    ...(future ? plannedOf(state, null, month).map((p): RecentSpend => ({ id: p.purchaseId ?? p.recurringId ?? 0, area: 'cards', description: p.description, origin: cardOf(state, p.cardId)?.name ?? 'Cartão', date: p.date, amount: p.amount })) : []),
+    ...state.dailyExpenses.filter((x) => monthOf(x.date) === month).map((x): RecentSpend => ({ id: x.id, area: 'income', description: x.description, origin: 'Dia a dia', date: x.date, amount: x.amount })),
+    ...state.benefitSpends.filter((x) => monthOf(x.date) === month).map((x): RecentSpend => ({ id: x.id, area: 'benefits', description: x.description, origin: state.benefits.find((b) => b.id === x.benefitId)?.name ?? 'Benefício', date: x.date, amount: x.amount })),
+  ];
+  const upToToday = future ? spends : spends.filter((s) => s.date <= today());
+  const ordered = future ? upToToday.sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id) : upToToday.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+  return ordered.slice(0, limit);
 }
 
 // --- recurring purchases ------------------------------------------------------
