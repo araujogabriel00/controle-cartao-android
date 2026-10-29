@@ -338,7 +338,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
 
       {card && <section data-testid="section-where" aria-label="Para onde foi" className="enter mt-8" style={{ animationDelay: '.14s' }}>
         <h2 className="font-display text-[20px] text-ink">Para onde foi</h2>
-        <p className="mb-3 text-sm text-ink-soft">Por categoria, no mês. Toque numa categoria para ver só as compras dela.</p>
+        <p className="mb-3 text-sm text-ink-soft">Por categoria, no mês.{categoryRows.length > 0 && ' Toque numa categoria para ver só as compras dela.'}</p>
         {categoryRows.length ? <HBars rows={categoryRows} fill="bg-chart-violet" label="Gasto por categoria" activeKey={activeFilter} activeClass="bg-tint" onSelect={pickCategory} testId="list-category-summary" rowTestId={(key) => `row-summary-${key}`}/>
           : <p className="py-4 text-[15px] text-ink-soft">O resumo por categoria aparece quando houver compras no mês.</p>}
       </section>}
@@ -361,7 +361,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
                 const open = row.movement ? () => editMovement(row.movement!) : row.planned ? () => editPlanned(row.planned!) : null;
                 const content = <>
                   <span className="block min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-semibold text-ink">{row.description}{row.installment && <span data-testid={row.movement ? `badge-installment-${row.movement.id}` : undefined} className="ml-1.5 font-mono-data text-[13px] font-medium text-ink-soft">{row.installment}/{row.installmentCount}</span>}</span>
+                    <span className="block truncate text-[15px] font-semibold text-ink">{row.description}{row.installment && ' '}{row.installment && <span data-testid={row.movement ? `badge-installment-${row.movement.id}` : undefined} className="ml-1.5 font-mono-data text-[13px] font-medium text-ink-soft">{row.installment}/{row.installmentCount}</span>}</span>
                     <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] text-ink-soft">
                       <span>{row.categoryName && <span data-testid="text-movement-category">{row.categoryName} · </span>}{dateLabel(row.date)}</span>
                       {row.recurring && <span data-testid="badge-recurring" className="rounded-full bg-tint px-2 py-0.5 text-[12px] font-semibold text-brand">Mensal</span>}
