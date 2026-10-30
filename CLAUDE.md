@@ -24,5 +24,6 @@ Uma correção de bug ou ajuste pequeno que não muda o comportamento descrito n
 
 ## Verificação
 
-- `npm run typecheck` e `npm run build` precisam passar.
-- Não há suíte de testes; confira os cenários da spec no navegador (`npm run dev`) e, para regras de dados, exercitando `src/data/store.ts`.
+- `npm test`, `npm run typecheck` e `npm run build` precisam passar.
+- Cada cenário novo da spec ganha um teste: regras de dados em `src/data/store.test.ts` (ou `src/lib/*.test.ts`) e telas em `src/pages/*.test.tsx`, com `openApp` de `src/test/app.tsx` (veja "Testes" no README). Mudança de comportamento atualiza os testes que a descreviam.
+- Use o navegador (`npm run dev`) só para o que o jsdom não mostra: layout, gráficos e toque.

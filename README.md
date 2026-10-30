@@ -121,7 +121,18 @@ O passo a passo completo está no [`CLAUDE.md`](CLAUDE.md).
 npm install
 npm run dev          # http://localhost:5173
 npm run typecheck
+npm test             # testes unitários e de integração (Vitest + Testing Library)
 ```
+
+## Testes
+
+`npm test` roda tudo em segundos, sem navegador; `npm run test:watch` fica observando as mudanças.
+
+- **Unitários**, ao lado do código: `src/lib/*.test.ts` (formatação, rotas, séries dos gráficos) e `src/data/store.test.ts` (regras de cálculo pela API pública do store: parcelas em centavos, escopos de recorrência, caixa do mês, previsões, desfazer).
+- **Integração das telas**: `src/App.test.tsx` (rotas e guardas) e `src/pages/*.test.tsx` renderizam o `<App/>` numa rota, com dados semeados, e usam a tela como a pessoa usaria (`userEvent`).
+- **Ajudantes** em `src/test/`: `openApp(hash, seed)` monta o app numa rota depois de semear o store; `seeds.ts` tem os dados de exemplo; `setup.ts` fixa a data em 15/10/2026.
+- O store, as preferências e o `QueryClient` guardam estado no módulo, por isso `openApp` e os testes do store importam tudo de novo a cada teste (`vi.resetModules()`).
+- O armazenamento é o `localStorage` do jsdom, via `@capacitor/preferences`.
 
 ## Gerar e instalar o app Android
 
@@ -187,6 +198,7 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── pages/beneficio-lancamentos.tsx # lançamentos de um benefício
 │   ├── pages/categorias.tsx # criar, renomear e excluir categorias
 │   └── ...
+├── src/test/               # ajudantes dos testes (openApp, seeds, setup)
 ├── specs/                  # especificações das funcionalidades
 ├── capacitor.config.ts     # appId br.pessoal.controlecartao, barras do sistema
 ├── vite.config.ts          # alias do api-client, base relativa

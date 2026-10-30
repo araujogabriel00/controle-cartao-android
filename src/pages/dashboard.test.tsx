@@ -1,0 +1,54 @@
+import { describe, expect, it } from 'vitest';
+import { openApp, plain } from '@/test/app';
+import { withCard } from '@/test/seeds';
+
+describe('Cartões', () => {
+  it('mostra a fatura e as compras do mês', async () => {
+    const { screen } = await openApp('#/cartoes', withCard);
+    expect(plain((await screen.findByTestId('text-invoice')).textContent)).toContain('R$ 100,00');
+    expect(screen.getByTestId('list-movements')).toHaveTextContent('Mercado');
+  });
+
+  it('o mês anterior abre vazio e volta ao atual', async () => {
+    const { user, screen, waitFor } = await openApp('#/cartoes', withCard);
+    await user.click(await screen.findByTestId('button-previous-month'));
+    await waitFor(() => expect(window.location.hash).toBe('#/cartoes/mes/2026-09'));
+    expect(await screen.findByTestId('text-month')).toHaveTextContent(/setembro de 2026/i);
+    await user.click(screen.getByTestId('button-next-month'));
+    await waitFor(() => expect(window.location.hash).toBe('#/cartoes'));
+  });
+
+  it('lança uma compra pelo botão Lançar', async () => {
+    const { user, screen, store } = await openApp('#/cartoes', withCard);
+    await user.click(await screen.findByTestId('button-quick-add'));
+    await user.click(await screen.findByTestId('quick-purchase'));
+    await user.type(await screen.findByTestId('input-movement-description'), 'Farmácia');
+    await user.type(screen.getByTestId('input-movement-amount'), '50');
+    await user.click(screen.getByRole('button', { name: 'Adicionar' }));
+    expect(await screen.findByText('Farmácia')).toBeInTheDocument();
+    const [card] = (await store.getCards('2026-10')).cards;
+    expect(card.invoiceAmount).toBe(150);
+  });
+
+  it('excluir uma compra mostra o Desfazer, que a devolve', async () => {
+    const { user, screen, store } = await openApp('#/cartoes', withCard);
+    const [card] = (await store.getCards('2026-10')).cards;
+    const [movement] = await store.getMovements(card.id, '2026-10');
+    await user.click(await screen.findByTestId(`row-movement-${movement.id}`));
+    await user.click(await screen.findByTestId('button-delete-movement'));
+    const ok = await screen.findByTestId('button-confirm-ok').catch(() => null);
+    if (ok) await user.click(ok);
+    await user.click(await screen.findByTestId('button-undo'));
+    await screen.findByText('Mercado');
+    expect(await store.getMovements(card.id, '2026-10')).toHaveLength(1);
+  });
+
+  it('sem cartão cadastrado cria o primeiro', async () => {
+    const { user, screen, store } = await openApp('#/cartoes');
+    await user.click(await screen.findByTestId('button-create-card'));
+    await user.type(await screen.findByTestId('input-card-name'), 'Inter');
+    await user.click(screen.getByRole('button', { name: 'Adicionar' }));
+    await screen.findByText('Inter');
+    expect((await store.getCards('2026-10')).cards.map((c) => c.name)).toEqual(['Inter']);
+  });
+});
