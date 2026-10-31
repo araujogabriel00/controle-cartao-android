@@ -41,6 +41,24 @@ describe('Saldo previsto', () => {
     expect(plain(screen.getByTestId('text-balance-forecast-diff').textContent)).toContain('ao saldo de novembro');
   });
 
+  it('o previsto final de um mês é o saldo inicial do seguinte', async () => {
+    const { store } = await openApp('#/previsoes', async (s) => {
+      await withCash(s);
+      await s.createForecast({ kind: 'receive', description: 'Venda', amount: 1000, date: '2026-11-10', affects: true, recurring: false });
+      await s.createForecast({ kind: 'pay', description: 'Seguro', amount: 200, date: '2026-12-05', affects: true, recurring: false });
+    });
+    const november = await store.getForecastSummary('2026-11');
+    const december = await store.getForecastSummary('2026-12');
+    const base = (await store.getMonthCash('2026-12')).balanceAmount;
+    expect(november.projected).toBe(Math.round((november.balance + 1000) * 100) / 100);
+    // O saldo de dezembro já traz os R$ 1.000 pendentes de novembro; o previsto só soma o que é de dezembro.
+    expect(december.balance).toBe(Math.round((base + 1000) * 100) / 100);
+    expect(december.projected).toBe(Math.round((base + 800) * 100) / 100);
+    const chart = await store.getBalanceForecast('2026-12');
+    expect(chart.points[0].balance).toBe(december.balance);
+    expect(chart.endBalance).toBe(december.projected);
+  });
+
   it('no exemplo de R$ 11 de saldo e R$ 1.000 a receber o previsto é R$ 1.011', async () => {
     const { store } = await openApp('#/previsoes', async (s) => {
       await s.createIncome({ kind: 'salario', amount: 11, date: '2026-10-05', recurring: false });

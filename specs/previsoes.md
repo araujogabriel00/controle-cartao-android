@@ -80,7 +80,7 @@ Hoje todo lançamento do app é algo que **já aconteceu** (ou uma recorrente qu
 | RN-05 | Valor de uma ocorrência editada com "Editar valor" vale só para aquele mês; o da previsão continua para os outros. |
 | RN-06 | Recorrência: a previsão existe desde o mês da data inicial, sem fim, no mesmo dia de cada mês (dia 29 a 31 vai para o último dia dos meses curtos). Apagar "deste mês em diante" encerra a previsão no mês anterior; se for o mês inicial, apaga a previsão toda. |
 | RN-07 | Validação: descrição de 1 a 120 caracteres; valor maior que zero; data válida e, ao cadastrar, não anterior a hoje (D10). Erros aparecem no formulário. |
-| RN-08 | **Saldo base do mês M** = `balanceAmount` de M (já desconta contas fixas, gastos do dia a dia, cartões e as previsões que já entraram). **Saldo previsto em uma data D** (último dia de M, ou até +21 dias no gráfico do mês corrente) = saldo base de M + soma das ocorrências que mexem no saldo com data maior que hoje e menor ou igual a D, em todos os meses do corrente até M, "A receber" com sinal "+" e "A pagar" com sinal "−". No mês corrente o saldo base é o saldo de hoje. |
+| RN-08 | **Saldo base do mês M** = `balanceAmount` de M (já desconta contas fixas, gastos do dia a dia, cartões e as previsões que já entraram) **+ as previsões que mexem no saldo e ainda não aconteceram nos meses anteriores a M, do corrente em diante** (linha do tempo: o previsto final de um mês é o saldo inicial do seguinte). **Saldo previsto em uma data D** (último dia de M, ou até +21 dias no gráfico do mês corrente) = saldo base de M + soma das ocorrências que mexem no saldo com data maior que hoje e menor ou igual a D **dentro de M** (ou do período do gráfico), "A receber" com sinal "+" e "A pagar" com sinal "−". No mês corrente o saldo base é o saldo de hoje. |
 | RN-09 | O cartão de resumo mostra o saldo base do mês aberto ("Saldo hoje" no mês corrente, "Saldo de ‹mês›" nos demais) e "Previsto em ‹último dia do mês aberto›" por RN-08. Em mês passado mostra o saldo do mês e "—" no previsto. |
 | RN-10 | Limite de meses: do mês mais antigo com previsão (ou o corrente, se não houver) até **24 meses** à frente do corrente. Fora do intervalo vai para o mais próximo, como as outras áreas. |
 | RN-11 | O aviso do Início (D12) lista as previsões que entraram no saldo com data posterior à marca de "Está certo" e menor ou igual a hoje; a marca é a data em que a pessoa tocou "Está certo" e fica em `Preferences` (`controle-cartao:forecast-ack`), fora do estado do app. Falha ao ler a marca: o aviso aparece. |
@@ -176,6 +176,13 @@ Funcionalidade: Previsões de receber e pagar
     Quando eu troco para novembro em Previsões
     Então o cartão mostra "Saldo de novembro" R$ 300,00 e "Previsto em 30/11" R$ 200,00
 
+  Cenário: O previsto final de um mês vira o saldo inicial do seguinte
+    Dado que o previsto final de novembro é R$ 3.000,00, com uma previsão ligada de +R$ 1.000,00 em 10/11 ainda por vir
+    E a previsão ligada de −R$ 200,00 em 05/12
+    Quando eu troco para dezembro em Previsões
+    Então o cartão mostra "Saldo de dezembro" incluindo os R$ 1.000,00 de novembro
+    E "Previsto em 31/12" é o saldo de dezembro menos R$ 200,00
+
   Cenário: Gráfico de um mês futuro
     Dado as previsões do cenário anterior
     Quando eu abro "Saldo previsto" em novembro
@@ -227,7 +234,7 @@ Funcionalidade: Previsões de receber e pagar
 | D8, RN-06, RF-06 | Repetir todo mês |
 | D9, RN-05 | Editar o valor de uma ocorrência |
 | D10, RN-07 | Data no passado |
-| RF-09, D11, RN-08, RN-09 | Saldo previsto; Previsão futura não afeta o mês corrente; Previsão acompanha o mês aberto; Trocar de mês parte do saldo do outro mês; Gráfico de um mês futuro; Mês passado sem projeção |
+| RF-09, D11, RN-08, RN-09 | Saldo previsto; Previsão futura não afeta o mês corrente; Previsão acompanha o mês aberto; Trocar de mês parte do saldo do outro mês; O previsto final de um mês vira o saldo inicial do seguinte; Gráfico de um mês futuro; Mês passado sem projeção |
 | RF-10, D12, RN-11 | Aviso no Início |
 | D13 | Marca nas listas de Entradas |
 | RF-11 | Estado vazio |
