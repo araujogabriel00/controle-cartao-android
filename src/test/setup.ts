@@ -5,6 +5,12 @@ import { afterEach, beforeEach, vi } from 'vitest';
 // jsdom não implementa a rolagem que as telas pedem ao abrir.
 window.scrollTo = () => {};
 
+// Tela de teste: Galaxy S25 (1080 x 2340 px, 19,5:9, densidade 3) = viewport CSS de 360 x 780.
+export const VIEWPORT = { width: 360, height: 780, pixelRatio: 3 };
+Object.defineProperty(window, 'innerWidth', { configurable: true, value: VIEWPORT.width });
+Object.defineProperty(window, 'innerHeight', { configurable: true, value: VIEWPORT.height });
+Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: VIEWPORT.pixelRatio });
+
 // Hora local fixa: 15/10/2026. Só o Date é falso, para não travar timers do react-query e do userEvent.
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
