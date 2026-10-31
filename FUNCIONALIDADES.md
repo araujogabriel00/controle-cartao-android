@@ -60,6 +60,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 37. [Sonhos](#37-sonhos)
 38. [Carrinho de compras](#38-carrinho-de-compras)
 39. [Fatura com todas as compras do mês](#39-fatura-com-todas-as-compras-do-mês)
+40. [Histórico e Todas as compras na nova versão](#40-histórico-e-todas-as-compras-na-nova-versão)
 
 ---
 
@@ -477,7 +478,7 @@ Funcionalidade: Formatação de valores e datas
 
 ## 9. Histórico mensal
 
-Resumo do funcionamento por mês. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/historico-mensal.md`](specs/historico-mensal.md), com o que mudou em [`specs/compras-e-categorias.md`](specs/compras-e-categorias.md).
+Resumo do funcionamento por mês. A especificação completa, com decisões, regras de negócio e todos os cenários, está em [`specs/historico-mensal.md`](specs/historico-mensal.md), com o que mudou em [`specs/compras-e-categorias.md`](specs/compras-e-categorias.md). O visual da tela (gráfico de 6 colunas, média dos 5 meses fechados e listas v2) está na seção 40.
 
 ```gherkin
 # language: pt
@@ -1327,7 +1328,7 @@ Funcionalidade: Histórico no card do cartão
   Cenário: Abrir o histórico do cartão
     Dado que "Inter" é o cartão selecionado
     Quando eu toco em "Ver histórico de Inter"
-    Então vejo "Mês a mês" com "Inter — a fatura de cada mês"
+    Então vejo "Histórico" com "Inter · a fatura de cada mês" (seção 40)
     E as mesmas informações de antes: fatura e compras por mês, "Todos os cartões" e "Próximos meses"
 ```
 
@@ -1600,6 +1601,12 @@ Funcionalidade: Todas as compras do cartão
   Cenário: Excluir pela prévia de mês futuro
     Quando abro novembro de 2026 e excluo a parcela "Fone" "2/3"
     Então "Fone" é removido de todos os meses
+
+  Cenário: Abrir no mês de onde vim (seção 40)
+    Dado que estou na aba Cartões em setembro de 2026
+    Quando eu toco em "Todas as compras"
+    Então abre `#/compras/mes/2026-09` rolada até "Setembro de 2026"
+    E o voltar leva à aba Cartões em setembro
 ```
 
 
@@ -2588,3 +2595,70 @@ Funcionalidade: Fatura com todas as compras do mês
     Quando eu abro o mês seguinte
     Então "Compras" lista a parcela prevista com o selo "prevista"
 ```
+
+---
+
+## 40. Histórico e Todas as compras na nova versão
+
+Resumo. A especificação completa está em [`specs/redesign-v2-historico-e-compras.md`](specs/redesign-v2-historico-e-compras.md). As duas telas que saem da aba Cartões ganham o visual v2 (voltar de 48 px, listas em cartões, sem selos coloridos) e duas mudanças de comportamento: o **Histórico** mostra um gráfico de 6 colunas (5 meses fechados + o mês atual "em aberto") e a **média dos últimos 5 meses fechados**; **Todas as compras** abre `#/compras/mes/AAAA-MM`, rolada até o mês de onde a pessoa veio (o mês atual em `#/compras`), e o voltar leva de volta a esse mês. Nenhuma regra de cálculo muda.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Histórico e Todas as compras na nova versão
+
+  Cenário: Gráfico do histórico com 6 colunas
+    Dado faturas fechadas de maio a setembro e a de outubro em aberto
+    Quando eu abro o Histórico
+    Então vejo 6 colunas e a de outubro marcada como "em aberto"
+
+  Cenário: Média dos últimos 5 meses
+    Dado faturas fechadas de 1850, 2200, 2600, 3100 e 3420
+    Então vejo "Média dos últimos 5 meses" com "R$ 2.634,00"
+
+  Cenário: Média só com meses fechados
+    Dado uma fatura fechada de R$ 70,00 e a do mês atual de R$ 200,00
+    Então a média é "R$ 70,00"
+
+  Cenário: Sem meses fechados não há média
+    Dado só a fatura do mês atual
+    Então não vejo "Média dos últimos 5 meses"
+
+  Cenário: Todos os meses
+    Dado compras em setembro e outubro
+    Então "Todos os meses" lista outubro ("em aberto") e setembro ("fatura fechada"), do mais recente ao mais antigo
+
+  Cenário: Filtrar por categoria em Todas as compras
+    Dado compras em "Eletrônicos" e em "Mercado"
+    Quando eu escolho "Eletrônicos"
+    Então vejo só as de "Eletrônicos", a etiqueta "Eletrônicos ✕" e o "Total do filtro"
+    Quando eu toco no ✕
+    Então voltam todas as compras
+
+  Cenário: Item sem selos coloridos
+    Dado uma parcela prevista de uma compra parcelada
+    Então o item mostra "Parcela 2/3 · 05 de nov · prevista" em texto
+
+  Cenário: A lista abre no mês de onde vim
+    Dado compras em setembro, outubro e novembro
+    E que estou na aba Cartões em setembro
+    Quando eu toco em "Todas as compras"
+    Então abre `#/compras/mes/2026-09` com "Setembro de 2026" visível logo abaixo do cabeçalho
+    Quando eu toco em voltar
+    Então abre a aba Cartões em setembro
+
+  Cenário: Mês sem compras
+    Dado compras só em agosto e novembro e a lista aberta em outubro
+    Então a lista rola até "Agosto de 2026"
+
+  Cenário: Busca não rola sozinha
+    Dado a lista aberta em setembro
+    Quando eu digito uma busca
+    Então a posição da lista não é forçada de volta a setembro
+
+  Cenário: Olho fechado
+    Dado o olho fechado
+    Então nenhum valor em reais aparece nas duas telas e as colunas ficam neutras
+```
+
+Detalhes que a implementação fecha: o rótulo da média é sempre "Média dos últimos 5 meses", mesmo quando há menos de 5 meses fechados (a média usa os que existem); em "Todos os meses" tocar num mês abre o painel dele na aba Cartões (não a lista de compras); o ⋯ de cada compra e o botão voltar têm 48 px. Os testes estão em `src/pages/historico.test.tsx` e `src/pages/compras.test.tsx`.

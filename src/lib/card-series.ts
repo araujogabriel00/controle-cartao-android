@@ -10,7 +10,7 @@ export function niceScale(max: number, marks = 4) {
   return { top: step * marks, ticks: Array.from({ length: marks }, (_, i) => step * (i + 1)) };
 }
 
-export type InvoiceColumn = { month: MonthKey; amount: number; planned: boolean };
+export type InvoiceColumn = { month: MonthKey; amount: number; planned: boolean; open?: boolean };
 
 // Seven months from the open one: up to the current month "Lançada" (history), after it "Prevista" (RN-03).
 export function invoiceColumns(

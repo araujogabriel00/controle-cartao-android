@@ -34,7 +34,7 @@ import { useRememberMonth } from '@/lib/last-month';
 import { CARD_COLOR_KEYS, CARD_COLORS, type CardColor } from '@/lib/card-colors';
 import {
   capitalize, currentMonth, dateLabel, defaultDateFor, firstDayOf, isFutureMonth, lastDayOf,
-  money, monthLabel, monthName, monthOf, plural, shiftMonth, type MonthKey,
+  money, monthLabel, monthName, monthOf, plural, purchasesPath, shiftMonth, type MonthKey,
 } from '@/lib/format';
 
 // D4: a lista "Compras" da aba mostra só as mais recentes; o resto fica em "Todas as compras".
@@ -347,7 +347,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
         <div className="enter min-w-0" style={{ animationDelay: '.18s' }}>
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-display text-[20px] text-ink">Compras</h2>
-            {card && <button data-testid="button-all-purchases" onClick={() => navigate('/compras')} className="-mr-2 flex h-12 items-center gap-1 rounded-full px-3 text-[15px] font-semibold text-brand transition hover:bg-hover">Todas as compras<ChevronRight size={18}/></button>}
+            {card && <button data-testid="button-all-purchases" onClick={() => navigate(purchasesPath(month))} className="-mr-2 flex h-12 items-center gap-1 rounded-full px-3 text-[15px] font-semibold text-brand transition hover:bg-hover">Todas as compras<ChevronRight size={18}/></button>}
           </div>
           {activeFilter !== 'all' && <div className="flex items-center justify-between gap-3">
             <p data-testid="text-filter-total" className="text-[14px] text-ink-soft">Total do filtro: <b className="font-mono-data font-medium text-ink">{money(visibleTotal)}</b></p>
