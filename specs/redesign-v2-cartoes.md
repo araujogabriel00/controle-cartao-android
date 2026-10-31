@@ -7,6 +7,7 @@
 | Escopo | `src/pages/dashboard.tsx` (corpo da aba Cartões), `src/components/charts/step-line.tsx` (removido), `src/lib/card-series.ts` (só `paceSteps` e o tipo `PacePoint`, removidos), `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`redesign-v2-fundacao.md`](redesign-v2-fundacao.md), [`redesign-opcao-d-cartoes.md`](redesign-opcao-d-cartoes.md), [`multiplos-cartoes.md`](multiplos-cartoes.md), [`parcelamento.md`](parcelamento.md), [`todas-as-compras.md`](todas-as-compras.md), [`compras-em-qualquer-mes.md`](compras-em-qualquer-mes.md) |
 | Substitui em parte | [`redesign-opcao-d-cartoes.md`](redesign-opcao-d-cartoes.md): a seção "Ritmo do mês" (D5, D6) é **removida**; a lista "O que já aconteceu" com chips de categoria e "Ver mais" passa a ser a lista "Compras" com as 3 mais recentes. O resto da aba muda só no visual. |
+| Substituída em parte por | [`fatura-com-todas-as-compras.md`](fatura-com-todas-as-compras.md): D4, o "até 3" de D5, RF-07, RN-03 e o cenário "Três compras mais recentes" — a lista Compras agora mostra todas as compras do mês |
 | Referência visual | Canvas "Controle do Cartão", grupo v2, tela V2_03 (Cartões), clara e escura |
 
 > Mudanças de comportamento entram primeiro aqui e só depois no código.
