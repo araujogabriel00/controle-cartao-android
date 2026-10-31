@@ -43,7 +43,7 @@ Hoje todo lançamento do app é algo que **já aconteceu** (ou uma recorrente qu
 | D8 | **Repetir todo mês** cria uma previsão **sem data final**, que cai no mesmo dia de cada mês (dia 31 vai para o último dia dos meses curtos, como nas contas fixas). Apagar uma ocorrência pergunta o alcance: **só este mês** ou **deste mês em diante** (a tela de escolha de alcance que já existe). | Escolha do usuário; igual às entradas e contas fixas recorrentes. |
 | D9 | **Editar valor** (botão da lista do dia) muda o valor **só daquela ocorrência**. **Editar** a previsão (tocar no item) abre o formulário completo e pergunta o alcance quando ela se repete. | Desenho v4 e consistência com as outras recorrentes. |
 | D10 | A **data prevista** não pode ser anterior a hoje ao cadastrar. Hoje é permitido e a previsão entra no saldo **na hora** se a chave estiver ligada. | Previsão é futura; o que já aconteceu é lançamento. |
-| D11 | **Saldo previsto** (tela) mostra o saldo de hoje e como ele evolui de hoje até 21 dias à frente, **somando só as previsões que mexem no saldo**. Não inclui faturas de cartão, contas fixas recorrentes nem benefícios. | Desenho v4 (V4_04: "Conta só as previsões que mexem no saldo"). |
+| D11 | **Saldo previsto** (tela) segue o **mês aberto**. No mês corrente mostra o saldo de hoje e como ele evolui de hoje até 21 dias à frente. Em mês futuro mostra o saldo daquele mês (com os lançamentos dele) e como ele evolui do dia 1 ao último dia. Sempre **soma só as previsões que mexem no saldo** que ainda não entraram. Não inclui faturas de cartão, contas fixas recorrentes nem benefícios como previsão (eles já estão no saldo do mês). | Desenho v4 (V4_04: "Conta só as previsões que mexem no saldo"); pedido de partir do saldo do mês aberto, não sempre do de hoje. |
 | D12 | O **Início** mostra um aviso "Hoje entraram N previsões no saldo" com os botões **Revisar** (abre o dia) e **Está certo** (dispensa o aviso até aparecer algo novo). | Desenho v4 (V4_05): nada entra no saldo sem a pessoa saber. |
 | D13 | Nas listas de Entradas (Entradas, Contas fixas, Gastos do dia a dia), as previsões que entraram no saldo aparecem com a marca **Previsão**; tocar abre o dia delas em Previsões. | Cada valor do resumo precisa ter uma linha que o explique. |
 | D14 | Na área Previsões, o botão flutuante diz **"Nova previsão"** e abre o formulário; nas outras áreas continua "Lançar". | O botão deve fazer o que a área é. |
@@ -63,7 +63,7 @@ Hoje todo lançamento do app é algo que **já aconteceu** (ou uma recorrente qu
 | RF-06 | Tocar numa previsão da lista abre o formulário de edição dela. Previsão que se repete pergunta o alcance ao salvar. |
 | RF-07 | Na tela do dia (rota própria, aberta ao tocar no título do dia ou pelo aviso do Início), as ocorrências têm os botões **Editar valor**, **Apagar** e, nos lembretes, **Colocar no saldo**. No topo, se algo entrou no saldo hoje: "N previsões entraram no saldo hoje. Apague as que não aconteceram.", citando os lembretes. |
 | RF-08 | **Apagar** remove a ocorrência (ou, com alcance, a previsão daqui em diante), mostra o aviso com "Desfazer" e atualiza saldo e contas. |
-| RF-09 | **Saldo previsto** abre a partir do cartão de resumo e mostra o saldo previsto no fim do período ("Saldo previsto em ‹data›"), a diferença em relação a hoje, um gráfico de hoje a +21 dias e a lista "Próximas previsões". |
+| RF-09 | **Saldo previsto** abre a partir do cartão de resumo (rota `/previsoes/saldo/:month`) e mostra o saldo previsto no fim do período ("Saldo previsto em ‹data›"), a diferença em relação ao saldo base (hoje, no mês corrente; "saldo de ‹mês›", nos futuros), um gráfico (hoje a +21 dias no mês corrente; dia 1 ao último dia em mês futuro) e a lista "Próximas previsões". Em mês passado o cartão não abre a tela. |
 | RF-10 | O **Início** mostra o aviso de D12 quando há previsões que entraram no saldo desde a última vez em que a pessoa tocou "Está certo". |
 | RF-11 | Sem nenhuma previsão no mês aberto, a tela mostra o calendário vazio, "Nada previsto para hoje." e o bloco "Como funciona" com 3 passos e o botão "Nova previsão". |
 | RF-12 | As setas do mês navegam entre meses (ver RN-10). |
@@ -80,8 +80,8 @@ Hoje todo lançamento do app é algo que **já aconteceu** (ou uma recorrente qu
 | RN-05 | Valor de uma ocorrência editada com "Editar valor" vale só para aquele mês; o da previsão continua para os outros. |
 | RN-06 | Recorrência: a previsão existe desde o mês da data inicial, sem fim, no mesmo dia de cada mês (dia 29 a 31 vai para o último dia dos meses curtos). Apagar "deste mês em diante" encerra a previsão no mês anterior; se for o mês inicial, apaga a previsão toda. |
 | RN-07 | Validação: descrição de 1 a 120 caracteres; valor maior que zero; data válida e, ao cadastrar, não anterior a hoje (D10). Erros aparecem no formulário. |
-| RN-08 | **Saldo previsto em uma data D** (D ≥ hoje) = saldo de hoje + soma das ocorrências que mexem no saldo com data maior que hoje e menor ou igual a D, "A receber" com sinal "+" e "A pagar" com sinal "−". O saldo de hoje é o `balanceAmount` do mês corrente. |
-| RN-09 | O "Previsto em ‹último dia do mês›" do cartão de resumo usa RN-08 com D = último dia do mês aberto (mês corrente) ou do mês seguinte, se o mês aberto já passou do mês corrente em diante; em mês passado, mostra "—". |
+| RN-08 | **Saldo base do mês M** = `balanceAmount` de M (já desconta contas fixas, gastos do dia a dia, cartões e as previsões que já entraram). **Saldo previsto em uma data D** (último dia de M, ou até +21 dias no gráfico do mês corrente) = saldo base de M + soma das ocorrências que mexem no saldo com data maior que hoje e menor ou igual a D, em todos os meses do corrente até M, "A receber" com sinal "+" e "A pagar" com sinal "−". No mês corrente o saldo base é o saldo de hoje. |
+| RN-09 | O cartão de resumo mostra o saldo base do mês aberto ("Saldo hoje" no mês corrente, "Saldo de ‹mês›" nos demais) e "Previsto em ‹último dia do mês aberto›" por RN-08. Em mês passado mostra o saldo do mês e "—" no previsto. |
 | RN-10 | Limite de meses: do mês mais antigo com previsão (ou o corrente, se não houver) até **24 meses** à frente do corrente. Fora do intervalo vai para o mais próximo, como as outras áreas. |
 | RN-11 | O aviso do Início (D12) lista as previsões que entraram no saldo com data posterior à marca de "Está certo" e menor ou igual a hoje; a marca é a data em que a pessoa tocou "Está certo" e fica em `Preferences` (`controle-cartao:forecast-ack`), fora do estado do app. Falha ao ler a marca: o aviso aparece. |
 | RN-12 | O Desfazer cobre apagar ocorrência e apagar daqui em diante (as listas `forecasts` e `forecastExceptions` entram no remendo reverso). |
@@ -164,6 +164,29 @@ Funcionalidade: Previsões de receber e pagar
     Então vejo o saldo previsto em 10/11 igual ao de hoje + R$ 3.027,00
     E o gráfico não inclui lembretes nem faturas
 
+  Cenário: Previsão acompanha o mês aberto
+    Dado que o saldo do mês aberto é R$ 11,00, já descontadas contas fixas, gastos do dia a dia e cartões
+    E a previsão "Venda", "A receber", R$ 1.000,00, ligada, em dia ainda por vir desse mês
+    Quando eu abro Previsões nesse mês
+    Então o cartão mostra o saldo do mês R$ 11,00 e "Previsto em ‹último dia›" R$ 1.011,00
+
+  Cenário: Trocar de mês parte do saldo do outro mês
+    Dado lançamentos em novembro que deixam o saldo de novembro em R$ 300,00
+    E uma previsão ligada de −R$ 100,00 em 10/11
+    Quando eu troco para novembro em Previsões
+    Então o cartão mostra "Saldo de novembro" R$ 300,00 e "Previsto em 30/11" R$ 200,00
+
+  Cenário: Gráfico de um mês futuro
+    Dado as previsões do cenário anterior
+    Quando eu abro "Saldo previsto" em novembro
+    Então o gráfico vai de 01/11 a 30/11, começa em R$ 300,00 e termina em R$ 200,00
+    E o último ponto é igual ao "Previsto em 30/11" do cartão
+
+  Cenário: Mês passado sem projeção
+    Quando eu abro Previsões em um mês anterior ao corrente
+    Então o cartão mostra o saldo daquele mês e "—" no previsto
+    E o cartão não abre o Saldo previsto
+
   Cenário: Aviso no Início
     Dado que 2 previsões entraram no saldo hoje
     Quando eu abro o Início
@@ -204,7 +227,7 @@ Funcionalidade: Previsões de receber e pagar
 | D8, RN-06, RF-06 | Repetir todo mês |
 | D9, RN-05 | Editar o valor de uma ocorrência |
 | D10, RN-07 | Data no passado |
-| RF-09, D11, RN-08, RN-09 | Saldo previsto; Previsão futura não afeta o mês corrente |
+| RF-09, D11, RN-08, RN-09 | Saldo previsto; Previsão futura não afeta o mês corrente; Previsão acompanha o mês aberto; Trocar de mês parte do saldo do outro mês; Gráfico de um mês futuro; Mês passado sem projeção |
 | RF-10, D12, RN-11 | Aviso no Início |
 | D13 | Marca nas listas de Entradas |
 | RF-11 | Estado vazio |
@@ -240,7 +263,7 @@ type StoredForecastException = {
 
 - **Migração v10 → v11:** acrescenta `forecasts: []` e `forecastExceptions: []`; nada mais muda. `emptyState` e o carregamento aceitam v10 e migram, como nas versões anteriores.
 - **Efeito no caixa:** `cashOf(state, month)` passa a somar as ocorrências de RN-01 em `incomeAmount`, `billsAmount` e `dailyAmount`. A função que lista as ocorrências do mês (como `billsOf`) também alimenta as listas de D13 com a marca `forecast: true`.
-- **Leituras novas** (`store.ts`, com hooks em `api.ts`): `getForecasts(month)` (ocorrências do mês com estado), `getForecastDay(date)`, `getForecastSummary()` (saldo hoje, previsto no fim do mês), `getBalanceForecast(days)` (série diária de hoje a +21), `getForecastRange()` (RN-10), `getForecastAlerts(since)` (aviso do Início).
+- **Leituras novas** (`store.ts`, com hooks em `api.ts`): `getForecasts(month)` (ocorrências do mês com estado), `getForecastDay(date)`, `getForecastSummary(month)` (saldo base do mês aberto e previsto no fim do mês, RN-08), `getBalanceForecast(month, days)` (série diária: de hoje a +21 no mês corrente; do dia 1 ao último dia em mês futuro; sem pontos em mês passado), `getForecastRange()` (RN-10), `getForecastAlerts(since)` (aviso do Início).
 - **Escritas novas:** `createForecast`, `updateForecast(id, month, scope)`, `deleteForecast(id, month, scope)`, `setForecastAmount(id, month, amount)`, `putForecastInBalance(id, month)`. As exclusões entram no remendo reverso do Desfazer (RN-12).
 - **Chave em `Preferences`** (fora do estado): `controle-cartao:forecast-ack` = data (AAAA-MM-DD) do último "Está certo".
 

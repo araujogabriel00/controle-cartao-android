@@ -68,7 +68,8 @@ export type ListKind = 'entradas' | 'contas-fixas' | 'gastos' | 'cartoes' | 'son
 export const listPath = (kind: ListKind, month: MonthKey) => `/entradas/lista/${kind}${month === currentMonth() ? '' : `/mes/${month}`}`;
 // Tela "Resumo do mês" da aba Entradas (specs/redesign-opcao-d-entradas.md D7).
 // Telas de Previsões (specs/previsoes.md D1): o dia, o saldo previsto e o formulário (nova e edição).
-export const forecastDayPath = (date: string) => `/previsoes/dia/${date}`;
+export const forecastBalancePath = (month: MonthKey) => `/previsoes/saldo/${month}`;
+export const forecastDayPath =(date: string) => `/previsoes/dia/${date}`;
 export const forecastEditPath = (forecastId: number, month: MonthKey) => `/previsoes/editar/${forecastId}/${month}`;
 export const summaryPath = (month: MonthKey) => `/entradas/resumo${month === currentMonth() ? '' : `/mes/${month}`}`;
 // Screen with the spends of a benefit in a month: all of them, the ones without category ('sem') or one category.

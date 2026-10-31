@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { getGetBenefitRangeQueryKey, getGetBenefitsQueryKey, getGetForecastRangeQueryKey, getGetIncomeRangeQueryKey, getGetLastFutureMonthQueryKey, useGetBenefitRange, useGetBenefits, useGetForecastRange, useGetIncomeRange, useGetLastFutureMonth } from '@workspace/api-client-react';
-import { type Area, areaPath, benefitSpendsPath, currentMonth, isFutureMonth, isMonthKey, listPath, summaryPath, type ListKind, type MonthKey } from '@/lib/format';
+import { type Area, areaPath, benefitSpendsPath, currentMonth, forecastBalancePath, isFutureMonth, isMonthKey, listPath, summaryPath, type ListKind, type MonthKey } from '@/lib/format';
 import { readLastMonth } from '@/lib/last-month';
 import { loadTheme } from '@/lib/theme';
 import { loadHideValues, useHideValues } from '@/lib/hide-values';
@@ -87,6 +87,16 @@ function HomeMonthRoute({ month }: { month: string }) {
 function ForecastMonthRoute({ month }: { month: string }) {
   const range = useGetForecastRange({ query: { queryKey: getGetForecastRangeQueryKey() } });
   return <RangedMonthRoute area="forecasts" month={month} range={range}><Previsoes key={month} month={month} /></RangedMonthRoute>;
+}
+
+// O mês do Saldo previsto vem do endereço: fora de hoje até o limite das previsões, vai para o mais próximo (RN-10).
+function ForecastBalanceRoute({ month }: { month: string }) {
+  const range = useGetForecastRange({ query: { queryKey: getGetForecastRangeQueryKey() } });
+  if (!isMonthKey(month) || month <= currentMonth()) return <Redirect to="/previsoes/saldo" replace />;
+  if (range.isLoading) return null;
+  const last = range.data?.last ?? month;
+  if (month > last) return <Redirect to={forecastBalancePath(last)} replace />;
+  return <PrevisaoSaldo key={month} month={month} />;
 }
 
 // A data de um dia de Previsões vem do endereço: uma data inválida volta para a área.
@@ -194,7 +204,8 @@ function Router() {
         <Route path="/previsoes">{() => <Previsoes key={currentMonth()} month={currentMonth()} />}</Route>
         <Route path="/previsoes/mes/:month">{(params) => <ForecastMonthRoute month={params.month} />}</Route>
         <Route path="/previsoes/dia/:date">{(params) => <ForecastDayRoute date={params.date} />}</Route>
-        <Route path="/previsoes/saldo" component={PrevisaoSaldo} />
+        <Route path="/previsoes/saldo">{() => <PrevisaoSaldo key={currentMonth()} month={currentMonth()} />}</Route>
+        <Route path="/previsoes/saldo/:month">{(params) => <ForecastBalanceRoute month={params.month} />}</Route>
         <Route path="/previsoes/nova">{() => <PrevisaoForm />}</Route>
         <Route path="/previsoes/editar/:id/:month">{(params) => <ForecastEditRoute id={params.id} month={params.month} />}</Route>
         <Route path="/entradas">{() => <Entradas key={currentMonth()} month={currentMonth()} />}</Route>

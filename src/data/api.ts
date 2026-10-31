@@ -248,7 +248,7 @@ export const getGetForecastsQueryKey = (month?: store.MonthKey) => key('forecast
 export const getGetForecastDayQueryKey = (date?: string) => key('forecasts', 'day', date);
 export const getGetForecastRangeQueryKey = () => ['forecasts', 'range'] as const;
 export const getGetForecastSummaryQueryKey = (month?: store.MonthKey) => key('forecasts', 'summary', month);
-export const getGetBalanceForecastQueryKey = (days?: number) => key('forecasts', 'balance', days);
+export const getGetBalanceForecastQueryKey = (month?: store.MonthKey, days?: number) => key('forecasts', 'balance', month, days);
 export const getGetForecastAlertsQueryKey = (since?: string | null) => ['forecasts', 'alerts', since ?? 'none'] as const;
 
 const noRetry = <T>(options?: QueryOpts<T>): QueryOpts<T> => ({ query: { retry: false, ...options?.query } });
@@ -265,8 +265,8 @@ export const useGetForecastRange = (options?: QueryOpts<{ first: store.MonthKey;
 export const useGetForecastSummary = (month: store.MonthKey, options?: QueryOpts<store.ForecastSummary>) =>
   useLocalQuery(getGetForecastSummaryQueryKey(month), () => store.getForecastSummary(month), noRetry(options));
 
-export const useGetBalanceForecast = (days: number, options?: QueryOpts<store.BalanceForecast>) =>
-  useLocalQuery(getGetBalanceForecastQueryKey(days), () => store.getBalanceForecast(days), noRetry(options));
+export const useGetBalanceForecast = (month: store.MonthKey, days: number, options?: QueryOpts<store.BalanceForecast>) =>
+  useLocalQuery(getGetBalanceForecastQueryKey(month, days), () => store.getBalanceForecast(month, days), noRetry(options));
 
 export const useGetForecastAlerts = (since: string | null, options?: QueryOpts<store.ForecastOccurrence[]>) =>
   useLocalQuery(getGetForecastAlertsQueryKey(since), () => store.getForecastAlerts(since), noRetry(options));

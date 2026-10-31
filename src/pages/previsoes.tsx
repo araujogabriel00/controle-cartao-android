@@ -4,7 +4,7 @@ import { getGetForecastRangeQueryKey, getGetForecastSummaryQueryKey, getGetForec
 import { ChevronRight, CircleHelp, Plus } from 'lucide-react';
 import { AppHeader } from '@/components/app-header';
 import { dayTitle, ForecastRowBody, shortDateName, signedAmount, signedDelta } from '@/components/forecast-parts';
-import { forecastDayPath, forecastEditPath, money, monthName, today, type MonthKey } from '@/lib/format';
+import { forecastBalancePath, forecastDayPath, forecastEditPath, money, monthName, today, type MonthKey } from '@/lib/format';
 import { useRememberMonth } from '@/lib/last-month';
 
 const WEEK = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
@@ -47,7 +47,11 @@ export default function Previsoes({ month }: { month: MonthKey }) {
   const cells = monthCells(month);
 
   const targetLabel = summary?.targetDate ? shortDateName(summary.targetDate) : null;
-  const delta = summary && summary.projected !== null ? Math.round((summary.projected - summary.balanceToday) * 100) / 100 : null;
+  const delta = summary && summary.projected !== null ? Math.round((summary.projected - summary.balance) * 100) / 100 : null;
+  // RN-09: "Saldo hoje" no mês corrente, "Saldo de ‹mês›" nos outros; mês passado não tem projeção para abrir.
+  const baseLabel = month === todayDate.slice(0, 7) ? 'Saldo hoje' : `Saldo de ${monthName(month)}`;
+  const pastMonth = month < todayDate.slice(0, 7);
+  const Summary = pastMonth ? 'div' : 'button';
 
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
@@ -57,13 +61,13 @@ export default function Previsoes({ month }: { month: MonthKey }) {
         : forecasts.isLoading ? <div aria-busy="true" className="mt-6 space-y-3"><div className="h-[96px] animate-pulse rounded-2xl bg-line"/><div className="h-[330px] animate-pulse rounded-2xl bg-line"/></div>
         : <>
           {/* RF-02, RF-09: o saldo de hoje e o previsto no fim do mês; abre o Saldo previsto. */}
-          <button data-testid="card-forecast-summary" onClick={() => navigate('/previsoes/saldo')} aria-label={`Saldo hoje ${money(summary?.balanceToday ?? 0)}${targetLabel && summary?.projected != null ? `; previsto em ${targetLabel} ${money(summary.projected)}` : ''}. Abrir o saldo previsto.`} className="enter mt-4 block w-full rounded-2xl border border-line bg-surface p-4 text-left transition hover:bg-hover">
+          <Summary data-testid="card-forecast-summary" {...(pastMonth ? {} : { onClick: () => navigate(forecastBalancePath(month)) })} aria-label={`${baseLabel} ${money(summary?.balance ?? 0)}${targetLabel && summary?.projected != null ? `; previsto em ${targetLabel} ${money(summary.projected)}` : ''}.${pastMonth ? '' : ' Abrir o saldo previsto.'}`} className={`enter mt-4 block w-full rounded-2xl border border-line bg-surface p-4 text-left transition ${pastMonth ? '' : 'hover:bg-hover'}`}>
             <span className="grid grid-cols-2 gap-4">
-              <span><span className="block text-[14px] font-medium text-ink-soft">Saldo hoje</span><span data-testid="text-forecast-today" className="mt-0.5 block font-display text-[24px] leading-tight text-ink [overflow-wrap:anywhere]">{summary ? money(summary.balanceToday) : '—'}</span><span className="block text-[14px] text-ink-soft">só o que entra no saldo</span></span>
+              <span><span className="block text-[14px] font-medium text-ink-soft">{baseLabel}</span><span data-testid="text-forecast-today" className="mt-0.5 block font-display text-[24px] leading-tight text-ink [overflow-wrap:anywhere]">{summary ? money(summary.balance) : '—'}</span><span className="block text-[14px] text-ink-soft">só o que entra no saldo</span></span>
               <span><span className="block text-[14px] font-medium text-ink-soft">{targetLabel ? `Previsto em ${targetLabel}` : 'Previsto'}</span><span data-testid="text-forecast-projected" className="mt-0.5 block font-display text-[24px] leading-tight text-ink [overflow-wrap:anywhere]">{summary?.projected != null ? money(summary.projected) : '—'}</span><span className="block text-[14px] text-ink-soft">{delta !== null ? signedDelta(delta) : 'mês já passou'}</span></span>
             </span>
-            <span data-testid="link-balance-forecast" className="mt-3 flex items-center justify-end gap-1 text-[15px] font-semibold text-brand">Saldo previsto<ChevronRight aria-hidden size={18}/></span>
-          </button>
+            {!pastMonth && <span data-testid="link-balance-forecast" className="mt-3 flex items-center justify-end gap-1 text-[15px] font-semibold text-brand">Saldo previsto<ChevronRight aria-hidden size={18}/></span>}
+          </Summary>
 
           {/* RF-03: o calendário do mês; cada dia é um botão de 48 px com pontos para o que há nele. */}
           <section data-testid="calendar-forecasts" aria-label={`Calendário de ${monthName(month)}`} className="enter mt-5" style={{ animationDelay: '.06s' }}>
