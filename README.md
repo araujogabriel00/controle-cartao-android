@@ -133,6 +133,7 @@ npm test             # testes unitários e de integração (Vitest + Testing Lib
 - **Ajudantes** em `src/test/`: `openApp(hash, seed)` monta o app numa rota depois de semear o store; `seeds.ts` tem os dados de exemplo; `setup.ts` fixa a data em 15/10/2026.
 - O store, as preferências e o `QueryClient` guardam estado no módulo, por isso `openApp` e os testes do store importam tudo de novo a cada teste (`vi.resetModules()`).
 - O armazenamento é o `localStorage` do jsdom, via `@capacitor/preferences`.
+- **Tela de teste: Galaxy S25** (1080 × 2340 px, 19,5:9; viewport CSS de 360 × 780 px). Qualquer teste do app, no navegador ou automatizado, usa essa proporção; `src/test/setup.ts` fixa `innerWidth` e `innerHeight` com esses valores.
 
 ## Gerar e instalar o app Android
 

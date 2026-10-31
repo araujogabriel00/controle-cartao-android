@@ -27,3 +27,4 @@ Uma correção de bug ou ajuste pequeno que não muda o comportamento descrito n
 - `npm test`, `npm run typecheck` e `npm run build` precisam passar.
 - Cada cenário novo da spec ganha um teste: regras de dados em `src/data/store.test.ts` (ou `src/lib/*.test.ts`) e telas em `src/pages/*.test.tsx`, com `openApp` de `src/test/app.tsx` (veja "Testes" no README). Mudança de comportamento atualiza os testes que a descreviam.
 - Use o navegador (`npm run dev`) só para o que o jsdom não mostra: layout, gráficos e toque.
+- **Tela de teste: Galaxy S25.** Todo teste do app, no navegador ou automatizado, usa a proporção de tela de um Galaxy S25: 1080 × 2340 px (19,5:9), que no CSS é uma viewport de **360 × 780 px** com densidade 3. No navegador, redimensione a janela para 360 × 780 antes de conferir (não teste em tela larga). Nos testes do Vitest, `src/test/setup.ts` já fixa essa viewport.
