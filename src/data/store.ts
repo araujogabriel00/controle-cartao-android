@@ -1921,14 +1921,21 @@ export async function getForecastRange(): Promise<{ first: MonthKey; last: Month
   return { first: state.forecasts.reduce((min, f) => (f.firstMonth < min ? f.firstMonth : min), now), last: shiftMonth(now, 24) };
 }
 
-// RN-08: the open month's balance plus the forecasts that affect it with a date after today and up to `date`,
-// from the current month on (those of the months in between haven't entered any month's cash yet).
-function projectedBalance(state: State, balance: number, date: string) {
-  let total = balance;
-  for (let m = currentMonth(); m <= monthOf(date); m = shiftMonth(m, 1)) {
-    for (const o of forecastsOf(state, m)) if (o.affects && o.date > today() && o.date <= date) total = cents(total + signedForecast(o));
+// Sum of the forecasts that affect the balance with a date after `from` and up to `to` (signed).
+function pendingForecasts(state: State, from: string, to: string) {
+  let total = 0;
+  for (let m = monthOf(from); m <= monthOf(to); m = shiftMonth(m, 1)) {
+    for (const o of forecastsOf(state, m)) if (o.affects && o.date > from && o.date <= to) total = cents(total + signedForecast(o));
   }
   return total;
+}
+
+// RN-08: the month's balance plus what is still to come in the months before it (the previous month's forecast end is
+// the next month's start). In the current month, and in the past, it is the plain balance.
+function baseBalance(state: State, month: MonthKey) {
+  const balance = balanceOf(state, month);
+  if (month <= currentMonth()) return balance;
+  return cents(balance + pendingForecasts(state, today(), addDays(`${month}-01`, -1)));
 }
 
 export type ForecastSummary = { balance: number; targetDate: string | null; projected: number | null };
@@ -1936,10 +1943,10 @@ export type ForecastSummary = { balance: number; targetDate: string | null; proj
 // RN-09: the open month's balance and "Previsto em ‹último dia do mês aberto›"; "—" (null) in a past month.
 export async function getForecastSummary(month: MonthKey): Promise<ForecastSummary> {
   const state = await load();
-  const balance = balanceOf(state, month);
+  const balance = baseBalance(state, month);
   if (month < currentMonth()) return { balance, targetDate: null, projected: null };
   const targetDate = lastDayOf(month);
-  return { balance, targetDate, projected: projectedBalance(state, balance, targetDate) };
+  return { balance, targetDate, projected: cents(balance + pendingForecasts(state, month === currentMonth() ? today() : addDays(`${month}-01`, -1), targetDate)) };
 }
 
 export type BalanceForecast = {
@@ -1951,21 +1958,18 @@ export type BalanceForecast = {
 // Future month: day 1 to its last day, starting from the month's balance. Past month: no projection (no points).
 export async function getBalanceForecast(month: MonthKey, days = 21): Promise<BalanceForecast> {
   const state = await load();
-  const balance = balanceOf(state, month);
+  const balance = baseBalance(state, month);
   if (month < currentMonth()) return { balance, startDate: lastDayOf(month), endDate: lastDayOf(month), endBalance: balance, points: [], upcoming: [] };
   const isCurrent = month === currentMonth();
   const startDate = isCurrent ? today() : `${month}-01`;
   const endDate = isCurrent ? addDays(startDate, days) : lastDayOf(month);
   const length = isCurrent ? days : Number(endDate.slice(8, 10)) - 1;
-  // Pending forecasts dated before the first day shown are already part of the starting point.
+  // Pending forecasts of the months before are already part of the starting balance (RN-08).
   const after = isCurrent ? today() : addDays(startDate, -1);
   const upcoming: ForecastOccurrence[] = [];
   let running = balance;
-  for (let m = currentMonth(); m <= monthOf(endDate); m = shiftMonth(m, 1)) {
-    for (const o of forecastsOf(state, m)) {
-      if (o.date > after && o.date <= endDate) upcoming.push(o);
-      else if (o.affects && o.date > today() && o.date <= after) running = cents(running + signedForecast(o));
-    }
+  for (let m = monthOf(after); m <= monthOf(endDate); m = shiftMonth(m, 1)) {
+    for (const o of forecastsOf(state, m)) if (o.date > after && o.date <= endDate) upcoming.push(o);
   }
   upcoming.sort((a, b) => a.date.localeCompare(b.date) || a.forecastId - b.forecastId);
   const points = Array.from({ length: length + 1 }, (_, i) => {
