@@ -8,7 +8,7 @@ As funcionalidades estão descritas em BDD em [`FUNCIONALIDADES.md`](FUNCIONALID
 
 - A interface (`src/pages/dashboard.tsx`, `src/index.css`) é a mesma do app web.
 - O pacote `@workspace/api-client-react`, que no app web chama a API, aqui é um **alias** para `src/data/api.ts`. Esse módulo exporta os mesmos hooks (`useGetCard`, `useCreateMovement`, …), mas lê e grava localmente.
-- `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 12`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
+- `src/data/store.ts` guarda o estado em um único JSON (chave `controle-cartao:v1`, formato `version: 13`) usando o [`@capacitor/preferences`](https://capacitorjs.com/docs/apis/preferences). No Android ele usa o SharedPreferences; no navegador, o `localStorage`.
 - As fontes (Fraunces, DM Sans e DM Mono) vêm junto com o app via `@fontsource`, então funcionam offline.
 - Todas as cores das telas têm nome no tema do Tailwind (`paper`, `surface`, `raise`, `line`, `ink`, `ink-soft`, `brand`, `tint`, `alert` e outras, em `src/index.css`), cada uma com valor **claro e escuro** nas variáveis de `:root` e `.dark`; as cores `chart-*` são dos gráficos. **Não use hexadecimais soltos nos `.tsx`**: `grep -rnE "#[0-9a-fA-F]{6}" src --include=*.tsx` deve voltar vazio ([`specs/redesign-v2-fundacao.md`](specs/redesign-v2-fundacao.md)). A aparência (Auto, Claro, Escuro) e o botão de esconder valores ficam em `Preferences`, fora do estado do app (`src/lib/theme.ts`, `src/lib/hide-values.ts`); `money()` devolve `R$ ••••` com o olho fechado.
 
@@ -37,7 +37,7 @@ Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês 
 - **O mês é o mesmo nas áreas** ([`specs/mes-compartilhado.md`](specs/mes-compartilhado.md)): o seletor de mês fica no cabeçalho e trocar de área na barra inferior mantém o mês (`#/entradas/mes/AAAA-MM`, `#/beneficios/mes/AAAA-MM`). Se a aba de destino não abre aquele mês, abre o mais próximo. O app **lembra o último mês aberto** (só um mês que não é o corrente) e abre o Início nele; "Voltar para o mês atual" apaga a lembrança, e um endereço com mês vale mais que ela.
 - Na virada do mês, o mês novo começa sozinho, sem perguntar nada.
 - Meses passados continuam editáveis. Um mês futuro abre até o último mês que tenha parcela prevista ou compra registrada: mostra as parcelas e cobranças previstas e as compras já registradas, e aceita "Registrar compra", editar e excluir, mas não é iniciado até chegar.
-- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, a `version: 4` acrescenta a lista vazia de compras parceladas, a `version: 5` acrescenta as listas vazias de entradas, a `version: 6` troca as categorias-envelope por categorias globais (os lançamentos viram compras no cartão em que estavam; orçamentos e o estado aberto/fechado são descartados), a `version: 7` acrescenta as listas vazias de benefícios, a `version: 8` acrescenta as listas vazias de contas fixas e de gastos do dia a dia, a `version: 9` acrescenta as listas vazias de compras recorrentes, a `version: 10` apaga o limite dos cartões e dos meses, a `version: 11` acrescenta as listas vazias de previsões e a `version: 12` as de sonhos (`dreams`, `dreamEntries` e `dreamPlan`).
+- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, a `version: 4` acrescenta a lista vazia de compras parceladas, a `version: 5` acrescenta as listas vazias de entradas, a `version: 6` troca as categorias-envelope por categorias globais (os lançamentos viram compras no cartão em que estavam; orçamentos e o estado aberto/fechado são descartados), a `version: 7` acrescenta as listas vazias de benefícios, a `version: 8` acrescenta as listas vazias de contas fixas e de gastos do dia a dia, a `version: 9` acrescenta as listas vazias de compras recorrentes, a `version: 10` apaga o limite dos cartões e dos meses, a `version: 11` acrescenta as listas vazias de previsões, a `version: 12` as de sonhos (`dreams`, `dreamEntries` e `dreamPlan`) e a `version: 13` o carrinho vazio (`cartItems`).
 
 ### Parcelamento
 
@@ -93,6 +93,15 @@ A especificação completa está em [`specs/sonhos.md`](specs/sonhos.md). Cada s
 - **Plano**: percentual da renda por mês (0 a 50%) e divisão entre os sonhos ativos em partes inteiras que somam 100%. **Ritmo** = renda de referência (a do mês, ou a do mês anterior se aquela for zero) × percentual × parte efetiva; **previsão** = mês corrente + ⌈falta ÷ ritmo⌉ meses. Quando um sonho é conquistado ou encerrado, a parte dele passa aos outros na proporção.
 - Ao chegar na meta o sonho é **conquistado**: "Manter guardado" só o encerra; "Usar o dinheiro" devolve o guardado ao saldo e registra, no mesmo ato, um gasto do dia a dia com o nome do sonho. Excluir devolve o guardado ao saldo com uma retirada e arquiva o sonho; os aportes antigos continuam nos meses em que aconteceram. Sonhos não entram no Desfazer.
 - Em `src/data/store.ts`: `getDreams`, `getDream`, `getDreamPlan`, `getDreamEntries` e as escritas `createDream`, `updateDream`, `deleteDream`, `saveDreamPlan`, `depositDream`, `withdrawDream` e `closeDream` (esta última tudo ou nada). As animações (anel, caixinha, moedas, confete e contagem dos números) valem só na primeira exibição de cada tela e param com `prefers-reduced-motion`; com o olho fechado, anéis e caixinhas viram formas neutras.
+
+### Carrinho de compras
+
+A especificação completa está em [`specs/carrinho.md`](specs/carrinho.md). O carrinho é uma lista única de produtos (nome, preço da unidade, quantidade de 1 a 99, categoria e uma anotação de loja; no máximo 50), guardada em `cartItems`, aberta pelo item "Carrinho" do menu ⋯ e pela barra do Início (`#/carrinho`, `#/carrinho/produto[/ID]`, `#/carrinho/pagamento`, `#/carrinho/dividir`, `#/carrinho/confirmar` e `#/carrinho/ok`).
+
+- Enquanto está aberto, **nada é lançado**. Ao fechar, cada pedaço de produto vira um lançamento de hoje, na categoria do produto, pelas regras de sempre: **Saldo da conta** → gasto do dia a dia; **Cartão** → compra avulsa (1x) ou parcelada (2x, 3x, 6x, 12x, com a 1.ª parcela no mês corrente); **Benefício** → gasto do benefício.
+- Um **benefício** cobre, por categoria, o menor entre o total dos produtos da categoria e o disponível dela (só categorias da divisão e abertas); sem divisão cobre qualquer produto até o disponível. Sozinho, só se cobrir o total; senão entra apenas em "Dividir".
+- **Dividir** reparte o total por valor: primeiro os benefícios (só produtos que cada um cobre), depois os cartões e por fim o saldo, na ordem do carrinho, e um produto pode ser quebrado entre duas formas. A distribuição é pura e está em `src/lib/cart-checkout.ts`; `checkoutCart` valida de novo com a situação de agora e cria tudo numa só gravação (se algo falhar, nada é criado e a tela volta para "Dividir" com o motivo). "O que vai mudar" vem de uma simulação do fechamento.
+- O rascunho do pagamento vive só na memória (`src/lib/cart-draft.ts`). Remover um produto abre o Desfazer; excluir uma categoria deixa o produto sem categoria.
 
 ### Regras de cálculo
 
@@ -207,6 +216,9 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── pages/beneficios.tsx # benefícios do mês
 │   ├── pages/beneficio-lancamentos.tsx # lançamentos de um benefício
 │   ├── pages/categorias.tsx # criar, renomear e excluir categorias
+│   ├── pages/carrinho.tsx  # Carrinho: produtos e total (carrinho-produto, carrinho-pagamento, carrinho-dividir, carrinho-confirmar e carrinho-ok são as outras telas)
+│   ├── lib/cart-checkout.ts # cobertura do benefício, distribuição entre as formas de pagamento e sugestão de divisão (funções puras, em centavos)
+│   ├── lib/cart-draft.ts   # rascunho do pagamento, só na memória; components/cart-parts.tsx tem as peças das telas
 │   ├── pages/sonhos.tsx    # Meus sonhos: plano, guardado do mês e a lista de caixinhas (sonhos-plano, sonho-novo, sonho-caixinha, sonho-conquista e sonhos-lista são as outras telas)
 │   ├── components/dream-parts.tsx # ícones, contagem, confete e barra de divisão dos sonhos; dream-sheets.tsx é a folha Guardar/Retirar
 │   ├── components/charts/dream-ring.tsx # anel de progresso do sonho (jar.tsx é a caixinha)

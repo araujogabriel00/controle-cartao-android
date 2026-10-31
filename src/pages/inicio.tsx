@@ -2,9 +2,9 @@ import { type ReactNode } from 'react';
 import { useLocation } from 'wouter';
 import {
   getGetBenefitsQueryKey, getGetCardsQueryKey, getGetDreamPlanQueryKey, getGetDreamsQueryKey, getGetIncomeRangeQueryKey, getGetMonthCashQueryKey,
-  useGetBalanceSeries, useGetBenefits, useGetCards, useGetDreamPlan, useGetDreams, useGetForecastAlerts, useGetIncomeRange, useGetInvoiceSeries, useGetMonthCash, useGetRecentSpends,
+  useGetBalanceSeries, useGetBenefits, useGetCards, useGetCart, useGetDreamPlan, useGetDreams, useGetForecastAlerts, useGetIncomeRange, useGetInvoiceSeries, useGetMonthCash, useGetRecentSpends,
 } from '@workspace/api-client-react';
-import { CalendarCheck, ChevronRight, CircleHelp, CreditCard, HandCoins, Plus, Utensils } from 'lucide-react';
+import { CalendarCheck, ChevronRight, CircleHelp, CreditCard, HandCoins, Plus, ShoppingCart, Utensils } from 'lucide-react';
 import { AppHeader } from '@/components/app-header';
 import { shortDate, signedAmount } from '@/components/forecast-parts';
 import { openQuickAdd } from '@/components/quick-add';
@@ -13,7 +13,7 @@ import { MiniColumns } from '@/components/charts/mini-columns';
 import { Sparkline } from '@/components/charts/sparkline';
 import { UsageBar } from '@/components/charts/usage-bar';
 import { saveForecastAck, useForecastAck } from '@/lib/forecast-ack';
-import { type Area, areaPath, dateLabel, forecastDayPath, today, money, monthLabel, monthName, summaryPath, type MonthKey } from '@/lib/format';
+import { type Area, areaPath, dateLabel, forecastDayPath, today, money, monthLabel, monthName, plural, summaryPath, type MonthKey } from '@/lib/format';
 import { isHidden } from '@/lib/hide-values';
 import { useRememberMonth } from '@/lib/last-month';
 
@@ -55,6 +55,10 @@ export default function Inicio({ month }: { month: MonthKey }) {
   // Sonhos RN-17: uma leitura que falha só derruba o painel de Sonhos, não o resto do Início.
   const dreamsQuery = useGetDreams({ query: { queryKey: getGetDreamsQueryKey() } });
   const planQuery = useGetDreamPlan({ query: { queryKey: getGetDreamPlanQueryKey() } });
+  // Carrinho RN-17: uma leitura que falha só esconde a barra.
+  const cartQuery = useGetCart();
+  const cart = cartQuery.data;
+  const cartBar = (cart?.productCount ?? 0) > 0;
   const activeDreams = (dreamsQuery.data?.items ?? []).filter((dream) => dream.status === 'active');
   const balanceSeries = useGetBalanceSeries(month, BALANCE_MONTHS);
   const invoiceSeries = useGetInvoiceSeries(month, INVOICE_MONTHS);
@@ -110,7 +114,7 @@ export default function Inicio({ month }: { month: MonthKey }) {
   const recentItems = recent.data ?? [];
 
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
-    <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
+    <div className={`relative z-10 mx-auto max-w-[860px] px-4 pt-5 sm:px-8 ${cartBar ? 'pb-44' : 'pb-12'}`}>
       <AppHeader area="home" month={month} canGoPrevious={canGoPrevious} canGoNext={canGoNext}/>
 
       {/* D12, RF-10: nada entra no saldo sem a pessoa saber. "Revisar" abre o dia; "Está certo" dispensa até entrar outra previsão. */}
@@ -225,5 +229,14 @@ export default function Inicio({ month }: { month: MonthKey }) {
           </nav>
         </div>}
     </div>
+
+    {/* Carrinho D3, RF-09, RN-13, RN-17: a barra só aparece com produtos; uma leitura que falha só a esconde. */}
+    {cartBar && cart && <button type="button" data-testid="bar-home-cart" aria-label={`Abrir o carrinho: ${plural(cart.itemCount, 'item', 'itens')}, ${money(cart.total)}`} onClick={() => navigate('/carrinho')}
+      className="fixed inset-x-4 bottom-[calc(88px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))] z-30 mx-auto flex h-14 max-w-[828px] items-center gap-2 rounded-full border border-line bg-surface px-3 text-left min-[420px]:gap-3 min-[420px]:px-4 shadow-[0_8px_18px_-12px_rgba(0,0,0,.6)] transition hover:bg-hover">
+      <span aria-hidden className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-tint text-brand"><ShoppingCart size={18}/><span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 font-mono-data text-[12px] text-on-brand">{cart.itemCount}</span></span>
+      <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-ink min-[420px]:text-[15px]">Carrinho · {plural(cart.itemCount, 'item', 'itens')}</span>
+      <span className="shrink-0 font-mono-data text-[14px] text-ink min-[420px]:text-[15px]">{money(cart.total)}</span>
+      <span aria-hidden className="flex shrink-0 items-center text-[14px] text-ink-soft"><span className="hidden min-[420px]:inline">Abrir</span><ChevronRight size={16}/></span>
+    </button>}
   </main>;
 }

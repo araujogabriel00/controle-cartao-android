@@ -14,11 +14,12 @@ export type {
   RecurringInput, StoredRecurring,
   Bills, BillOccurrence, BillInput, DailyExpense, DailyExpenses, DailyExpenseInput, MonthCash, StoredBill, StoredDailyExpense,
   BalancePoint, InvoicePoint, RecentSpend, UndoResult,
+  Cart, CartItem, CartItemInput, CartFormInput, CartDraft, CartArea, CartCoverage, CartBenefitCoverage, CartCardCoverage, CartFormPreview, CartPaymentPreview, CartCheckoutResult, StoredCartItem,
   DreamIcon, DreamStatus, DreamItem, DreamDetail, Dreams, DreamPlan, DreamPlanItem, DreamPlanInput, DreamEntries, DreamMonthEntry, DreamInput, DreamUpdate, DreamDeposit, StoredDream, StoredDreamEntry,
   ForecastKind, ForecastPayAs, ForecastState, ForecastOccurrence, ForecastInput, ForecastMonth, ForecastDay, ForecastSummary, BalanceForecast, StoredForecast,
   Benefits, BenefitItem, BenefitSpend, BenefitRange, BenefitInput, BenefitUpdate, BenefitSpendInput, BenefitSplitItem, BenefitCategoryRow, StoredBenefit, StoredBenefitSpend,
 } from './store';
-export { INCOME_KINDS, DREAM_ICONS } from './store';
+export { INCOME_KINDS, DREAM_ICONS, CartDraftError } from './store';
 
 type QueryOpts<T> = { query?: Partial<UseQueryOptions<T, Error, T, QueryKey>> };
 type MutationOpts<TData, TVars> = { mutation?: UseMutationOptions<TData, Error, TVars> };
@@ -323,3 +324,35 @@ export const useWithdrawDream = (options?: MutationOpts<{ dreamId: number; saved
 
 export const useCloseDream = (options?: MutationOpts<void, { dreamId: number; choice: 'keep' | 'use' }>) =>
   useMutation({ mutationFn: ({ dreamId, choice }) => store.closeDream(dreamId, choice), ...options?.mutation });
+
+// Carrinho de compras (specs/carrinho.md). Leituras sem nova tentativa: a tela mostra "Tentar de novo" na hora (RN-17).
+export const getGetCartQueryKey = () => ['cart'] as const;
+export const getGetCartCoverageQueryKey = () => ['cart', 'coverage'] as const;
+export const getGetCartPaymentPreviewQueryKey = (draft?: store.CartDraft) => key('cart', 'preview', draft ? JSON.stringify(draft) : undefined);
+
+export const useGetCart = (options?: QueryOpts<store.Cart>) =>
+  useLocalQuery(getGetCartQueryKey(), () => store.getCart(), noRetry(options));
+
+export const useGetCartCoverage = (options?: QueryOpts<store.CartCoverage>) =>
+  useLocalQuery(getGetCartCoverageQueryKey(), () => store.getCartCoverage(), noRetry(options));
+
+export const useGetCartPaymentPreview = (draft: store.CartDraft, options?: QueryOpts<store.CartPaymentPreview>) =>
+  useLocalQuery(getGetCartPaymentPreviewQueryKey(draft), () => store.getCartPaymentPreview(draft), noRetry(options));
+
+export const useAddCartItem = (options?: MutationOpts<store.StoredCartItem, { data: store.CartItemInput }>) =>
+  useMutation({ mutationFn: ({ data }) => store.addCartItem(data), ...options?.mutation });
+
+export const useUpdateCartItem = (options?: MutationOpts<store.StoredCartItem, { itemId: number; data: store.CartItemInput }>) =>
+  useMutation({ mutationFn: ({ itemId, data }) => store.updateCartItem(itemId, data), ...options?.mutation });
+
+export const useRemoveCartItem = (options?: MutationOpts<store.UndoResult, { itemId: number }>) =>
+  useMutation({ mutationFn: ({ itemId }) => store.removeCartItem(itemId), ...options?.mutation });
+
+export const useClearCart = (options?: MutationOpts<void, void>) =>
+  useMutation({ mutationFn: () => store.clearCart(), ...options?.mutation });
+
+export const useCheckoutCart = (options?: MutationOpts<store.CartCheckoutResult, { draft: store.CartDraft }>) =>
+  useMutation({ mutationFn: ({ draft }) => store.checkoutCart(draft), ...options?.mutation });
+
+export const useSuggestCart = (options?: MutationOpts<store.CartFormInput[], void>) =>
+  useMutation({ mutationFn: () => store.getCartSuggestion(), ...options?.mutation });

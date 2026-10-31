@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Proposta |
+| Status | Implementada |
 | Criada em | 30/10/2026 |
 | Escopo | `src/data/store.ts` (formato com `cartItems`, fechar o carrinho), `src/data/api.ts`, `src/App.tsx` (rotas), `src/lib/format.ts` (rotas), novas telas `src/pages/{carrinho,carrinho-produto,carrinho-pagamento,carrinho-dividir,carrinho-confirmar,carrinho-ok}.tsx`, novo `src/components/cart-parts.tsx` e `src/lib/cart-checkout.ts` (distribuição entre as formas de pagamento), `src/components/app-header.tsx` (item no menu ⋯), `src/pages/inicio.tsx` (barra), `src/components/undo-snackbar.tsx` (só se precisar), `FUNCIONALIDADES.md`, `README.md`, testes (seção 10) |
 | Depende de | [`compras-e-categorias.md`](compras-e-categorias.md), [`parcelamento.md`](parcelamento.md), [`multiplos-cartoes.md`](multiplos-cartoes.md), [`beneficios.md`](beneficios.md), [`lancamentos-do-beneficio.md`](lancamentos-do-beneficio.md), [`contas-e-gastos.md`](contas-e-gastos.md), [`desfazer-exclusao.md`](desfazer-exclusao.md), [`redesign-v2-fundacao.md`](redesign-v2-fundacao.md) |
@@ -36,7 +36,7 @@ Hoje o app só registra o que **já foi comprado**. Quem está planejando uma co
 | - | ------- | ------ |
 | D1 | O carrinho é **único**, guardado no aparelho e **sobrevive** ao fechar o app. Tem no máximo **50 produtos**. | Lista de compras é algo que se monta aos poucos. |
 | D2 | Enquanto o carrinho está aberto, **nada é lançado**: não muda saldo, fatura nem benefício. | Texto do desenho V6_02: "Nada é lançado agora." |
-| D3 | **Acesso:** item **Carrinho** no menu ⋯ do cabeçalho (com a quantidade de produtos) e, quando há produtos, uma **barra** no Início — "Carrinho · N itens · total · Abrir" (V6_08). | Escolha do usuário. |
+| D3 | **Acesso:** item **Carrinho** no menu ⋯ do cabeçalho (com a quantidade de produtos, quando há) e, quando há produtos, uma **barra** no Início — "Carrinho · N itens · total · Abrir" (V6_08). | Escolha do usuário. |
 | D4 | **Formas de pagamento:** Saldo da conta, cada Cartão, cada Benefício e "Dividir em mais de uma forma". **Saldo da conta** vira **gasto do dia a dia**; **Cartão** vira compra no cartão (parcelada se escolhido); **Benefício** vira gasto do benefício. Cada um segue a regra de lançamento de hoje. | O carrinho não inventa tipo de lançamento. |
 | D5 | **Cartão** oferece **1x, 2x, 3x, 6x e 12x** (1x é compra à vista; as demais, compra parcelada de hoje, com a 1.ª parcela na fatura do mês corrente). Mostra "3x de R$ X · fatura de ‹mês› passa de R$ A para R$ B". | Desenho V6_03; reaproveita o parcelamento existente. |
 | D6 | **Benefício paga por categoria.** Para cada categoria do carrinho, o benefício cobre `min(total dos produtos da categoria, disponível da categoria no benefício)`; categoria fechada ou sem linha na divisão do benefício não é coberta. Um benefício **sem divisão** cobre qualquer categoria (e produtos sem categoria), até o disponível total. A cobertura do benefício é a soma. | Escolha do usuário; o desenho diz "Só alimentação · cobre R$ 84,30 de R$ 204,30". |
@@ -83,8 +83,8 @@ Hoje o app só registra o que **já foi comprado**. Quem está planejando uma co
 | RN-09 | **Atomicidade:** todos os lançamentos são criados numa só gravação. Qualquer erro (benefício fechado, valor menor que o mínimo da parcela, forma que não existe mais) desfaz tudo e mostra o motivo; o carrinho não é esvaziado. |
 | RN-10 | Se entre a escolha e a confirmação a situação mudou (benefício sem saldo, cartão excluído), a confirmação recalcula e, se a divisão deixou de valer, volta para **Dividir** com o aviso do motivo. |
 | RN-11 | Parcelas: o valor do pedaço de cartão deve ser de pelo menos R$ 0,01 por parcela; opções de parcelas que violam isso ficam desativadas. |
-| RN-12 | "Fica R$ X depois" usa o saldo do mês corrente; "fatura de ‹mês› passa de A para B" usa a fatura do cartão no mês corrente e a 1.ª parcela. |
-| RN-13 | A barra do Início e o item do menu ⋯ somem quando o carrinho está vazio. |
+| RN-12 | "Fica R$ X depois" usa o saldo do mês corrente; "fatura de ‹mês› passa de A para B" usa a fatura do cartão no mês corrente e a 1.ª parcela. Os dois vêm de uma **simulação do fechamento** no estado de hoje, então batem com o que será gravado: o saldo depois inclui o gasto do dia a dia e a fatura (ou a 1.ª parcela) que entra no mês, pois a fatura desconta do saldo; o benefício não mexe no saldo. |
+| RN-13 | A barra do Início some quando o carrinho está vazio. O item "Carrinho" do menu ⋯ fica sempre (é por ele que se abre o estado vazio, cenário "Carrinho vazio") e mostra a quantidade só quando há produtos. |
 | RN-14 | O Desfazer de remover produto restaura o produto na mesma posição; a lista `cartItems` entra no remendo reverso. |
 | RN-15 | `data-testid`: `list-cart`, `row-cart-ID`, `button-cart-minus-ID`, `button-cart-plus-ID`, `button-cart-remove-ID`, `button-add-product`, `form-product`, `input-product-name`, `input-product-price`, `input-product-qty`, `select-product-category`, `input-product-store`, `button-save-product`, `button-save-product-more`, `text-cart-total`, `button-close-cart`, `option-pay-balance`, `option-pay-card-ID`, `option-pay-benefit-ID`, `chip-installments-N`, `button-split-payment`, `text-left-to-allocate`, `input-alloc-…`, `button-add-origin`, `button-suggest-split`, `button-continue-payment`, `button-confirm-purchase`, `button-back-adjust`, `screen-cart-done`, `button-see-entries`, `bar-home-cart`, `menu-cart`, `button-empty-cart`. |
 | RN-16 | Texto de no mínimo 14 px (13 px só em legendas), alvos de 48 px, nada depende só de cor (estados em texto e ícone), contraste de 4,5:1 nos dois temas. |
@@ -150,7 +150,8 @@ Funcionalidade: Carrinho de compras
 
   Cenário: Pagar no cartão em 3x
     Quando eu escolho "Cartão Nubank" em 3x
-    Então vejo "3x de R$ 68,10" e a fatura de outubro passando para R$ 485,26
+    Então vejo "3x de R$ 68,10" e a fatura de outubro passando de R$ 417,16 para R$ 485,28
+    # O resto dos centavos de cada produto fica na 1.ª parcela (parcelamento.md): 40,00 + 21,94 + 6,18 = 68,12.
     Quando eu confirmo
     Então cada produto vira uma compra parcelada em 3 vezes
 
@@ -186,12 +187,14 @@ Funcionalidade: Carrinho de compras
     Então "Arroz 5 kg" gera um gasto de benefício de R$ 50,00 e um gasto do dia a dia de R$ 15,80
 
   Cenário: Confirmar mostra o que muda
-    Então vejo "Disponível fica R$ 395,70", "fatura de outubro R$ 457,16" e "Saldo: não muda"
+    Dado a divisão R$ 84,30 no benefício e R$ 120,00 no cartão em 3x
+    Então vejo "Disponível fica R$ 395,70" e "Fatura de outubro passa de R$ 417,16 para R$ 457,16"
+    E o saldo que ficará (R$ 12.309,54), porque a fatura também desconta do saldo
 
   Cenário: Falha ao confirmar
     Dado que o benefício foi fechado para Alimentação antes de confirmar
     Quando eu confirmo
-    Então nada é criado, o carrinho continua cheio e vejo o motivo
+    Então nada é criado, o carrinho continua cheio e a tela volta para "Dividir" com o motivo
 
   Cenário: Saldo negativo
     Dado o saldo de hoje menor que o total
@@ -243,7 +246,7 @@ Funcionalidade: Carrinho de compras
 
 ## 6. Modelo de dados e migração
 
-Novo formato salvo (**uma versão acima da vigente quando for implementado**: hoje 11; se os Sonhos entrarem antes, este será o 13). Estado ganha:
+Novo formato salvo, **versão 13** (a 12 trouxe os Sonhos). Estado ganha:
 
 ```ts
 type StoredCartItem = {
@@ -284,17 +287,17 @@ type StoredCartItem = {
 
 ## 9. Critérios de aceite
 
-- [ ] `npm test`, `npm run typecheck` e `npm run build` passam.
-- [ ] Dados salvos antes da mudança abrem sem perda; `cartItems` começa vazio.
-- [ ] Adicionar, editar, mudar a quantidade e remover (com Desfazer) produtos funciona; o carrinho sobrevive ao fechar o app; nada é lançado até confirmar.
-- [ ] Pagar no saldo, no cartão (1x e parcelado) e no benefício cria os lançamentos certos e as telas das áreas, o saldo, as faturas e o disponível dos benefícios conferem.
-- [ ] A cobertura do benefício respeita a categoria e o disponível (D6); benefício que não cobre sozinho só entra em Dividir.
-- [ ] Dividir valida a soma, os limites e quebra produtos conforme RN-07; "Sugerir divisão" funciona.
-- [ ] Falha ao confirmar não cria nada e mantém o carrinho; situação que mudou volta para Dividir.
-- [ ] Excluir categoria deixa o produto sem categoria.
-- [ ] Barra no Início, item no menu ⋯, estado vazio e olho fechado conforme a spec.
-- [ ] Temas claro e escuro, leitor de tela e 360 px sem scroll horizontal.
-- [ ] `FUNCIONALIDADES.md` (nova seção e ajuste na do Início e do menu ⋯) e `README.md` atualizados.
+- [x] `npm test`, `npm run typecheck` e `npm run build` passam.
+- [x] Dados salvos antes da mudança abrem sem perda; `cartItems` começa vazio.
+- [x] Adicionar, editar, mudar a quantidade e remover (com Desfazer) produtos funciona; o carrinho sobrevive ao fechar o app; nada é lançado até confirmar.
+- [x] Pagar no saldo, no cartão (1x e parcelado) e no benefício cria os lançamentos certos e as telas das áreas, o saldo, as faturas e o disponível dos benefícios conferem.
+- [x] A cobertura do benefício respeita a categoria e o disponível (D6); benefício que não cobre sozinho só entra em Dividir.
+- [x] Dividir valida a soma, os limites e quebra produtos conforme RN-07; "Sugerir divisão" funciona.
+- [x] Falha ao confirmar não cria nada e mantém o carrinho; situação que mudou volta para Dividir.
+- [x] Excluir categoria deixa o produto sem categoria.
+- [x] Barra no Início, item no menu ⋯, estado vazio e olho fechado conforme a spec.
+- [ ] Temas claro e escuro, leitor de tela e 360 px sem scroll horizontal. Pendente em parte: o fluxo inteiro (Início, Carrinho, Pagamento, Dividir, Confirmar e Compra registrada) foi conferido em 360 × 780 px (viewport do Galaxy S25) sem scroll horizontal, só no tema escuro; o tema claro e o leitor de tela não foram conferidos.
+- [x] `FUNCIONALIDADES.md` (nova seção e ajuste na do Início e do menu ⋯) e `README.md` atualizados.
 
 ## 10. Tarefas
 

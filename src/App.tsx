@@ -32,6 +32,12 @@ import SonhoNovo from '@/pages/sonho-novo';
 import SonhoCaixinha from '@/pages/sonho-caixinha';
 import SonhoConquista from '@/pages/sonho-conquista';
 import SonhosLista from '@/pages/sonhos-lista';
+import Carrinho from '@/pages/carrinho';
+import CarrinhoProduto from '@/pages/carrinho-produto';
+import CarrinhoPagamento from '@/pages/carrinho-pagamento';
+import CarrinhoDividir from '@/pages/carrinho-dividir';
+import CarrinhoConfirmar from '@/pages/carrinho-confirmar';
+import CarrinhoOk from '@/pages/carrinho-ok';
 import {
   Redirect,
   Route,
@@ -159,6 +165,12 @@ function DreamRoute({ id, view }: { id: string; view: 'caixinha' | 'conquista' |
   return <SonhoCaixinha key={dreamId} dreamId={dreamId} />;
 }
 
+// Carrinho (specs/carrinho.md): um id de produto inválido volta para o carrinho.
+function CartProductRoute({ id }: { id: string }) {
+  if (!/^\d+$/.test(id)) return <Redirect to="/carrinho" replace />;
+  return <CarrinhoProduto key={id} itemId={Number(id)} />;
+}
+
 function BenefitMonthRoute({ month }: { month: string }) {
   const range = useGetBenefitRange({ query: { queryKey: getGetBenefitRangeQueryKey() } });
   return <RangedMonthRoute area="benefits" month={month} range={range}><Beneficios key={month} month={month} /></RangedMonthRoute>;
@@ -196,6 +208,13 @@ function Router() {
         <Route path="/beneficios/lancamentos/:benefit/:cat/mes/:month">{(params) => <SpendsRoute benefit={params.benefit} cat={params.cat} month={params.month} />}</Route>
         <Route path="/beneficios/mes/:month">{(params) => <BenefitMonthRoute month={params.month} />}</Route>
         <Route path="/categorias" component={Categorias} />
+        <Route path="/carrinho" component={Carrinho} />
+        <Route path="/carrinho/produto">{() => <CarrinhoProduto />}</Route>
+        <Route path="/carrinho/produto/:id">{(params) => <CartProductRoute id={params.id} />}</Route>
+        <Route path="/carrinho/pagamento" component={CarrinhoPagamento} />
+        <Route path="/carrinho/dividir" component={CarrinhoDividir} />
+        <Route path="/carrinho/confirmar" component={CarrinhoConfirmar} />
+        <Route path="/carrinho/ok" component={CarrinhoOk} />
         <Route path="/sonhos" component={Sonhos} />
         <Route path="/sonhos/plano" component={SonhosPlano} />
         <Route path="/sonhos/novo">{() => <SonhoNovo />}</Route>

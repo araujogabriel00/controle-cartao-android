@@ -370,8 +370,8 @@ describe('linha do caixa e leituras', () => {
   });
 });
 
-describe('migração v11 → v12', () => {
-  it('abre os dados da v11 sem perda e salva na v12', async () => {
+describe('migração v11 → v13', () => {
+  it('abre os dados da v11 sem perda e salva na v13', async () => {
     await s.saveCard({ name: 'Inter' }, 'create');
     const key = Object.keys(localStorage).find((k) => (localStorage.getItem(k) ?? '').includes('"version"'))!;
     const old = JSON.parse(localStorage.getItem(key)!);
@@ -384,6 +384,6 @@ describe('migração v11 → v12', () => {
     s = await import('@/data/store');
     expect((await s.getCards('2026-10')).cards.map((c) => c.name)).toEqual(['Inter']);
     expect((await s.getDreams()).items).toEqual([]);
-    await vi.waitFor(() => expect(JSON.parse(localStorage.getItem(key)!)).toMatchObject({ version: 12, dreams: [], dreamEntries: [], dreamPlan: null }));
+    await vi.waitFor(() => expect(JSON.parse(localStorage.getItem(key)!)).toMatchObject({ version: 13, dreams: [], dreamEntries: [], dreamPlan: null, cartItems: [] }));
   });
 });

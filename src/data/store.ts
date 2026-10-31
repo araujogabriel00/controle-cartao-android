@@ -1,5 +1,6 @@
 import { Preferences } from '@capacitor/preferences';
 import { CARD_COLOR_KEYS, isCardColor, type CardColor } from '@/lib/card-colors';
+import { type BenefitCap, type CartForm, type CartIssue, type CartLine, coverageOf, distribute, formKey, fromCents, suggestForms, toCents, validateForms } from '@/lib/cart-checkout';
 import { currentMonth, isFutureMonth, isMonthKey, lastDayOf, money, monthLabel, monthOf, shiftMonth, today, type MonthKey } from '@/lib/format';
 
 const STORAGE_KEY = 'controle-cartao:v1';
@@ -104,8 +105,11 @@ export type StoredDreamEntry = {
   amount: number; date: string; linkedExpenseId?: number;
 };
 
+// Carrinho de compras (specs/carrinho.md seção 6).
+export type StoredCartItem = { id: number; name: string; price: number; quantity: number; categoryId: number | null; store: string };
+
 type State = {
-  version: 12;
+  version: 13;
   nextId: number;
   selectedCardId: number | null;
   cards: StoredCard[];
@@ -127,14 +131,17 @@ type State = {
   dreams: StoredDream[];
   dreamEntries: StoredDreamEntry[];
   dreamPlan: { percent: number } | null;
+  cartItems: StoredCartItem[];
 };
 
 // Previous formats, kept only to migrate saved data.
 type OldCategory = { id: number; cardId: number; month: MonthKey; name: string; amount: number; isClosed: boolean };
 type OldMovement = Omit<StoredMovement, 'cardId' | 'categoryId'> & { categoryId: number };
 type OldPurchase = Omit<StoredPurchase, 'categoryId'> & { categoryName: string };
+// Until v12 there was no cart (carrinho seção 6).
+type StateV12 = Omit<State, 'version' | 'cartItems'> & { version: 12 };
 // Until v11 there were no dreams (sonhos seção 6).
-type StateV11 = Omit<State, 'version' | 'dreams' | 'dreamEntries' | 'dreamPlan'> & { version: 11 };
+type StateV11 = Omit<StateV12, 'version' | 'dreams' | 'dreamEntries' | 'dreamPlan'> & { version: 11 };
 // Until v10 there were no forecasts (previsoes D2).
 type StateV10 = Omit<StateV11, 'version' | 'forecasts' | 'forecastExceptions'> & { version: 10 };
 // Until v9 the card and its months carried a limit (cartao-sem-limite D2).
@@ -165,7 +172,7 @@ type StateV1 = {
   categories: Omit<OldCategory, 'cardId' | 'month'>[];
   movements: OldMovement[];
 };
-type Saved = StateV11 | StateV10 | StateV9 | StateV8 | StateV7 | StateV6 | StateV5 | StateV4 | StateV3 | StateV2 | StateV1;
+type Saved = StateV12 | StateV11 | StateV10 | StateV9 | StateV8 | StateV7 | StateV6 | StateV5 | StateV4 | StateV3 | StateV2 | StateV1;
 
 // invoiceAmount is the card's invoice (sum of the purchases) in the requested month.
 export type Card = StoredCard & { invoiceAmount: number; movementCount: number };
@@ -255,7 +262,7 @@ export type BenefitSpendInput = { description: string; amount: number; date: str
 // purchase starts there, on update `firstInstallment` says where it starts.
 export type PurchaseInput = { description: string; totalAmount: number; installmentCount: number; installment: number; firstInstallment?: number; date: string };
 
-const emptyState = (): State => ({ version: 12, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [], benefits: [], benefitSpends: [], bills: [], billExceptions: [], dailyExpenses: [], recurrings: [], recurringExceptions: [], forecasts: [], forecastExceptions: [], dreams: [], dreamEntries: [], dreamPlan: null });
+const emptyState = (): State => ({ version: 13, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [], benefits: [], benefitSpends: [], bills: [], billExceptions: [], dailyExpenses: [], recurrings: [], recurringExceptions: [], forecasts: [], forecastExceptions: [], dreams: [], dreamEntries: [], dreamPlan: null, cartItems: [] });
 
 // RN-05 (categories): names match ignoring case and surrounding spaces.
 const nameKey = (name: string) => name.trim().toLocaleLowerCase('pt-BR');
@@ -349,7 +356,10 @@ const migrateV9 = (old: StateV9): StateV10 => ({
 const migrateV10 = (old: StateV10): StateV11 => ({ ...old, version: 11, forecasts: [], forecastExceptions: [] });
 
 // Dreams didn't exist before v12: nothing else changes (sonhos seção 6).
-const migrateV11 = (old: StateV11): State => ({ ...old, version: 12, dreams: [], dreamEntries: [], dreamPlan: null });
+const migrateV11 = (old: StateV11): StateV12 => ({ ...old, version: 12, dreams: [], dreamEntries: [], dreamPlan: null });
+
+// The cart didn't exist before v13: nothing else changes (carrinho seção 6).
+const migrateV12 = (old: StateV12): State => ({ ...old, version: 13, cartItems: [] });
 
 function migrate(old: Saved): State {
   if (old.version === 1) return migrate(migrateV1(old));
@@ -362,7 +372,8 @@ function migrate(old: Saved): State {
   if (old.version === 8) return migrate(migrateV8(old));
   if (old.version === 9) return migrate(migrateV9(old));
   if (old.version === 10) return migrate(migrateV10(old));
-  return migrateV11(old);
+  if (old.version === 11) return migrate(migrateV11(old));
+  return migrateV12(old);
 }
 
 let statePromise: Promise<State> | null = null;
@@ -380,17 +391,18 @@ function load(): Promise<State> {
     if (!value) return emptyState();
     try {
       const parsed = JSON.parse(value) as State | Saved;
-      if (parsed?.version === 12) {
+      if (parsed?.version === 13) {
         for (const b of parsed.benefits) { b.splits ??= []; b.closures ??= []; }
         parsed.forecasts ??= [];
         parsed.forecastExceptions ??= [];
         parsed.dreams ??= [];
         parsed.dreamEntries ??= [];
         parsed.dreamPlan ??= null;
+        parsed.cartItems ??= [];
         return parsed;
       }
       const version: number | undefined = parsed?.version;
-      if (version !== 11 && version !== 10 && version !== 9 && version !== 8 && version !== 7 && version !== 6 && version !== 5 && version !== 4 && version !== 3 && version !== 2 && version !== 1) return emptyState();
+      if (version !== 12 && version !== 11 && version !== 10 && version !== 9 && version !== 8 && version !== 7 && version !== 6 && version !== 5 && version !== 4 && version !== 3 && version !== 2 && version !== 1) return emptyState();
       const migrated = migrate(parsed as Saved);
       // Saved right away so the data stays in this month even if the next
       // change only happens in a later month.
@@ -435,6 +447,7 @@ const UNDO_KEYS = {
   benefitSpends: (r: AnyRecord) => String(r.id),
   forecasts: (r: AnyRecord) => String(r.id),
   forecastExceptions: (r: AnyRecord) => `${r.forecastId}:${r.month}`,
+  cartItems: (r: AnyRecord) => String(r.id),
 } as const;
 type UndoList = keyof typeof UNDO_KEYS;
 const UNDO_LISTS = Object.keys(UNDO_KEYS) as UndoList[];
@@ -1022,6 +1035,8 @@ export function deleteCategory(categoryId: number) {
     for (const x of state.benefitSpends) if (x.categoryId === categoryId) x.categoryId = null;
     for (const x of state.dailyExpenses) if (x.categoryId === categoryId) x.categoryId = null;
     for (const r of state.recurrings) if (r.categoryId === categoryId) r.categoryId = null;
+    // Carrinho D15: o produto fica, sem categoria.
+    for (const i of state.cartItems) if (i.categoryId === categoryId) i.categoryId = null;
     for (const b of state.benefits) {
       for (const entry of b.splits) entry.items = entry.items.filter((i) => i.categoryId !== categoryId);
       b.closures = b.closures.filter((c) => c.categoryId !== categoryId);
@@ -2433,4 +2448,268 @@ export function closeDream(dreamId: number, choice: 'keep' | 'use') {
     }
     dream.closed = true;
   });
+}
+
+
+// --- carrinho de compras (specs/carrinho.md) -------------------------------------------------------------------
+// O carrinho é uma lista guardada no aparelho: nada vira lançamento até fechar (D2). Ao fechar, cada pedaço de produto
+// vira um lançamento pelas regras de sempre (D4, RN-08) e tudo é gravado de uma vez (RN-09).
+
+const MAX_CART_ITEMS = 50;
+
+export type CartItem = StoredCartItem & { categoryName: string | null; total: number };
+export type Cart = { items: CartItem[]; productCount: number; itemCount: number; total: number };
+export type CartItemInput = { name: string; price: number; quantity: number; categoryId: number | null; store?: string };
+
+export type CartFormInput = { kind: 'benefit' | 'card' | 'balance'; id?: number; amount: number; installments?: number };
+export type CartDraft = { forms: CartFormInput[] };
+export type CartArea = 'income' | 'cards' | 'benefits';
+
+export type CartBenefitCoverage = { id: number; name: string; available: number; coverage: number; divided: boolean; canPayAlone: boolean };
+export type CartCardCoverage = { id: number; name: string; color: CardColor; invoice: number };
+export type CartCoverage = { total: number; balanceToday: number; benefits: CartBenefitCoverage[]; cards: CartCardCoverage[] };
+
+export type CartFormPreview = {
+  key: string; kind: CartFormInput['kind']; id: number | null; name: string; amount: number; installments: number;
+  // Benefício: o que ele cobre deste carrinho. Cartão: o valor de cada parcela (média).
+  limit: number | null; perInstallment: number | null;
+  issue: string | null;
+  availableAfter: number | null; invoiceBefore: number | null; invoiceAfter: number | null;
+};
+// RN-12: os efeitos vêm de uma simulação do fechamento no estado de hoje, então batem com o que será gravado.
+export type CartPaymentPreview = {
+  total: number; left: number; valid: boolean; issues: string[]; forms: CartFormPreview[];
+  balanceBefore: number; balanceAfter: number | null; month: MonthKey;
+};
+export type CartCheckoutResult = {
+  total: number; topArea: CartArea;
+  forms: { key: string; kind: CartFormInput['kind']; id: number | null; name: string; amount: number; installments: number; area: CartArea; entries: { description: string; amount: number }[] }[];
+};
+
+// Uma divisão que deixou de valer (RN-10): a tela volta para "Dividir" com o motivo.
+export class CartDraftError extends Error {
+  constructor(message: string) { super(message); this.name = 'CartDraftError'; }
+}
+
+const cartTotalOf = (item: StoredCartItem) => cents(item.price * item.quantity);
+const cartLinesOf = (state: State): CartLine[] => state.cartItems.map((i) => ({ id: i.id, categoryId: i.categoryId, total: toCents(cartTotalOf(i)) }));
+
+// RN-01
+function requireCartItem(state: State, input: CartItemInput) {
+  const name = requireText(input.name, 'Produto', 120);
+  const price = Number(input.price);
+  if (!Number.isFinite(price) || cents(price) < 0.01) throw new Error('O preço deve ser maior que zero.');
+  const quantity = Number(input.quantity);
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) throw new Error('A quantidade deve ser um número inteiro de 1 a 99.');
+  const store = typeof input.store === 'string' ? input.store.trim() : '';
+  if (store.length > 120) throw new Error('Loja ou link deve ter no máximo 120 caracteres.');
+  return { name, price: cents(price), quantity, categoryId: requireCategory(state, input.categoryId), store };
+}
+
+const findCartItem = (state: State, itemId: number) => {
+  const item = state.cartItems.find((i) => i.id === itemId);
+  if (!item) throw new Error('Produto não encontrado.');
+  return item;
+};
+
+// RF-01 / RF-02
+export async function getCart(): Promise<Cart> {
+  const state = await load();
+  const items = state.cartItems.map((i) => ({ ...i, categoryName: categoryNameOf(state, i.categoryId), total: cartTotalOf(i) }));
+  return { items, productCount: items.length, itemCount: items.reduce((n, i) => n + i.quantity, 0), total: sum(items.map((i) => i.total)) };
+}
+
+// RF-03 / D1
+export function addCartItem(input: CartItemInput) {
+  return mutate((state) => {
+    if (state.cartItems.length >= MAX_CART_ITEMS) throw new Error(`O carrinho aceita até ${MAX_CART_ITEMS} produtos.`);
+    const item: StoredCartItem = { id: state.nextId++, ...requireCartItem(state, input) };
+    state.cartItems.push(item);
+    return item;
+  });
+}
+
+export function updateCartItem(itemId: number, input: CartItemInput) {
+  return mutate((state) => {
+    const item = findCartItem(state, itemId);
+    Object.assign(item, requireCartItem(state, input));
+    return item;
+  });
+}
+
+// D13 / RN-14: remover não pergunta e devolve o Desfazer, que repõe o produto na mesma posição.
+export function removeCartItem(itemId: number) {
+  return mutateUndoable((state) => {
+    findCartItem(state, itemId);
+    state.cartItems = state.cartItems.filter((i) => i.id !== itemId);
+  });
+}
+
+export function clearCart() {
+  return mutate((state) => { state.cartItems = []; });
+}
+
+// RN-04: o que cada benefício pode pagar no mês corrente.
+function cartCapsOf(state: State) {
+  const now = currentMonth();
+  return state.benefits.map((benefit) => {
+    const item = benefitItemOf(state, benefit, now);
+    const active = benefitActiveIn(benefit, now);
+    const byCategory: Record<number, number> = {};
+    for (const part of item.split) {
+      const row = item.categories.find((r) => r.categoryId === part.categoryId);
+      if (row && !row.closed) byCategory[part.categoryId] = Math.max(0, toCents(row.availableAmount));
+    }
+    const cap: BenefitCap = { id: benefit.id, divided: item.split.length > 0, available: active ? Math.max(0, toCents(item.availableAmount)) : 0, byCategory: active ? byCategory : {} };
+    return { benefit, item, cap };
+  });
+}
+
+// RF-04 / D6 / D7: o total, o saldo de hoje, o que cada benefício cobre e a fatura de cada cartão.
+export async function getCartCoverage(): Promise<CartCoverage> {
+  const state = await load();
+  const now = currentMonth();
+  const lines = cartLinesOf(state);
+  const total = lines.reduce((n, l) => n + l.total, 0);
+  return {
+    total: fromCents(total),
+    balanceToday: balanceOf(state, now),
+    benefits: cartCapsOf(state).map(({ benefit, item, cap }) => {
+      const coverage = coverageOf(cap, lines);
+      return { id: benefit.id, name: benefit.name, available: item.availableAmount, coverage: fromCents(coverage), divided: cap.divided, canPayAlone: lines.length > 0 && coverage >= total };
+    }),
+    cards: state.cards.map((c) => ({ id: c.id, name: c.name, color: c.color, invoice: toCard(state, c, now).invoiceAmount })),
+  };
+}
+
+const cartFormName = (state: State, form: CartForm) =>
+  form.kind === 'balance' ? 'Saldo da conta' : form.kind === 'card' ? state.cards.find((c) => c.id === form.id)?.name ?? 'Cartão' : state.benefits.find((b) => b.id === form.id)?.name ?? 'Benefício';
+
+function describeCartIssue(state: State, forms: CartForm[], issue: CartIssue) {
+  const form = issue.formIndex === null ? null : forms[issue.formIndex];
+  const name = form ? cartFormName(state, form) : '';
+  const value = (n: number) => reais(fromCents(n));
+  switch (issue.code) {
+    case 'sum': return (issue.limit ?? 0) > 0 ? `Falta alocar ${value(issue.limit ?? 0)}.` : `A divisão passa do total em ${value(-(issue.limit ?? 0))}.`;
+    case 'amount': return `${name}: informe um valor maior que zero.`;
+    case 'duplicate': return `${name} aparece mais de uma vez.`;
+    case 'installments': return `${name}: escolha 1x, 2x, 3x, 6x ou 12x.`;
+    case 'limit': return `${name} só cobre ${value(issue.limit ?? 0)} deste carrinho.`;
+    case 'fill': return `${name} não consegue pagar o valor escolhido com estes produtos.`;
+    default: return `${name || 'A forma de pagamento'} não existe mais.`;
+  }
+}
+
+// Valida o rascunho contra o carrinho e os saldos de agora (RN-06, RN-10); não grava nada.
+function planCart(state: State, draft: CartDraft) {
+  const lines = cartLinesOf(state);
+  const caps = cartCapsOf(state).map((c) => c.cap);
+  const forms: CartForm[] = (draft?.forms ?? []).map((f) => {
+    const amount = toCents(Number(f.amount));
+    if (f.kind === 'balance') return { kind: 'balance', amount };
+    if (f.kind === 'card') return { kind: 'card', id: Number(f.id), amount, installments: Number(f.installments ?? 1) };
+    return { kind: 'benefit', id: Number(f.id), amount };
+  });
+  const exists = (form: CartForm) => form.kind === 'balance' || (form.kind === 'card' ? state.cards.some((c) => c.id === form.id) : state.benefits.some((b) => b.id === form.id));
+  const checked = validateForms(lines, forms, caps, exists);
+  const pieces = checked.issues.length ? [] : distribute(lines, forms, caps).pieces;
+  return { lines, caps, forms, pieces, issues: checked.issues, left: checked.left, total: checked.total, messages: checked.issues.map((i) => describeCartIssue(state, forms, i)) };
+}
+
+// D4 / RN-08 / RN-09: cada pedaço vira um lançamento de hoje, na categoria do produto; qualquer erro desfaz tudo (quem chama
+// trabalha numa cópia do estado).
+function applyCart(state: State, plan: ReturnType<typeof planCart>): CartCheckoutResult {
+  const date = today();
+  const items = new Map(state.cartItems.map((i) => [i.id, i]));
+  const entries = plan.forms.map(() => [] as { description: string; amount: number }[]);
+  const cards = new Set<number>();
+  for (const piece of plan.pieces) {
+    const item = items.get(piece.lineId)!;
+    const form = plan.forms[piece.formIndex];
+    const description = `${item.name}${item.quantity > 1 ? ` (${item.quantity}×)` : ''}`;
+    const amount = fromCents(piece.amount);
+    if (form.kind === 'benefit') {
+      const benefit = findBenefit(state, form.id);
+      state.benefitSpends.push({ id: state.nextId++, benefitId: benefit.id, ...requireBenefitSpend(state, benefit, item.categoryId, { description, amount, date }) });
+    } else if (form.kind === 'balance') {
+      state.dailyExpenses.push({ id: state.nextId++, ...requireDailyExpense(state, item.categoryId, { description, amount, date }) });
+    } else if (form.installments === 1) {
+      const card = findCard(state, form.id);
+      const movement: StoredMovement = {
+        id: state.nextId++, cardId: card.id, categoryId: requireCategory(state, item.categoryId),
+        description: requireText(description, 'Descrição', 200), amount: requireAmount(amount, 'Valor'), date: requireDate(date),
+      };
+      ensureMonthOf(state, card, movement.date);
+      state.movements.push(movement);
+    } else {
+      const card = findCard(state, form.id);
+      const purchase: StoredPurchase = {
+        id: state.nextId++, cardId: card.id, categoryId: requireCategory(state, item.categoryId),
+        ...requirePurchase({ description, totalAmount: amount, installmentCount: form.installments, installment: 1, firstInstallment: 1, date }),
+      };
+      state.purchases.push(purchase);
+      cards.add(card.id);
+    }
+    entries[piece.formIndex].push({ description, amount });
+  }
+  for (const cardId of cards) syncPurchases(state, cardId);
+  const area = (form: CartForm): CartArea => (form.kind === 'balance' ? 'income' : form.kind === 'card' ? 'cards' : 'benefits');
+  const forms = plan.forms.map((form, index) => ({
+    key: formKey(form), kind: form.kind, id: form.kind === 'balance' ? null : form.id, name: cartFormName(state, form), amount: fromCents(form.amount),
+    installments: form.kind === 'card' ? form.installments : 1, area: area(form), entries: entries[index],
+  }));
+  const top = forms.reduce((best, f) => (f.amount > best.amount ? f : best), forms[0]);
+  return { total: fromCents(plan.total), topArea: top?.area ?? 'income', forms };
+}
+
+// RF-05 / RF-06 / RF-07 / RN-12: o que o rascunho muda, calculado numa simulação do fechamento.
+export async function getCartPaymentPreview(draft: CartDraft): Promise<CartPaymentPreview> {
+  const state = await load();
+  const now = currentMonth();
+  const plan = planCart(state, draft);
+  let sim: State | null = null;
+  const issues = [...plan.messages];
+  if (!plan.issues.length && plan.lines.length) {
+    try {
+      sim = structuredClone(state);
+      applyCart(sim, plan);
+    } catch (error) {
+      sim = null;
+      issues.push(error instanceof Error ? error.message : 'Não foi possível calcular o que vai mudar.');
+    }
+  }
+  const forms = plan.forms.map((form, index): CartFormPreview => {
+    const issue = plan.issues.find((i) => i.formIndex === index);
+    const base = { key: formKey(form), kind: form.kind, id: form.kind === 'balance' ? null : form.id, name: cartFormName(state, form), amount: fromCents(form.amount), installments: form.kind === 'card' ? form.installments : 1 };
+    const limit = form.kind === 'benefit' ? fromCents(coverageOf(plan.caps.find((c) => c.id === form.id) ?? { id: form.id, divided: true, available: 0, byCategory: {} }, plan.lines)) : null;
+    const card = form.kind === 'card' ? state.cards.find((c) => c.id === form.id) : undefined;
+    const benefit = form.kind === 'benefit' ? state.benefits.find((b) => b.id === form.id) : undefined;
+    return {
+      ...base, limit, issue: issue ? describeCartIssue(state, plan.forms, issue) : null,
+      perInstallment: form.kind === 'card' ? cents(form.amount / 100 / form.installments) : null,
+      availableAfter: sim && benefit ? benefitItemOf(sim, findBenefit(sim, benefit.id), now).availableAmount : null,
+      invoiceBefore: card ? toCard(state, card, now).invoiceAmount : null,
+      invoiceAfter: sim && card ? toCard(sim, findCard(sim, card.id), now).invoiceAmount : null,
+    };
+  });
+  return { total: fromCents(plan.total), left: fromCents(plan.left), valid: Boolean(sim), issues, forms, balanceBefore: balanceOf(state, now), balanceAfter: sim ? balanceOf(sim, now) : null, month: now };
+}
+
+// RF-08 / D10 / D11 / RN-09: valida de novo com a situação de agora, cria tudo de uma vez e esvazia o carrinho.
+export function checkoutCart(draft: CartDraft) {
+  return mutate((state): CartCheckoutResult => {
+    const plan = planCart(state, draft);
+    if (!plan.lines.length) throw new CartDraftError('O carrinho está vazio.');
+    if (plan.issues.length) throw new CartDraftError(plan.messages.join(' '));
+    const result = applyCart(state, plan);
+    state.cartItems = [];
+    return result;
+  });
+}
+
+// D9: a divisão sugerida (cada benefício no máximo do que cobre e o resto no primeiro cartão, ou no saldo).
+export async function getCartSuggestion(): Promise<CartFormInput[]> {
+  const state = await load();
+  const forms = suggestForms(cartLinesOf(state), cartCapsOf(state).map((c) => c.cap), state.cards[0]?.id ?? null);
+  return forms.map((f) => f.kind === 'balance' ? { kind: 'balance', amount: fromCents(f.amount) } : f.kind === 'card' ? { kind: 'card', id: f.id, amount: fromCents(f.amount), installments: f.installments } : { kind: 'benefit', id: f.id, amount: fromCents(f.amount) });
 }

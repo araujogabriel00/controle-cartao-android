@@ -58,6 +58,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 35. [Aba Entradas no desenho v3](#35-aba-entradas-no-desenho-v3)
 36. [Aba Cartões na nova versão](#36-aba-cartões-na-nova-versão)
 37. [Sonhos](#37-sonhos)
+38. [Carrinho de compras](#38-carrinho-de-compras)
 
 ---
 
@@ -2010,6 +2011,7 @@ Funcionalidade: Início com mini-gráficos
     Dado que há saldo, uma fatura e um benefício
     Quando eu abro o Início
     Então vejo os painéis "Saldo", "Cartões", "Benefícios" e "Sonhos" (seção 37), nessa ordem
+    E, com produtos no carrinho, a barra "Carrinho · N itens" (seção 38) acima da barra inferior
     E cada painel mostra o valor e um mini-gráfico
 
   Cenário: Tendência do saldo
@@ -2421,3 +2423,139 @@ Funcionalidade: Sonhos
 ```
 
 Detalhes que a spec fecha na implementação: o plano guarda partes inteiras (de 1 a 100) que somam 100% entre os sonhos ativos, e o "−" e o "+" mexem de 5 em 5 pontos; o percentual vai de 0 a 50%; no máximo 12 sonhos ativos; o guardado inicial não mexe no saldo e deve ser menor que a meta; um sonho conquistado ou encerrado devolve a parte aos outros na proporção; editar a meta não a deixa menor que o já guardado; sonhos não entram no Desfazer. Os testes dos cenários estão em `src/data/dreams.test.ts` (dados) e `src/pages/sonhos.test.tsx` (telas).
+
+---
+
+## 38. Carrinho de compras
+
+Resumo. A especificação completa está em [`specs/carrinho.md`](specs/carrinho.md). O carrinho é uma lista única de produtos (nome, preço da unidade, quantidade, categoria e uma anotação de loja, no máximo 50), guardada no aparelho. Enquanto está aberto, **nada é lançado**. Só ao fechar a pessoa escolhe de onde o dinheiro sai: **Saldo da conta** (vira gasto do dia a dia), um **Cartão** em 1x, 2x, 3x, 6x ou 12x (compra avulsa ou parcelada), um **Benefício** (gasto do benefício) ou uma **divisão** entre várias formas. Ao confirmar, cada pedaço de produto vira um lançamento de hoje, na categoria do produto, tudo numa só gravação. O formato salvo é a versão 13 (`cartItems`). As telas ficam em `#/carrinho`, `#/carrinho/produto`, `#/carrinho/produto/ID`, `#/carrinho/pagamento`, `#/carrinho/dividir`, `#/carrinho/confirmar` e `#/carrinho/ok`; o acesso é pelo item "Carrinho" do menu ⋯ e pela barra do Início.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Carrinho de compras
+
+  Contexto:
+    Dado que hoje é 15 de outubro de 2026
+    E um cartão "Nubank" com fatura de R$ 417,16 neste mês
+    E o benefício "Vale-refeição" com divisão só em "Alimentação" e R$ 480,00 disponíveis
+    E o saldo é R$ 12.349,54
+
+  Cenário: Carrinho vazio
+    Quando eu abro "Carrinho" pelo menu ⋯
+    Então vejo "Seu carrinho está vazio" e o botão "Adicionar produto"
+
+  Cenário: Adicionar produtos
+    Quando eu adiciono "Fone de ouvido" R$ 120,00 x1 "Eletrônicos"
+    E "Arroz 5 kg" R$ 32,90 x2 "Alimentação"
+    E "Café" R$ 18,50 x1 "Alimentação"
+    Então o carrinho mostra 4 itens e o total R$ 204,30
+    E o saldo, a fatura e o benefício não mudaram
+
+  Cenário: Validar o produto
+    Quando eu tento adicionar um produto com preço zero
+    Então vejo o erro no formulário e nada é salvo
+
+  Cenário: Alterar a quantidade
+    Quando eu aumento a quantidade do "Café" para 2
+    Então o total do produto passa a R$ 37,00 e o do carrinho a R$ 222,80
+
+  Cenário: Remover e desfazer
+    Quando eu removo um produto
+    Então ele some e aparece "Desfazer"
+    Quando eu toco em "Desfazer"
+    Então o produto volta na mesma posição
+
+  Cenário: Barra no Início
+    Dado 3 produtos no carrinho
+    Quando eu abro o Início
+    Então vejo a barra "Carrinho · 4 itens" com o total R$ 204,30
+
+  Cenário: Pagar no saldo
+    Quando eu fecho o carrinho e escolho "Saldo da conta" e confirmo
+    Então os 3 produtos viram gastos do dia a dia de hoje, na categoria de cada um
+    E o saldo cai R$ 204,30 e o carrinho fica vazio
+
+  Cenário: Pagar no cartão à vista
+    Quando eu escolho "Cartão Nubank" em 1x e confirmo
+    Então os 3 produtos viram compras avulsas hoje
+    E a fatura de outubro passa de R$ 417,16 para R$ 621,46
+
+  Cenário: Pagar no cartão em 3x
+    Quando eu escolho "Cartão Nubank" em 3x
+    Então vejo "3x de R$ 68,10" e a fatura de outubro passando de R$ 417,16 para R$ 485,28
+    Quando eu confirmo
+    Então cada produto vira uma compra parcelada em 3 vezes
+    # O resto dos centavos de cada produto fica na 1.ª parcela: 40,00 + 21,94 + 6,18 = 68,12.
+
+  Cenário: Benefício que não cobre sozinho
+    Dado que só "Arroz 5 kg" e "Café" são de Alimentação
+    Então "Vale-refeição" aparece desativado com "Cobre R$ 84,30 de R$ 204,30"
+
+  Cenário: Benefício que cobre sozinho
+    Dado um carrinho só com produtos de Alimentação de R$ 84,30
+    Então "Vale-refeição" pode ser escolhido sozinho
+
+  Cenário: Dividir pagamento
+    Quando eu divido R$ 84,30 no "Vale-refeição" e R$ 120,00 no "Cartão Nubank" em 3x
+    Então "Falta alocar" mostra R$ 0,00
+    E ao confirmar, "Arroz 5 kg" e "Café" são gastos do benefício
+    E "Fone de ouvido" é uma compra em 3x no cartão
+
+  Cenário: Sugerir divisão
+    Quando eu toco em "Sugerir divisão"
+    Então o Vale-refeição recebe R$ 84,30 e o cartão o resto
+
+  Cenário: Divisão que não fecha
+    Quando a soma dos valores é menor que o total
+    Então "Falta alocar" mostra a diferença e "Continuar" fica desativado
+
+  Cenário: Benefício acima da cobertura
+    Quando eu aloco R$ 100,00 no "Vale-refeição"
+    Então vejo o aviso do limite de R$ 84,30 e "Continuar" fica desativado
+
+  Cenário: Produto quebrado entre duas formas
+    Quando eu aloco R$ 50,00 no benefício e o resto no saldo
+    Então "Arroz 5 kg" gera um gasto de benefício de R$ 50,00 e um gasto do dia a dia de R$ 15,80
+
+  Cenário: Confirmar mostra o que muda
+    Dado a divisão R$ 84,30 no benefício e R$ 120,00 no cartão em 3x
+    Então vejo "Disponível fica R$ 395,70" e "Fatura de outubro passa de R$ 417,16 para R$ 457,16"
+    E o saldo que ficará, porque a fatura também desconta do saldo
+
+  Cenário: Falha ao confirmar
+    Dado que o benefício foi fechado para Alimentação antes de confirmar
+    Quando eu confirmo
+    Então nada é criado, o carrinho continua cheio e a tela volta para "Dividir" com o motivo
+
+  Cenário: Saldo negativo
+    Dado o saldo de hoje menor que o total
+    Quando eu escolho "Saldo da conta"
+    Então vejo "Deixa o saldo negativo" e posso continuar
+
+  Cenário: Excluir uma categoria
+    Dado "Café" na categoria "Alimentação"
+    Quando eu excluo a categoria "Alimentação"
+    Então "Café" continua no carrinho sem categoria
+
+  Cenário: Compra registrada
+    Quando eu confirmo a compra dividida
+    Então vejo "Compra registrada" com os lançamentos por forma
+    E "Ver lançamentos" abre a aba da forma com mais valor
+
+  Cenário: Esvaziar o carrinho
+    Quando eu escolho "Esvaziar carrinho" e confirmo
+    Então o carrinho fica vazio
+
+  Cenário: Valores escondidos
+    Quando o olho está fechado
+    Então preços, totais e efeitos aparecem mascarados
+    E o campo de preço do formulário continua editável
+
+  Cenário: Falha ao ler o carrinho
+    Dado que a leitura do carrinho falha
+    Quando eu abro "Carrinho"
+    Então vejo o erro com "Tentar de novo" e o Início não mostra a barra
+```
+
+Detalhes que a spec fecha na implementação: o item "Carrinho" do menu ⋯ aparece sempre (abre o estado vazio) e mostra a quantidade só quando há produtos; a barra do Início some com o carrinho vazio; o benefício **dividido** só cobre categorias da divisão que estejam abertas (produto sem categoria não é coberto) e o benefício **sem divisão** cobre qualquer produto até o disponível; o "Saldo depois" vem de uma simulação do fechamento, então inclui o gasto do dia a dia e a 1.ª parcela (ou a compra à vista) que entra na fatura; sem cartão, "Sugerir divisão" põe o resto no saldo. O rascunho do pagamento vive só na memória: recarregar o app em qualquer passo leva de volta a `#/carrinho`. Os testes dos cenários estão em `src/lib/cart-checkout.test.ts` (distribuição), `src/data/cart.test.ts` (dados) e `src/pages/carrinho.test.tsx` (telas).

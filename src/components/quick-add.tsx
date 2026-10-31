@@ -4,7 +4,7 @@ import { useLocation } from 'wouter';
 import {
   getGetBenefitsQueryKey, getGetCardsQueryKey, getGetCategoriesQueryKey,
   useCreateBenefitSpend, useCreateBill, useCreateDailyExpense, useCreateIncome, useCreateMovement, useCreatePurchase, useCreateRecurring,
-  useGetBenefits, useGetCards, useGetCategories,
+  useGetBenefits, useGetCards, useGetCart, useGetCategories,
   type BenefitItem,
 } from '@workspace/api-client-react';
 import { CreditCard, HandCoins, Plus, Receipt, ShoppingBasket, Utensils } from 'lucide-react';
@@ -36,6 +36,9 @@ function FooterBar({ month, location }: { month: MonthKey; location: string }) {
   const [, navigate] = useLocation();
   const client = useQueryClient();
   const [sheet, setSheet] = useState(false);
+  // Carrinho D3: com a barra do carrinho no Início, o botão Lançar sobe para não ficar sobre ela.
+  const cartCount = useGetCart().data?.productCount ?? 0;
+  const cartBar = areaOf(location) === 'home' && cartCount > 0;
   const [form, setForm] = useState<Kind | null>(null);
   const [pickBenefit, setPickBenefit] = useState(false);
   const [benefit, setBenefit] = useState<BenefitItem | null>(null);
@@ -85,7 +88,7 @@ function FooterBar({ month, location }: { month: MonthKey; location: string }) {
     {/* previsoes D14: na área Previsões o botão faz o que a área é. */}
     {areaOf(location) === 'forecasts'
       ? <button data-testid="button-new-forecast" onClick={() => navigate('/previsoes/nova')} className="fixed right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand shadow-[0_8px_18px_-10px_rgba(0,0,0,.7)] transition hover:bg-brand-hover bottom-[calc(88px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]"><Plus size={22} strokeWidth={2.2}/>Nova previsão</button>
-      : <button data-testid="button-quick-add" onClick={() => setSheet(true)} className="fixed right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand shadow-[0_8px_18px_-10px_rgba(0,0,0,.7)] transition hover:bg-brand-hover bottom-[calc(88px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]"><Plus size={22} strokeWidth={2.2}/>Lançar</button>}
+      : <button data-testid="button-quick-add" onClick={() => setSheet(true)} className={`fixed right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand shadow-[0_8px_18px_-10px_rgba(0,0,0,.7)] transition hover:bg-brand-hover ${cartBar ? 'bottom-[calc(160px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]' : 'bottom-[calc(88px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]'}`}><Plus size={22} strokeWidth={2.2}/>Lançar</button>}
 
     {sheet && <BottomSheet title="Lançar" onClose={() => setSheet(false)}>
       <div className="space-y-2">

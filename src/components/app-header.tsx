@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { Check, Eye, EyeOff, History, type LucideIcon, MoreHorizontal, Moon, Smartphone, Sparkles, Sun, Tag } from 'lucide-react';
+import { Check, Eye, EyeOff, History, type LucideIcon, MoreHorizontal, Moon, ShoppingCart, Smartphone, Sparkles, Sun, Tag } from 'lucide-react';
+import { useGetCart } from '@workspace/api-client-react';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { MonthNav } from '@/components/month-nav';
 import { type Area, type MonthKey } from '@/lib/format';
@@ -18,6 +19,7 @@ const THEMES: { value: Theme; label: string; icon: LucideIcon }[] = [
 export function AppHeader({ area, month, canGoPrevious, canGoNext }: { area: Area; month: MonthKey; canGoPrevious?: boolean; canGoNext?: boolean }) {
   const [, navigate] = useLocation();
   const hidden = useHideValues();
+  const cartCount = useGetCart().data?.itemCount ?? 0;
   const theme = useTheme();
   const [menu, setMenu] = useState(false);
   const iconButton = 'grid h-12 w-12 shrink-0 place-items-center rounded-full border border-line bg-surface text-ink-soft transition hover:bg-hover';
@@ -31,6 +33,7 @@ export function AppHeader({ area, month, canGoPrevious, canGoNext }: { area: Are
     </header>
     {menu && <BottomSheet title="Mais opções" onClose={() => setMenu(false)}>
       <div className="space-y-2">
+        <button data-testid="menu-cart" onClick={() => go('/carrinho')} className={item}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-tint text-brand"><ShoppingCart size={18}/></span><span className="min-w-0 flex-1">Carrinho</span>{cartCount > 0 && <span data-testid="text-menu-cart-count" className="shrink-0 rounded-full bg-tint px-2.5 py-0.5 font-mono-data text-[14px] text-brand">{cartCount}</span>}</button>
         <button data-testid="menu-dreams" onClick={() => go('/sonhos')} className={item}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-tint text-brand"><Sparkles size={18}/></span>Sonhos</button>
         <button data-testid="menu-categories" onClick={() => go('/categorias')} className={item}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-tint text-brand"><Tag size={18}/></span>Categorias</button>
         <button data-testid="menu-history" onClick={() => go('/historico')} className={item}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-tint text-brand"><History size={18}/></span>Histórico</button>
