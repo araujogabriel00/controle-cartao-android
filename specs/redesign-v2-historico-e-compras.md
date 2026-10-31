@@ -32,6 +32,8 @@ As duas telas que saem da aba Cartões ("Histórico" e "Todas as compras") ainda
 | D10 | O item é **compacto** (mínimo 64 px): nome (e "Parcela n/m" na linha de baixo), "Categoria · data" embaixo, e "Mensal" e "prevista" como **texto** na linha de baixo, não como selo colorido; valor com "−" e menu ⋯ de 48 px. | Nunca só cor; consistência com as demais listas v2. |
 | D11 | Editar e excluir (com Desfazer, `ScopeDialog` em recorrentes) **não mudam**. | Fora do escopo visual. |
 | D12 | Com o olho fechado, valores, totais e colunas seguem a regra do olho. | Regra global v2. |
+| D13 | **A lista abre no mês de onde a pessoa veio.** "Todas as compras" passa a levar o mês no fim da rota (`#/compras/mes/AAAA-MM`, como `#/cartoes/mes/AAAA-MM`); ao abrir, a lista **rola até o título desse mês** e ele fica visível logo abaixo do cabeçalho. `#/compras` sem mês vale o mês atual. O **voltar** da tela leva à aba Cartões **desse mesmo mês**. | Pedido do usuário: a lista deve ir para o mês em que foi aberta. Hoje ela sempre abre no topo e o voltar sempre vai ao mês atual. |
+| D14 | Se o mês pedido **não tem compras** (nem previstas), a lista rola até o **mês mais próximo que tenha**, preferindo o mais recente anterior; sem nenhum, fica no topo. Busca e filtro **não** voltam a rolar sozinhos. | Evita ficar parado no vazio. |
 
 ## 3. Requisitos
 
@@ -49,8 +51,10 @@ As duas telas que saem da aba Cartões ("Histórico" e "Todas as compras") ainda
 | RF-08 | Com filtro de categoria, aparecem a etiqueta com ✕ e o "Total do filtro" (D8); o ✕ remove o filtro. |
 | RF-09 | Tocar num item abre a edição; o ⋯ tem "Editar" e "Excluir" (com Desfazer), como hoje. |
 | RF-10 | Sem resultado, a tela mostra o texto vazio atual (com a ação de limpar a busca/filtro). |
-| RF-11 | Voltar leva à aba Cartões do mês atual. |
+| RF-11 | Sem mês na rota (`#/compras`), voltar leva à aba Cartões do mês atual. |
 | RF-12 | Com o olho fechado nada mostra valor em reais (texto, `aria-label`, HTML) e as colunas viram faixa neutra. |
+| RF-13 | Abrir "Todas as compras" a partir de um mês (link da aba Cartões, "Todos os meses" do Histórico) abre `#/compras/mes/AAAA-MM` com a lista rolada até o grupo desse mês (D13, D14). |
+| RF-14 | O voltar de "Todas as compras" leva a `#/cartoes/mes/AAAA-MM` do mês de onde veio (substitui o RF-11 quando há mês na rota). |
 
 ### 3.2 Regras de negócio (RN)
 
@@ -145,8 +149,30 @@ Funcionalidade: Histórico e Todas as compras na nova versão
     Então a compra some e aparece "Desfazer"
 
   Cenário: Voltar
+    Dado que abri "Todas as compras" sem mês na rota
     Quando eu toco em voltar
     Então abre a aba Cartões do mês atual
+
+  Cenário: A lista abre no mês de onde vim
+    Dado compras em setembro, outubro e novembro
+    E que estou na aba Cartões em setembro
+    Quando eu toco em "Todas as compras"
+    Então abre `#/compras/mes/2026-09`
+    E o título "Setembro de 2026" está visível logo abaixo do cabeçalho
+
+  Cenário: Voltar leva ao mesmo mês
+    Dado que abri "Todas as compras" a partir de setembro
+    Quando eu toco em voltar
+    Então abre a aba Cartões em setembro
+
+  Cenário: Mês sem compras
+    Dado compras só em agosto e novembro e a lista aberta em outubro
+    Então a lista rola até "Agosto de 2026"
+
+  Cenário: Busca não rola sozinha
+    Dado a lista aberta em setembro
+    Quando eu digito uma busca
+    Então a posição da lista não é forçada de volta a setembro
 
   Cenário: Olho fechado
     Dado o olho fechado
@@ -167,7 +193,8 @@ Funcionalidade: Histórico e Todas as compras na nova versão
 | RF-08 | Filtrar por categoria |
 | RF-09 | Editar pela lista; Excluir com Desfazer |
 | RF-10 | Sem resultados |
-| RF-11 | Voltar |
+| RF-11, RF-14 | Voltar; Voltar leva ao mesmo mês |
+| RF-13, D14 | A lista abre no mês de onde vim; Mês sem compras; Busca não rola sozinha |
 | RF-12 | Olho fechado |
 | RN-01 | todos (valores iguais aos de antes) |
 | RN-04 | Item sem selos coloridos (e roteiro de verificação) |
@@ -182,6 +209,7 @@ Sem mudança no formato salvo, na camada de dados nem nos hooks. A média (RN-02
 - **Histórico:** `Columns` com 6 colunas (a do mês atual com contorno/hachura e o texto "em aberto" abaixo, nunca só cor); média logo abaixo em linha própria; seções com título de 20 px; linhas de 64 px.
 - **Todas as compras:** busca em pílula (52 px, ícone de lupa), botão de categoria de 48 px com seta, ou etiqueta com ✕ e "Total do filtro" em mono; título de mês de 20 px com total à direita; cartão com divisórias de 1 px.
 - **Item:** 64 px no mínimo; nome em negrito; abaixo "Parcela n/m · Categoria · data" e "Mensal"/"prevista" em texto; valor "− R$" e ⋯ de 48 px.
+- **Rota e rolagem:** `#/compras/mes/AAAA-MM` (e `#/compras`); o título de cada mês tem `id`/`data-testid="group-AAAA-MM"` e a rolagem usa `scrollIntoView` com margem do cabeçalho, uma vez ao carregar os dados.
 - **Referência exata:** V2_10, V2_14 e V2_15 do canvas.
 
 ## 7. Fora de escopo
@@ -194,6 +222,7 @@ Sem mudança no formato salvo, na camada de dados nem nos hooks. A média (RN-02
 
 - [ ] `npm test`, `npm run typecheck` e `npm run build` passam.
 - [ ] Cada cenário da seção 4 tem teste (`historico.test.tsx`, `compras.test.tsx`).
+- [ ] Abrir a lista a partir de um mês rola até ele e o voltar retorna a esse mês; mês sem compras cai no mais próximo.
 - [ ] Valores das duas telas iguais aos da versão anterior para os mesmos dados.
 - [ ] Média dos últimos 5 meses conforme RN-02.
 - [ ] Em 360 × 780: sem scroll horizontal, alvos ≥ 48 px, itens ≥ 64 px, texto ≥ 14 px.
@@ -203,11 +232,12 @@ Sem mudança no formato salvo, na camada de dados nem nos hooks. A média (RN-02
 ## 9. Tarefas
 
 1. Histórico: gráfico de 6 colunas, média (RN-02), listas v2 com "em aberto".
-2. Todas as compras: cabeçalho, busca em pílula, `<select>` estilizado, etiqueta com ✕ e "Total do filtro".
-3. Item compacto sem selos coloridos (D10), título de mês com total (D9).
-4. Testes dos cenários novos e ajuste dos existentes.
-5. `FUNCIONALIDADES.md` e `README.md`.
-6. Rodar `test`, `typecheck` e `build`.
+2. Rota `#/compras/mes/AAAA-MM`: links de origem passam o mês, rolagem até o grupo (D13, D14) e voltar ao mês (RF-14).
+3. Todas as compras: cabeçalho, busca em pílula, `<select>` estilizado, etiqueta com ✕ e "Total do filtro".
+4. Item compacto sem selos coloridos (D10), título de mês com total (D9).
+5. Testes dos cenários novos e ajuste dos existentes.
+6. `FUNCIONALIDADES.md` e `README.md`.
+7. Rodar `test`, `typecheck` e `build`.
 
 ## 10. Roteiro de verificação
 
