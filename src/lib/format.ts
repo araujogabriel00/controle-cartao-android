@@ -64,7 +64,7 @@ export const areaOf = (path: string): Area | null => {
   return null;
 };
 // Screens of the Entradas lists (specs/telas-de-entradas.md D10); the month goes at the end like the areas.
-export type ListKind = 'entradas' | 'contas-fixas' | 'gastos' | 'cartoes';
+export type ListKind = 'entradas' | 'contas-fixas' | 'gastos' | 'cartoes' | 'sonhos';
 export const listPath = (kind: ListKind, month: MonthKey) => `/entradas/lista/${kind}${month === currentMonth() ? '' : `/mes/${month}`}`;
 // Tela "Resumo do mês" da aba Entradas (specs/redesign-opcao-d-entradas.md D7).
 // Telas de Previsões (specs/previsoes.md D1): o dia, o saldo previsto e o formulário (nova e edição).

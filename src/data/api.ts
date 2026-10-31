@@ -14,10 +14,11 @@ export type {
   RecurringInput, StoredRecurring,
   Bills, BillOccurrence, BillInput, DailyExpense, DailyExpenses, DailyExpenseInput, MonthCash, StoredBill, StoredDailyExpense,
   BalancePoint, InvoicePoint, RecentSpend, UndoResult,
+  DreamIcon, DreamStatus, DreamItem, DreamDetail, Dreams, DreamPlan, DreamPlanItem, DreamPlanInput, DreamEntries, DreamMonthEntry, DreamInput, DreamUpdate, DreamDeposit, StoredDream, StoredDreamEntry,
   ForecastKind, ForecastPayAs, ForecastState, ForecastOccurrence, ForecastInput, ForecastMonth, ForecastDay, ForecastSummary, BalanceForecast, StoredForecast,
   Benefits, BenefitItem, BenefitSpend, BenefitRange, BenefitInput, BenefitUpdate, BenefitSpendInput, BenefitSplitItem, BenefitCategoryRow, StoredBenefit, StoredBenefitSpend,
 } from './store';
-export { INCOME_KINDS } from './store';
+export { INCOME_KINDS, DREAM_ICONS } from './store';
 
 type QueryOpts<T> = { query?: Partial<UseQueryOptions<T, Error, T, QueryKey>> };
 type MutationOpts<TData, TVars> = { mutation?: UseMutationOptions<TData, Error, TVars> };
@@ -283,3 +284,42 @@ export const useSetForecastAmount = (options?: MutationOpts<void, { forecastId: 
 
 export const usePutForecastInBalance = (options?: MutationOpts<void, { forecastId: number; month: store.MonthKey }>) =>
   useMutation({ mutationFn: ({ forecastId, month }) => store.putForecastInBalance(forecastId, month), ...options?.mutation });
+
+// Sonhos (specs/sonhos.md). Leituras sem nova tentativa (RN-17: a tela mostra "Tentar de novo" na hora).
+export const getGetDreamsQueryKey = () => ['dreams'] as const;
+export const getGetDreamQueryKey = (dreamId?: number) => key('dreams', 'one', dreamId);
+export const getGetDreamPlanQueryKey = () => ['dreams', 'plan'] as const;
+export const getGetDreamEntriesQueryKey = (month?: store.MonthKey) => key('dreams', 'entries', month);
+
+export const useGetDreams = (options?: QueryOpts<store.Dreams>) =>
+  useLocalQuery(getGetDreamsQueryKey(), () => store.getDreams(), noRetry(options));
+
+export const useGetDream = (dreamId: number, options?: QueryOpts<store.DreamDetail>) =>
+  useLocalQuery(getGetDreamQueryKey(dreamId), () => store.getDream(dreamId), noRetry(options));
+
+export const useGetDreamPlan = (options?: QueryOpts<store.DreamPlan>) =>
+  useLocalQuery(getGetDreamPlanQueryKey(), () => store.getDreamPlan(), noRetry(options));
+
+export const useGetDreamEntries = (month: store.MonthKey, options?: QueryOpts<store.DreamEntries>) =>
+  useLocalQuery(getGetDreamEntriesQueryKey(month), () => store.getDreamEntries(month), noRetry(options));
+
+export const useCreateDream = (options?: MutationOpts<store.StoredDream, { data: store.DreamInput }>) =>
+  useMutation({ mutationFn: ({ data }) => store.createDream(data), ...options?.mutation });
+
+export const useUpdateDream = (options?: MutationOpts<store.StoredDream, { dreamId: number; data: store.DreamUpdate }>) =>
+  useMutation({ mutationFn: ({ dreamId, data }) => store.updateDream(dreamId, data), ...options?.mutation });
+
+export const useDeleteDream = (options?: MutationOpts<void, { dreamId: number }>) =>
+  useMutation({ mutationFn: ({ dreamId }) => store.deleteDream(dreamId), ...options?.mutation });
+
+export const useSaveDreamPlan = (options?: MutationOpts<void, { data: store.DreamPlanInput }>) =>
+  useMutation({ mutationFn: ({ data }) => store.saveDreamPlan(data), ...options?.mutation });
+
+export const useDepositDream = (options?: MutationOpts<store.DreamDeposit, { dreamId: number; amount: number }>) =>
+  useMutation({ mutationFn: ({ dreamId, amount }) => store.depositDream(dreamId, amount), ...options?.mutation });
+
+export const useWithdrawDream = (options?: MutationOpts<{ dreamId: number; saved: number }, { dreamId: number; amount: number }>) =>
+  useMutation({ mutationFn: ({ dreamId, amount }) => store.withdrawDream(dreamId, amount), ...options?.mutation });
+
+export const useCloseDream = (options?: MutationOpts<void, { dreamId: number; choice: 'keep' | 'use' }>) =>
+  useMutation({ mutationFn: ({ dreamId, choice }) => store.closeDream(dreamId, choice), ...options?.mutation });

@@ -26,6 +26,8 @@ type ScopeAsk = { kind: 'income'; action: 'edit' | 'delete'; item: IncomeOccurre
 
 const TITLES: Record<ListKind, { kicker: string; title: string }> = {
   'entradas': { kicker: 'Dinheiro que entra', title: 'Entradas' },
+  // A lista de sonhos tem tela própria (pages/sonhos-lista.tsx); a entrada fica só para o tipo fechar.
+  'sonhos': { kicker: 'Aportes e retiradas', title: 'Guardado em sonhos' },
   'contas-fixas': { kicker: 'Se repetem todo mês', title: 'Contas fixas' },
   'gastos': { kicker: 'Avulsos', title: 'Gastos do dia a dia' },
   'cartoes': { kicker: 'Faturas do mês', title: 'Cartões' },

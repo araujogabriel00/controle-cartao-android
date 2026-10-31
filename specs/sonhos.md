@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Proposta |
+| Status | Implementada |
 | Criada em | 30/10/2026 |
 | Escopo | `src/data/store.ts` (formato v12, sonhos, aportes, plano, linha "Guardado em sonhos" no caixa), `src/data/api.ts`, `src/App.tsx` (rotas), `src/lib/format.ts` (rotas e `ListKind`), novas telas `src/pages/{sonhos,sonhos-plano,sonho-novo,sonho-caixinha,sonho-conquista,sonhos-lista}.tsx`, novos componentes `src/components/{dream-parts,dream-sheets}.tsx` e `src/components/charts/{dream-ring,jar}.tsx`, `src/pages/inicio.tsx` (painel), `src/pages/{entradas,entradas-resumo,entradas-lista}.tsx` (5.ª linha), `src/components/app-header.tsx` (item no menu ⋯), `FUNCIONALIDADES.md`, `README.md`, testes (seção 10) |
 | Depende de | [`contas-e-gastos.md`](contas-e-gastos.md) (caixa do mês, gastos do dia a dia), [`redesign-v2-entradas.md`](redesign-v2-entradas.md) (linhas "Entrou e saiu"), [`inicio-com-minigraficos.md`](inicio-com-minigraficos.md), [`previsoes.md`](previsoes.md) (renda inclui previsões que entraram), [`desfazer-exclusao.md`](desfazer-exclusao.md), [`redesign-v2-fundacao.md`](redesign-v2-fundacao.md) (olho, tema) |
@@ -287,18 +287,18 @@ type StoredDreamEntry = {
 
 ## 9. Critérios de aceite
 
-- [ ] `npm test`, `npm run typecheck` e `npm run build` passam.
-- [ ] Dados salvos na v11 abrem sem perda e passam à v12; nada que existia muda de valor.
-- [ ] Criar, editar e excluir sonho funcionam conforme D7, D10 e RN-05; o guardado inicial não mexe no saldo.
-- [ ] Guardar e retirar mexem no saldo e na linha "Guardado em sonhos" do mês certo; resultado do mês, saldo e as séries do Início conferem.
-- [ ] Plano só salva com 100%; ritmo e previsão conferem com D4 e D5.
-- [ ] Conquista abre ao chegar na meta; "Manter guardado" e "Usar o dinheiro" têm o efeito de D9 e a parte do sonho é redistribuída.
-- [ ] Excluir devolve o guardado e preserva o histórico dos meses anteriores.
-- [ ] A 5.ª linha aparece em Entradas, no Resumo e na lista, com valores que somam com o resultado.
-- [ ] Painel no Início e item no menu ⋯ levam aos Sonhos; estado vazio e falha tratados.
-- [ ] Animações funcionam e param com movimento reduzido; olho fechado mascara valores e formas.
-- [ ] Temas claro e escuro, leitor de tela e 360 px sem scroll horizontal.
-- [ ] `FUNCIONALIDADES.md` (nova seção e ajustes nas de Entradas, Resumo e Início) e `README.md` atualizados.
+- [x] `npm test`, `npm run typecheck` e `npm run build` passam.
+- [x] Dados salvos na v11 abrem sem perda e passam à v12; nada que existia muda de valor. (teste de migração em `src/data/dreams.test.ts`; sem sonhos a linha é 0 e o resultado não muda)
+- [x] Criar, editar e excluir sonho funcionam conforme D7, D10 e RN-05; o guardado inicial não mexe no saldo.
+- [x] Guardar e retirar mexem no saldo e na linha "Guardado em sonhos" do mês certo; resultado do mês, saldo e as séries do Início conferem.
+- [x] Plano só salva com 100%; ritmo e previsão conferem com D4 e D5.
+- [x] Conquista abre ao chegar na meta; "Manter guardado" e "Usar o dinheiro" têm o efeito de D9 e a parte do sonho é redistribuída.
+- [x] Excluir devolve o guardado e preserva o histórico dos meses anteriores.
+- [x] A 5.ª linha aparece em Entradas, no Resumo e na lista, com valores que somam com o resultado.
+- [x] Painel no Início e item no menu ⋯ levam aos Sonhos; estado vazio e falha tratados.
+- [x] Animações funcionam e param com movimento reduzido; olho fechado mascara valores e formas. (confete, caixinha e anel vistos no navegador; movimento reduzido e olho fechado cobertos por testes, não conferidos no sistema real)
+- [ ] Temas claro e escuro, leitor de tela e 360 px sem scroll horizontal. Pendente em parte: as telas foram conferidas em 360 × 780 px (viewport do Galaxy S25) sem scroll horizontal e só no tema escuro; o tema claro e o leitor de tela não foram conferidos.
+- [x] `FUNCIONALIDADES.md` (nova seção e ajustes nas de Entradas, Resumo e Início) e `README.md` atualizados.
 
 ## 10. Tarefas
 

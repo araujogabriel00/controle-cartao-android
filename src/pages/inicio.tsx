@@ -1,13 +1,14 @@
 import { type ReactNode } from 'react';
 import { useLocation } from 'wouter';
 import {
-  getGetBenefitsQueryKey, getGetCardsQueryKey, getGetIncomeRangeQueryKey, getGetMonthCashQueryKey,
-  useGetBalanceSeries, useGetBenefits, useGetCards, useGetForecastAlerts, useGetIncomeRange, useGetInvoiceSeries, useGetMonthCash, useGetRecentSpends,
+  getGetBenefitsQueryKey, getGetCardsQueryKey, getGetDreamPlanQueryKey, getGetDreamsQueryKey, getGetIncomeRangeQueryKey, getGetMonthCashQueryKey,
+  useGetBalanceSeries, useGetBenefits, useGetCards, useGetDreamPlan, useGetDreams, useGetForecastAlerts, useGetIncomeRange, useGetInvoiceSeries, useGetMonthCash, useGetRecentSpends,
 } from '@workspace/api-client-react';
 import { CalendarCheck, ChevronRight, CircleHelp, CreditCard, HandCoins, Plus, Utensils } from 'lucide-react';
 import { AppHeader } from '@/components/app-header';
 import { shortDate, signedAmount } from '@/components/forecast-parts';
 import { openQuickAdd } from '@/components/quick-add';
+import { HiddenChart } from '@/components/charts/chart-table';
 import { MiniColumns } from '@/components/charts/mini-columns';
 import { Sparkline } from '@/components/charts/sparkline';
 import { UsageBar } from '@/components/charts/usage-bar';
@@ -22,6 +23,7 @@ const NBSP = ' ';
 const BALANCE_MONTHS = 6;
 const INVOICE_MONTHS = 7;
 const RECENT_LIMIT = 3;
+const DREAM_LIMIT = 3;
 
 // "+ R$ 4.649,50" / "− R$ 520,00": o sinal diz o mesmo que a cor (RN-07).
 const signed = (value: number) => value > 0 ? `+${NBSP}${money(value)}` : value < 0 ? `−${NBSP}${money(-value)}` : money(value);
@@ -50,6 +52,10 @@ export default function Inicio({ month }: { month: MonthKey }) {
   const cashQuery = useGetMonthCash(month, { query: { queryKey: getGetMonthCashQueryKey(month), refetchOnWindowFocus: true } });
   const cardsQuery = useGetCards(month, { query: { queryKey: getGetCardsQueryKey(month) } });
   const benefitsQuery = useGetBenefits(month, { query: { queryKey: getGetBenefitsQueryKey(month) } });
+  // Sonhos RN-17: uma leitura que falha só derruba o painel de Sonhos, não o resto do Início.
+  const dreamsQuery = useGetDreams({ query: { queryKey: getGetDreamsQueryKey() } });
+  const planQuery = useGetDreamPlan({ query: { queryKey: getGetDreamPlanQueryKey() } });
+  const activeDreams = (dreamsQuery.data?.items ?? []).filter((dream) => dream.status === 'active');
   const balanceSeries = useGetBalanceSeries(month, BALANCE_MONTHS);
   const invoiceSeries = useGetInvoiceSeries(month, INVOICE_MONTHS);
   const recent = useGetRecentSpends(month, RECENT_LIMIT);
@@ -170,6 +176,30 @@ export default function Inicio({ month }: { month: MonthKey }) {
                 </div>
                 <UsageBar spent={benefitSpent} total={benefitTotal}/>
               </>}
+          </Panel>
+
+          {/* Sonhos D12, RN-17: o plano e uma barra por sonho ativo (até 3); sem sonhos convida a criar; a falha só derruba este painel. */}
+          <Panel testId="card-home-dreams" dot="bg-chart-in" title="Sonhos" label="Abrir Sonhos" onOpen={() => navigate('/sonhos')} delay=".1s">
+            {dreamsQuery.isError || planQuery.isError
+              ? <span data-testid="text-home-dreams-error" className="block text-[15px] text-ink-soft">Sonhos indisponível</span>
+              : !dreamsQuery.data || !planQuery.data
+                ? <div aria-busy="true" className="h-12 w-full animate-pulse rounded-lg bg-line"/>
+                : activeDreams.length === 0
+                  ? <span data-testid="text-home-dreams-empty" className="block text-[15px] text-ink-soft">Crie sua primeira caixinha e acompanhe quanto falta.</span>
+                  : <div className="min-w-0 flex-1">
+                    <span data-testid="text-home-dreams" className="block text-[16px] font-semibold text-ink">
+                      {planQuery.data.hasPlan && planQuery.data.percent > 0
+                        ? `Guardando ${money(planQuery.data.monthlyAmount)} por mês · ${isHidden() ? '••' : planQuery.data.percent}% da renda`
+                        : 'Defina quanto guardar por mês'}
+                    </span>
+                    <ul className="mt-2 space-y-2">
+                      {activeDreams.slice(0, DREAM_LIMIT).map((dream) => <li key={dream.id} data-testid={`row-home-dream-${dream.id}`}>
+                        <span className="flex items-center justify-between gap-2 text-[14px] text-ink"><span className="min-w-0 truncate">{dream.name}</span><span className="shrink-0 font-mono-data text-ink-soft">{isHidden() ? '••%' : `${Math.round(dream.percent)}%`}</span></span>
+                        <span aria-hidden className="mt-1 block">{isHidden() ? <HiddenChart height={8}/> : <span className="block h-2 overflow-hidden rounded-full bg-chart-track"><span className="block h-full rounded-full bg-chart-in" style={{ width: `${Math.min(100, dream.percent)}%` }}/></span>}</span>
+                      </li>)}
+                    </ul>
+                    {activeDreams.length > DREAM_LIMIT && <span className="mt-2 block text-[14px] text-ink-soft">e mais {activeDreams.length - DREAM_LIMIT}</span>}
+                  </div>}
           </Panel>
 
           {/* RF-06, D7: os 3 últimos gastos do mês aberto; "Ver todos" abre o Resumo do mês. */}

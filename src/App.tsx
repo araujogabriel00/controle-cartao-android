@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { getGetBenefitRangeQueryKey, getGetBenefitsQueryKey, getGetForecastRangeQueryKey, getGetIncomeRangeQueryKey, getGetLastFutureMonthQueryKey, useGetBenefitRange, useGetBenefits, useGetForecastRange, useGetIncomeRange, useGetLastFutureMonth } from '@workspace/api-client-react';
-import { type Area, areaPath, benefitSpendsPath, currentMonth, isFutureMonth, isMonthKey, listPath, summaryPath, type ListKind } from '@/lib/format';
+import { type Area, areaPath, benefitSpendsPath, currentMonth, isFutureMonth, isMonthKey, listPath, summaryPath, type ListKind, type MonthKey } from '@/lib/format';
 import { readLastMonth } from '@/lib/last-month';
 import { loadTheme } from '@/lib/theme';
 import { loadHideValues, useHideValues } from '@/lib/hide-values';
@@ -26,6 +26,12 @@ import PrevisaoSaldo from '@/pages/previsao-saldo';
 import PrevisaoForm from '@/pages/previsao-form';
 import BeneficioLancamentos, { type SpendFilter } from '@/pages/beneficio-lancamentos';
 import Categorias from '@/pages/categorias';
+import Sonhos from '@/pages/sonhos';
+import SonhosPlano from '@/pages/sonhos-plano';
+import SonhoNovo from '@/pages/sonho-novo';
+import SonhoCaixinha from '@/pages/sonho-caixinha';
+import SonhoConquista from '@/pages/sonho-conquista';
+import SonhosLista from '@/pages/sonhos-lista';
 import {
   Redirect,
   Route,
@@ -108,18 +114,20 @@ function SummaryRoute({ month }: { month?: string }) {
 
 // Lists of the Entradas tab (specs/telas-de-entradas.md RF-06): an unknown list goes back to the
 // tab; an invalid month goes to the current one; a month outside the tab's range goes to the nearest.
-const LIST_KINDS: ListKind[] = ['entradas', 'contas-fixas', 'gastos', 'cartoes'];
+const LIST_KINDS: ListKind[] = ['entradas', 'contas-fixas', 'gastos', 'cartoes', 'sonhos'];
 function ListRoute({ kind, month }: { kind: string; month?: string }) {
   const range = useGetIncomeRange({ query: { queryKey: getGetIncomeRangeQueryKey() } });
   if (!LIST_KINDS.includes(kind as ListKind)) return <Redirect to="/entradas" replace />;
   const list = kind as ListKind;
-  if (month === undefined) return <EntradasLista key={`${list}-${currentMonth()}`} kind={list} month={currentMonth()} />;
+  // "Guardado em sonhos" (sonhos RF-10) tem tela própria; as outras quatro listas dividem a EntradasLista.
+  const view = (m: MonthKey) => list === 'sonhos' ? <SonhosLista key={`${list}-${m}`} month={m} /> : <EntradasLista key={`${list}-${m}`} kind={list} month={m} />;
+  if (month === undefined) return view(currentMonth());
   if (!isMonthKey(month) || month === currentMonth()) return <Redirect to={listPath(list, currentMonth())} replace />;
   if (range.isLoading) return null;
   if (!range.data) return <Redirect to={listPath(list, currentMonth())} replace />;
   const target = month < range.data.first ? range.data.first : month > range.data.last ? range.data.last : month;
   if (target !== month) return <Redirect to={listPath(list, target)} replace />;
-  return <EntradasLista key={`${list}-${month}`} kind={list} month={month} />;
+  return view(month);
 }
 
 // Spends of a benefit (specs/lancamentos-do-beneficio.md D8): a bad address, a month outside the
@@ -140,6 +148,15 @@ function SpendsRoute({ benefit, cat, month }: { benefit: string; cat: string; mo
   }
   if (!benefits.data?.items.some((item) => item.id === id)) return <Redirect to={areaPath('benefits', target)} replace />;
   return <BeneficioLancamentos key={`${id}-${filter}-${target}`} benefitId={id} filter={filter} month={target} />;
+}
+
+// Sonhos (specs/sonhos.md): um endereço com id inválido volta para a lista.
+function DreamRoute({ id, view }: { id: string; view: 'caixinha' | 'conquista' | 'editar' }) {
+  if (!/^\d+$/.test(id)) return <Redirect to="/sonhos" replace />;
+  const dreamId = Number(id);
+  if (view === 'conquista') return <SonhoConquista key={dreamId} dreamId={dreamId} />;
+  if (view === 'editar') return <SonhoNovo key={dreamId} dreamId={dreamId} />;
+  return <SonhoCaixinha key={dreamId} dreamId={dreamId} />;
 }
 
 function BenefitMonthRoute({ month }: { month: string }) {
@@ -179,6 +196,12 @@ function Router() {
         <Route path="/beneficios/lancamentos/:benefit/:cat/mes/:month">{(params) => <SpendsRoute benefit={params.benefit} cat={params.cat} month={params.month} />}</Route>
         <Route path="/beneficios/mes/:month">{(params) => <BenefitMonthRoute month={params.month} />}</Route>
         <Route path="/categorias" component={Categorias} />
+        <Route path="/sonhos" component={Sonhos} />
+        <Route path="/sonhos/plano" component={SonhosPlano} />
+        <Route path="/sonhos/novo">{() => <SonhoNovo />}</Route>
+        <Route path="/sonhos/:id/conquista">{(params) => <DreamRoute id={params.id} view="conquista" />}</Route>
+        <Route path="/sonhos/:id/editar">{(params) => <DreamRoute id={params.id} view="editar" />}</Route>
+        <Route path="/sonhos/:id">{(params) => <DreamRoute id={params.id} view="caixinha" />}</Route>
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

@@ -381,6 +381,18 @@ button { cursor: pointer; }
 .fade-in { animation: fade-in .15s ease both; }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rise-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+/* Sonhos (specs/sonhos.md D13): anel, caixinha, moedas, confete e "pop", só na primeira exibição de cada tela.
+   O bloco de prefers-reduced-motion mais abaixo encurta todas elas; `both` deixa cada uma no estado final. */
+@keyframes ring-draw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: var(--ring-end); } }
+.dream-ring-arc { animation: ring-draw .9s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes jar-fill { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.dream-jar-level { transform-box: fill-box; transform-origin: bottom; animation: jar-fill .9s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes coin-fall { 0% { transform: translateY(-70px); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(60px); opacity: 0; } }
+.dream-coin { animation: coin-fall 3.5s ease-in both; }
+@keyframes confetti-fall { from { transform: translateY(-20px) rotate(0deg); opacity: 1; } to { transform: translateY(210px) rotate(540deg); opacity: 0; } }
+.dream-confetti { animation: confetti-fall 4s ease-in both; }
+@keyframes dream-pop { 0% { transform: scale(.8); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
+.dream-pop { animation: dream-pop .5s ease both; }
 .progress-fill { transition: transform .7s cubic-bezier(.2,.8,.2,1); transform-origin: left; }
 .lift { transition: transform .2s ease, box-shadow .2s ease; }
 .lift:hover { transform: translateY(-2px); box-shadow: 0 16px 35px -22px rgba(0,0,0,.4); }
