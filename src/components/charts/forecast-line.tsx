@@ -16,7 +16,7 @@ const label = (date: string) => `${date.slice(8, 10)}/${date.slice(5, 7)}`;
 
 // Saldo previsto dia a dia, de hoje a +21 dias (specs/previsoes.md D11, RF-09): hoje é o ponto cheio (real) e o resto é a linha
 // tracejada (previsto), que só muda nos dias em que uma previsão que mexe no saldo cai. Com o olho fechado vira uma faixa neutra.
-export function ForecastLine({ points }: { points: ForecastPoint[] }) {
+export function ForecastLine({ points, startsToday = true }: { points: ForecastPoint[]; startsToday?: boolean }) {
   const caption = 'Saldo previsto por dia';
   const rows = points.filter((p, i) => i === 0 || p.balance !== points[i - 1].balance || i === points.length - 1).map((p) => ({ label: label(p.date), value: money(p.balance) }));
   if (isHidden()) return <div data-testid="chart-balance-forecast" className="max-w-[440px]"><HiddenChart height={H}/><ChartTable caption={caption} head={['Dia', 'Saldo']} rows={rows}/></div>;
@@ -31,7 +31,7 @@ export function ForecastLine({ points }: { points: ForecastPoint[] }) {
   const path = points.map((p, i) => (i === 0 ? `M${x(0).toFixed(1)},${y(p.balance).toFixed(1)}` : `L${x(i).toFixed(1)},${y(points[i - 1].balance).toFixed(1)} L${x(i).toFixed(1)},${y(p.balance).toFixed(1)}`)).join(' ');
   const last = points.length - 1;
   const mid = Math.round(last / 2);
-  const aria = `${caption}: de ${money(points[0].balance)} hoje (${label(points[0].date)}) para ${money(points[last].balance)} em ${label(points[last].date)}`;
+  const aria = `${caption}: de ${money(points[0].balance)} ${startsToday ? 'hoje ' : 'em '}(${label(points[0].date)}) para ${money(points[last].balance)} em ${label(points[last].date)}`;
   return <div data-testid="chart-balance-forecast" className="enter max-w-[440px]">
     <svg role="img" aria-label={aria} viewBox={`0 0 ${W} ${H}`} className="block w-full">
       {scale.ticks.map((tick) => <g key={tick}>
@@ -43,7 +43,7 @@ export function ForecastLine({ points }: { points: ForecastPoint[] }) {
       <path d={path} fill="none" strokeWidth={2.5} strokeDasharray="6 4" strokeLinecap="round" strokeLinejoin="round" className="stroke-chart-in"/>
       <circle cx={x(0)} cy={y(points[0].balance)} r={6} strokeWidth={2} className="fill-chart-in stroke-paper"/>
       <circle cx={x(last)} cy={y(points[last].balance)} r={5} strokeWidth={2} className="fill-paper stroke-chart-in"/>
-      <text x={x(0)} y={H - 8} fontSize={12} textAnchor="start" className="fill-ink font-semibold">hoje</text>
+      <text x={x(0)} y={H - 8} fontSize={12} textAnchor="start" className="fill-ink font-semibold">{startsToday ? 'hoje' : label(points[0].date)}</text>
       <text x={x(mid)} y={H - 8} fontSize={12} textAnchor="middle" className="fill-ink-soft">{label(points[mid].date)}</text>
       <text x={x(last)} y={H - 8} fontSize={12} textAnchor="end" className="fill-ink-soft">{label(points[last].date)}</text>
     </svg>

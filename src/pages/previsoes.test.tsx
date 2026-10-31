@@ -14,6 +14,14 @@ describe('Previsões', () => {
     expect(plain(screen.getByTestId('text-forecast-projected').textContent)).toContain('R$ 1.850,00');
   });
 
+  it('em outro mês o resumo mostra o saldo daquele mês', async () => {
+    const { store, screen } = await openApp('#/previsoes/mes/2026-11', withForecast);
+    const november = (await store.getMonthCash('2026-11')).balanceAmount;
+    expect(plain((await screen.findByTestId('card-forecast-summary')).textContent)).toContain('Saldo de novembro');
+    const fmt = (v: number) => plain(new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v));
+    expect(plain(screen.getByTestId('text-forecast-today').textContent)).toBe(fmt(november));
+  });
+
   it('escolher um dia mostra a previsão dele', async () => {
     const { user, screen } = await openApp('#/previsoes', withForecast);
     await user.click(await screen.findByTestId('day-2026-10-20'));
