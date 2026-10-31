@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Proposta |
+| Status | Implementada |
 | Criada em | 31/10/2026 |
 | Escopo | `src/pages/historico.tsx`, `src/pages/compras.tsx` (visual e o gráfico do histórico), testes dessas duas páginas, `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`redesign-v2-fundacao.md`](redesign-v2-fundacao.md), [`redesign-v2-cartoes.md`](redesign-v2-cartoes.md), [`historico-mensal.md`](historico-mensal.md), [`todas-as-compras.md`](todas-as-compras.md), [`desfazer-exclusao.md`](desfazer-exclusao.md) |
@@ -220,14 +220,20 @@ Sem mudança no formato salvo, na camada de dados nem nos hooks. A média (RN-02
 
 ## 8. Critérios de aceite
 
-- [ ] `npm test`, `npm run typecheck` e `npm run build` passam.
-- [ ] Cada cenário da seção 4 tem teste (`historico.test.tsx`, `compras.test.tsx`).
-- [ ] Abrir a lista a partir de um mês rola até ele e o voltar retorna a esse mês; mês sem compras cai no mais próximo.
-- [ ] Valores das duas telas iguais aos da versão anterior para os mesmos dados.
-- [ ] Média dos últimos 5 meses conforme RN-02.
-- [ ] Em 360 × 780: sem scroll horizontal, alvos ≥ 48 px, itens ≥ 64 px, texto ≥ 14 px.
-- [ ] Temas claro e escuro conferidos no navegador; olho fechado sem valores.
-- [ ] `FUNCIONALIDADES.md` (seções 9, 18 e 24) e `README.md` atualizados.
+Verificado no navegador (`npm run dev`) num `<iframe>` de 360 × 780 (viewport de 358 px), com um cartão com faturas de maio a setembro, outubro em aberto, uma parcelada em 3x e uma categoria; nos temas escuro e claro.
+
+- [x] `npm test` (319 testes), `npm run typecheck` e `npm run build` passam.
+- [x] Cada cenário da seção 4 tem teste (`historico.test.tsx`, `compras.test.tsx`; os links de origem em `dashboard.test.tsx`). Exceção: "Mais de um cartão" cobre só a linha "Todos os cartões" do Histórico.
+- [x] Abrir a lista a partir de um mês rola até ele (testado com `scrollIntoView` simulado e no navegador: título de setembro a 16 px do topo) e o voltar retorna a esse mês; mês sem compras cai no mais próximo (anterior primeiro).
+- [ ] Valores das duas telas iguais aos da versão anterior para os mesmos dados. Conferi os totais no navegador (média R$ 2.634,00, faturas e totais por mês) e os testes antigos seguem passando, mas não fiz uma comparação lado a lado com a versão anterior.
+- [x] Média dos últimos 5 meses conforme RN-02 (R$ 2.634,00 com 1850, 2200, 2600, 3100 e 3420; só meses fechados; sem média sem meses fechados).
+- [x] Em 360 × 780: sem scroll horizontal (343 px), voltar 48 px, busca 52 px, categoria 48 px, ⋯ 48 px, itens de 70 a 71 px, texto de no mínimo 14 px (12 px só nos rótulos do gráfico).
+- [x] Temas claro e escuro conferidos no navegador; olho fechado sem valores em reais (testado nas duas telas; colunas viram faixa neutra).
+- [x] `FUNCIONALIDADES.md` (seções 9, 18, 24 e a nova 40) e `README.md` atualizados.
+
+Não conferido: leitor de tela de verdade; o fluxo de edição e exclusão pelo ⋯ no navegador (coberto só pelos testes); mais de um cartão no navegador.
+
+Decisões de implementação: a etiqueta da média é sempre "Média dos últimos 5 meses", mesmo com menos meses (como a spec escreve); em "Todos os meses" tocar num mês abre o painel dele (D5, RF-04), não a lista de compras, apesar de o RF-13 citar "Todos os meses" como origem; o Histórico mostra "Fatura por mês" com os 6 meses mais recentes até o atual.
 
 ## 9. Tarefas
 

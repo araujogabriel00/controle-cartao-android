@@ -186,6 +186,12 @@ function BenefitMonthRoute({ month }: { month: string }) {
   return <RangedMonthRoute area="benefits" month={month} range={range}><Beneficios key={month} month={month} /></RangedMonthRoute>;
 }
 
+// Todas as compras abre no mês pedido (specs/redesign-v2-historico-e-compras.md D13): mês inválido ou o atual vão para /compras.
+function PurchasesMonthRoute({ month }: { month: string }) {
+  if (!isMonthKey(month) || month === currentMonth()) return <Redirect to="/compras" replace />;
+  return <Compras key={month} month={month} />;
+}
+
 function Router() {
   return (
     // Keep a shared shell (sidebar, navbar) outside the boundary so it
@@ -200,7 +206,8 @@ function Router() {
         {/* The old address of Cartões (redesign-v2-fundacao RF-03, RN-10). */}
         <Route path="/mes/:month">{(params) => <Redirect to={`/cartoes/mes/${params.month}`} replace />}</Route>
         <Route path="/historico" component={Historico} />
-        <Route path="/compras" component={Compras} />
+        <Route path="/compras">{() => <Compras key={currentMonth()} month={currentMonth()} />}</Route>
+        <Route path="/compras/mes/:month">{(params) => <PurchasesMonthRoute month={params.month} />}</Route>
         <Route path="/previsoes">{() => <Previsoes key={currentMonth()} month={currentMonth()} />}</Route>
         <Route path="/previsoes/mes/:month">{(params) => <ForecastMonthRoute month={params.month} />}</Route>
         <Route path="/previsoes/dia/:date">{(params) => <ForecastDayRoute date={params.date} />}</Route>

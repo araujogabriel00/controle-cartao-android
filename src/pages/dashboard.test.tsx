@@ -34,6 +34,18 @@ describe('Cartões', () => {
     expect(list.querySelectorAll('[data-testid^="row-movement-"]')).toHaveLength(5);
   });
 
+  it('"Todas as compras" abre no mês de onde veio', async () => {
+    const { user, screen, waitFor } = await openApp('#/cartoes', withCard);
+    await user.click(await screen.findByTestId('button-all-purchases'));
+    await waitFor(() => expect(window.location.hash).toBe('#/compras'));
+  });
+
+  it('"Todas as compras" num mês passado leva o mês na rota', async () => {
+    const { user, screen, waitFor } = await openApp('#/cartoes/mes/2026-09', withCard);
+    await user.click(await screen.findByTestId('button-all-purchases'));
+    await waitFor(() => expect(window.location.hash).toBe('#/compras/mes/2026-09'));
+  });
+
   it('o mês anterior abre vazio e volta ao atual', async () => {
     const { user, screen, waitFor } = await openApp('#/cartoes', withCard);
     await user.click(await screen.findByTestId('button-previous-month'));

@@ -76,6 +76,8 @@ export const summaryPath = (month: MonthKey) => `/entradas/resumo${month === cur
 export const benefitSpendsPath = (benefitId: number, category: number | 'todos' | 'sem', month: MonthKey) =>
   `/beneficios/lancamentos/${benefitId}/${category}${month === currentMonth() ? '' : `/mes/${month}`}`;
 export const monthPath = (month: MonthKey) => areaPath('cards', month);
+// "Todas as compras" abre no mês de onde a pessoa veio (specs/redesign-v2-historico-e-compras.md D13); o mês atual vive em /compras.
+export const purchasesPath = (month: MonthKey) => (month === currentMonth() ? '/compras' : `/compras/mes/${month}`);
 // RN-01: the open month is the one at the end of the address; without it, the current month.
 export const monthInPath = (path: string): MonthKey => {
   // The day screen of Previsões (/previsoes/dia/AAAA-MM-DD) belongs to the month of its date.
