@@ -146,9 +146,9 @@ describe('persistência', () => {
     expect((await s.getCards('2026-10')).cards.map((c) => c.name)).toEqual(['Inter']);
   });
 
-  it('grava no formato atual (v11)', async () => {
+  it('grava no formato atual (v12)', async () => {
     await newCard();
     const raw = Object.keys(localStorage).map((k) => localStorage.getItem(k) ?? '').find((v) => v.includes('"version"'));
-    expect(JSON.parse(raw ?? 'null')?.version).toBe(11);
+    expect(JSON.parse(raw ?? 'null')?.version).toBe(12);
   });
 });

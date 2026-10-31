@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import {
-  getGetBillsQueryKey, getGetCardsQueryKey, getGetDailyExpensesQueryKey, getGetIncomeRangeQueryKey, getGetIncomesQueryKey, getGetMonthCashQueryKey,
-  useGetBalanceSeries, useGetBills, useGetCards, useGetDailyExpenses, useGetIncomeRange, useGetIncomes, useGetMonthCash,
+  getGetBillsQueryKey, getGetCardsQueryKey, getGetDailyExpensesQueryKey, getGetDreamEntriesQueryKey, getGetIncomeRangeQueryKey, getGetIncomesQueryKey, getGetMonthCashQueryKey,
+  useGetBalanceSeries, useGetBills, useGetCards, useGetDailyExpenses, useGetDreamEntries, useGetIncomeRange, useGetIncomes, useGetMonthCash,
 } from '@workspace/api-client-react';
-import { ChevronRight, CircleHelp, CreditCard, HandCoins, Receipt, ShoppingBasket } from 'lucide-react';
+import { ChevronRight, CircleHelp, CreditCard, HandCoins, Moon, Receipt, ShoppingBasket } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { AppHeader } from '@/components/app-header';
 import { BalanceLine, shortMonth } from '@/components/charts/balance-line';
@@ -20,6 +20,13 @@ const signed = (value: number) => (value > 0 ? `+${NBSP}${money(value)}` : value
 // RF-06: "1 lançamento" / "N lançamentos"; sem itens, "nenhum" (masculino) ou "nenhuma" (feminino) neste mês. Sem leitura, sem texto (RN-07).
 const countText = (count: number | undefined, one: string, many: string, none: string) => (count === undefined ? undefined : count === 0 ? none : plural(count, one, many));
 
+// "1 aporte" / "2 aportes e 1 retirada"; sem lançamentos, "nenhum neste mês". Sem leitura, sem texto (RN-07).
+const dreamCountText = (data?: { depositCount: number; withdrawCount: number }) => {
+  if (!data) return undefined;
+  const parts = [data.depositCount > 0 && plural(data.depositCount, 'aporte', 'aportes'), data.withdrawCount > 0 && plural(data.withdrawCount, 'retirada', 'retiradas')].filter(Boolean);
+  return parts.length ? parts.join(' e ') : 'nenhum neste mês';
+};
+
 // specs/redesign-v2-entradas.md (desenho v3): o saldo com o resultado do mês, o gráfico "Saldo mês a mês" e as quatro origens
 // como linhas. O resumo em quatro linhas, o saldo anterior e o resultado ficam na tela Resumo do mês.
 export default function Entradas({ month }: { month: MonthKey }) {
@@ -31,6 +38,7 @@ export default function Entradas({ month }: { month: MonthKey }) {
   const bills = useGetBills(month, { query: { queryKey: getGetBillsQueryKey(month) } });
   const daily = useGetDailyExpenses(month, { query: { queryKey: getGetDailyExpensesQueryKey(month) } });
   const cards = useGetCards(month, { query: { queryKey: getGetCardsQueryKey(month) } });
+  const dreams = useGetDreamEntries(month, { query: { queryKey: getGetDreamEntriesQueryKey(month) } });
   const cashQuery = useGetMonthCash(month, { query: { queryKey: getGetMonthCashQueryKey(month), refetchOnWindowFocus: true } });
   const cash = cashQuery.data;
   const range = useGetIncomeRange({ query: { queryKey: getGetIncomeRangeQueryKey() } }).data;
@@ -48,6 +56,8 @@ export default function Entradas({ month }: { month: MonthKey }) {
     { id: 'bills', label: 'Contas fixas', icon: <Receipt size={18}/>, value: cash?.billsAmount ?? 0, kind: 'out' as const, count: countText(bills.data ? bills.data.items.length + bills.data.forecastItems.length : undefined, 'conta', 'contas', 'nenhuma neste mês'), list: 'contas-fixas' as ListKind },
     { id: 'daily', label: 'Gastos do dia a dia', icon: <ShoppingBasket size={18}/>, value: cash?.dailyAmount ?? 0, kind: 'out' as const, count: countText(daily.data ? daily.data.items.length + daily.data.forecastItems.length : undefined, 'gasto', 'gastos', 'nenhum neste mês'), list: 'gastos' as ListKind },
     { id: 'cards', label: 'Cartões', icon: <CreditCard size={18}/>, value: cash?.cardsAmount ?? 0, kind: 'out' as const, count: countText(cards.data?.cards.filter((card) => card.invoiceAmount > 0).length, 'fatura', 'faturas', 'nenhuma neste mês'), list: 'cartoes' as ListKind },
+    // Sonhos D8: aportes − retiradas do mês. Guardar é saída (−); se as retiradas passam dos aportes, a linha vira entrada (+).
+    { id: 'dreams', label: 'Guardado em sonhos', icon: <Moon size={18}/>, value: Math.abs(cash?.savingsAmount ?? 0), kind: (cash?.savingsAmount ?? 0) < 0 ? 'in' as const : 'out' as const, count: dreamCountText(dreams.data), list: 'sonhos' as ListKind },
   ].map(({ list, ...row }) => ({ ...row, onOpen: () => navigate(listPath(list, month)) }));
 
   return <main className="notebook-grain min-h-safe bg-paper text-ink">

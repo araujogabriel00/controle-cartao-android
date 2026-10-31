@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { Check, Eye, EyeOff, History, type LucideIcon, MoreHorizontal, Moon, Smartphone, Sun, Tag } from 'lucide-react';
+import { Check, Eye, EyeOff, History, type LucideIcon, MoreHorizontal, Moon, Smartphone, Sparkles, Sun, Tag } from 'lucide-react';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { MonthNav } from '@/components/month-nav';
 import { type Area, type MonthKey } from '@/lib/format';
@@ -31,6 +31,7 @@ export function AppHeader({ area, month, canGoPrevious, canGoNext }: { area: Are
     </header>
     {menu && <BottomSheet title="Mais opções" onClose={() => setMenu(false)}>
       <div className="space-y-2">
+        <button data-testid="menu-dreams" onClick={() => go('/sonhos')} className={item}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-tint text-brand"><Sparkles size={18}/></span>Sonhos</button>
         <button data-testid="menu-categories" onClick={() => go('/categorias')} className={item}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-tint text-brand"><Tag size={18}/></span>Categorias</button>
         <button data-testid="menu-history" onClick={() => go('/historico')} className={item}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-tint text-brand"><History size={18}/></span>Histórico</button>
         <div data-testid="menu-appearance" role="radiogroup" aria-label="Aparência" className="rounded-2xl border border-line bg-paper px-4 py-3">

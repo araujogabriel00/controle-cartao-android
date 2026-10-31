@@ -92,8 +92,20 @@ export type StoredForecastException = {
   amount?: number; description?: string; day?: number; putInBalance?: boolean;
 };
 
+// Sonhos (specs/sonhos.md seção 6).
+export const DREAM_ICONS = ['plane', 'shield', 'laptop', 'book', 'target', 'star'] as const;
+export type DreamIcon = (typeof DREAM_ICONS)[number];
+export type StoredDream = {
+  id: number; name: string; icon: DreamIcon;
+  goal: number; share: number; closed: boolean; archived: boolean; createdAt: string;
+};
+export type StoredDreamEntry = {
+  id: number; dreamId: number; kind: 'initial' | 'deposit' | 'withdraw';
+  amount: number; date: string; linkedExpenseId?: number;
+};
+
 type State = {
-  version: 11;
+  version: 12;
   nextId: number;
   selectedCardId: number | null;
   cards: StoredCard[];
@@ -112,14 +124,19 @@ type State = {
   recurringExceptions: StoredRecurringException[];
   forecasts: StoredForecast[];
   forecastExceptions: StoredForecastException[];
+  dreams: StoredDream[];
+  dreamEntries: StoredDreamEntry[];
+  dreamPlan: { percent: number } | null;
 };
 
 // Previous formats, kept only to migrate saved data.
 type OldCategory = { id: number; cardId: number; month: MonthKey; name: string; amount: number; isClosed: boolean };
 type OldMovement = Omit<StoredMovement, 'cardId' | 'categoryId'> & { categoryId: number };
 type OldPurchase = Omit<StoredPurchase, 'categoryId'> & { categoryName: string };
+// Until v11 there were no dreams (sonhos seção 6).
+type StateV11 = Omit<State, 'version' | 'dreams' | 'dreamEntries' | 'dreamPlan'> & { version: 11 };
 // Until v10 there were no forecasts (previsoes D2).
-type StateV10 = Omit<State, 'version' | 'forecasts' | 'forecastExceptions'> & { version: 10 };
+type StateV10 = Omit<StateV11, 'version' | 'forecasts' | 'forecastExceptions'> & { version: 10 };
 // Until v9 the card and its months carried a limit (cartao-sem-limite D2).
 type StateV9 = Omit<StateV10, 'version' | 'cards' | 'months'> & {
   version: 9; cards: (StoredCard & { limitAmount: number })[]; months: (StoredMonth & { limitAmount: number })[];
@@ -148,7 +165,7 @@ type StateV1 = {
   categories: Omit<OldCategory, 'cardId' | 'month'>[];
   movements: OldMovement[];
 };
-type Saved = StateV10 | StateV9 | StateV8 | StateV7 | StateV6 | StateV5 | StateV4 | StateV3 | StateV2 | StateV1;
+type Saved = StateV11 | StateV10 | StateV9 | StateV8 | StateV7 | StateV6 | StateV5 | StateV4 | StateV3 | StateV2 | StateV1;
 
 // invoiceAmount is the card's invoice (sum of the purchases) in the requested month.
 export type Card = StoredCard & { invoiceAmount: number; movementCount: number };
@@ -198,7 +215,7 @@ export type DailyExpenses = { month: MonthKey; totalAmount: number; items: Daily
 // RN-06: what comes in, what goes out and what is left in the month.
 // resultAmount is the month on its own; previousAmount is what came from the months before it; balanceAmount adds the two.
 export type MonthCash = {
-  month: MonthKey; incomeAmount: number; billsAmount: number; dailyAmount: number; cardsAmount: number;
+  month: MonthKey; incomeAmount: number; billsAmount: number; dailyAmount: number; cardsAmount: number; savingsAmount: number;
   resultAmount: number; previousAmount: number; balanceAmount: number;
 };
 
@@ -238,7 +255,7 @@ export type BenefitSpendInput = { description: string; amount: number; date: str
 // purchase starts there, on update `firstInstallment` says where it starts.
 export type PurchaseInput = { description: string; totalAmount: number; installmentCount: number; installment: number; firstInstallment?: number; date: string };
 
-const emptyState = (): State => ({ version: 11, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [], benefits: [], benefitSpends: [], bills: [], billExceptions: [], dailyExpenses: [], recurrings: [], recurringExceptions: [], forecasts: [], forecastExceptions: [] });
+const emptyState = (): State => ({ version: 12, nextId: 1, selectedCardId: null, cards: [], months: [], categories: [], movements: [], purchases: [], incomes: [], incomeExceptions: [], benefits: [], benefitSpends: [], bills: [], billExceptions: [], dailyExpenses: [], recurrings: [], recurringExceptions: [], forecasts: [], forecastExceptions: [], dreams: [], dreamEntries: [], dreamPlan: null });
 
 // RN-05 (categories): names match ignoring case and surrounding spaces.
 const nameKey = (name: string) => name.trim().toLocaleLowerCase('pt-BR');
@@ -329,7 +346,10 @@ const migrateV9 = (old: StateV9): StateV10 => ({
 });
 
 // Forecasts didn't exist before v11: nothing else changes (previsoes seção 6).
-const migrateV10 = (old: StateV10): State => ({ ...old, version: 11, forecasts: [], forecastExceptions: [] });
+const migrateV10 = (old: StateV10): StateV11 => ({ ...old, version: 11, forecasts: [], forecastExceptions: [] });
+
+// Dreams didn't exist before v12: nothing else changes (sonhos seção 6).
+const migrateV11 = (old: StateV11): State => ({ ...old, version: 12, dreams: [], dreamEntries: [], dreamPlan: null });
 
 function migrate(old: Saved): State {
   if (old.version === 1) return migrate(migrateV1(old));
@@ -341,7 +361,8 @@ function migrate(old: Saved): State {
   if (old.version === 7) return migrate(migrateV7(old));
   if (old.version === 8) return migrate(migrateV8(old));
   if (old.version === 9) return migrate(migrateV9(old));
-  return migrateV10(old);
+  if (old.version === 10) return migrate(migrateV10(old));
+  return migrateV11(old);
 }
 
 let statePromise: Promise<State> | null = null;
@@ -359,14 +380,17 @@ function load(): Promise<State> {
     if (!value) return emptyState();
     try {
       const parsed = JSON.parse(value) as State | Saved;
-      if (parsed?.version === 11) {
+      if (parsed?.version === 12) {
         for (const b of parsed.benefits) { b.splits ??= []; b.closures ??= []; }
         parsed.forecasts ??= [];
         parsed.forecastExceptions ??= [];
+        parsed.dreams ??= [];
+        parsed.dreamEntries ??= [];
+        parsed.dreamPlan ??= null;
         return parsed;
       }
       const version: number | undefined = parsed?.version;
-      if (version !== 10 && version !== 9 && version !== 8 && version !== 7 && version !== 6 && version !== 5 && version !== 4 && version !== 3 && version !== 2 && version !== 1) return emptyState();
+      if (version !== 11 && version !== 10 && version !== 9 && version !== 8 && version !== 7 && version !== 6 && version !== 5 && version !== 4 && version !== 3 && version !== 2 && version !== 1) return emptyState();
       const migrated = migrate(parsed as Saved);
       // Saved right away so the data stays in this month even if the next
       // change only happens in a later month.
@@ -1951,7 +1975,9 @@ function cashOf(state: State, month: MonthKey) {
   const billsAmount = cents(fx.bills + sum(billsOf(state, month).map((b) => b.amount)));
   const dailyAmount = cents(fx.daily + sum(state.dailyExpenses.filter((x) => monthOf(x.date) === month).map((x) => x.amount)));
   const cardsAmount = consolidatedOf(state, month).invoiceAmount;
-  return { incomeAmount, billsAmount, dailyAmount, cardsAmount, resultAmount: cents(incomeAmount - billsAmount - dailyAmount - cardsAmount) };
+  // Sonhos RN-02: aportes − retiradas datados no mês; o guardado inicial não mexe no caixa.
+  const savingsAmount = savingsOf(state, month);
+  return { incomeAmount, billsAmount, dailyAmount, cardsAmount, savingsAmount, resultAmount: cents(incomeAmount - billsAmount - dailyAmount - cardsAmount - savingsAmount) };
 }
 
 // RN-16: the balance starts at the oldest income, bill or daily expense. The cards don't set it.
@@ -2118,5 +2144,293 @@ export function deleteRecurring(recurringId: number, month: MonthKey, scope: Inc
     }
     recurring.lastMonth = shiftMonth(month, -1);
     dropRecurringExceptionsFrom(state, recurringId, month);
+  });
+}
+
+
+// --- sonhos (specs/sonhos.md) ----------------------------------------------------------------------------------
+// Cada sonho é uma caixinha: o guardado é o guardado inicial + aportes − retiradas (RN-01). Aportes e retiradas saem
+// do saldo e voltam a ele pela linha "Guardado em sonhos" do caixa (RN-02); o guardado inicial não mexe no caixa (D7).
+
+const MAX_ACTIVE_DREAMS = 12;
+const MAX_PLAN_PERCENT = 50;
+
+export type DreamStatus = 'active' | 'reached' | 'closed';
+export type DreamItem = {
+  id: number; name: string; icon: DreamIcon; goal: number; share: number; closed: boolean; createdAt: string;
+  saved: number; percent: number; remaining: number; status: DreamStatus;
+  // D5: a parte que vale hoje (a salva, redistribuída entre os sonhos ativos).
+  effectiveShare: number;
+  // D4: R$ por mês e mês de chegada; null sem ritmo.
+  pace: number | null; etaMonth: MonthKey | null;
+  // D11: 80% ou mais.
+  almostThere: boolean;
+};
+export type DreamDetail = DreamItem & { entries: StoredDreamEntry[] };
+export type Dreams = { items: DreamItem[]; activeCount: number };
+export type DreamPlanItem = { id: number; name: string; icon: DreamIcon; share: number; effectiveShare: number; saved: number; goal: number };
+export type DreamPlan = {
+  percent: number; hasPlan: boolean; referenceIncome: number; monthlyAmount: number;
+  invoiceAmount: number; leftoverAmount: number; savedThisMonth: number; items: DreamPlanItem[];
+};
+export type DreamMonthEntry = {
+  id: number; dreamId: number; dreamName: string; dreamArchived: boolean; kind: 'deposit' | 'withdraw'; amount: number; date: string;
+};
+export type DreamEntries = { month: MonthKey; savingsAmount: number; depositCount: number; withdrawCount: number; items: DreamMonthEntry[] };
+export type DreamInput = { name: string; goal: number; initial?: number; icon: DreamIcon; share: number };
+export type DreamUpdate = { name: string; goal: number; icon: DreamIcon; share: number };
+export type DreamPlanInput = { percent: number; shares: { dreamId: number; share: number }[] };
+// RN-14: o marco mais alto que o aporte fez o guardado cruzar.
+export type DreamDeposit = { dreamId: number; amount: number; saved: number; goal: number; percent: number; milestone: 25 | 50 | 75 | null; reached: boolean };
+
+const reais = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+const dreamSavedOf = (state: State, dreamId: number) =>
+  Math.max(0, sum(state.dreamEntries.filter((e) => e.dreamId === dreamId).map((e) => (e.kind === 'withdraw' ? -e.amount : e.amount))));
+const dreamStatusOf = (state: State, dream: StoredDream): DreamStatus =>
+  dream.closed ? 'closed' : dreamSavedOf(state, dream.id) >= dream.goal ? 'reached' : 'active';
+const activeDreamsOf = (state: State) => state.dreams.filter((d) => !d.archived && dreamStatusOf(state, d) === 'active');
+
+// RN-02: o que o mês guardou (aportes) menos o que tirou (retiradas); o guardado inicial não entra.
+function savingsOf(state: State, month: MonthKey) {
+  return sum(state.dreamEntries.filter((e) => e.kind !== 'initial' && monthOf(e.date) === month).map((e) => (e.kind === 'withdraw' ? -e.amount : e.amount)));
+}
+
+// Inteiros de pelo menos 1 que somam `total`, na proporção dos pesos (maior resto), RN-06.
+function apportion(total: number, weights: number[]): number[] {
+  const n = weights.length;
+  if (n === 0) return [];
+  const w = weights.some((x) => x > 0) ? weights : weights.map(() => 1);
+  const weightSum = w.reduce((a, b) => a + b, 0);
+  const exact = w.map((x) => (x / weightSum) * total);
+  const out = exact.map((x) => Math.max(1, Math.floor(x)));
+  let diff = total - out.reduce((a, b) => a + b, 0);
+  const byRemainder = exact.map((_, i) => i).sort((a, b) => (exact[b] - Math.floor(exact[b])) - (exact[a] - Math.floor(exact[a])));
+  for (let k = 0; diff > 0; k++, diff--) out[byRemainder[k % n]]++;
+  for (let guard = 0; diff < 0 && guard < 1000; guard++) {
+    for (const i of [...out.keys()].sort((a, b) => out[b] - out[a])) if (diff < 0 && out[i] > 1) { out[i]--; diff++; }
+  }
+  return out;
+}
+
+// D5 / RN-07: a parte salva de cada sonho ativo, redistribuída para somar 100.
+function effectiveSharesOf(active: StoredDream[]) {
+  const sumShares = active.reduce((total, d) => total + d.share, 0);
+  return new Map(active.map((d) => [d.id, sumShares > 0 ? (d.share / sumShares) * 100 : 100 / active.length]));
+}
+
+// D3 / RN-08: a renda do mês corrente, ou a do mês anterior se aquela for zero.
+function dreamIncomeOf(state: State) {
+  const now = currentMonth();
+  const current = cashOf(state, now).incomeAmount;
+  return current > 0 ? current : cashOf(state, shiftMonth(now, -1)).incomeAmount;
+}
+
+const dreamPlanPercent = (state: State) => state.dreamPlan?.percent ?? 0;
+
+function toDreamItem(state: State, dream: StoredDream, effective: Map<number, number>, income: number): DreamItem {
+  const saved = dreamSavedOf(state, dream.id);
+  const status = dreamStatusOf(state, dream);
+  const remaining = cents(Math.max(0, dream.goal - saved));
+  const effectiveShare = status === 'active' ? effective.get(dream.id) ?? 0 : 0;
+  const rawPace = cents((income * dreamPlanPercent(state) / 100) * (effectiveShare / 100));
+  const pace = status === 'active' && rawPace > 0 ? rawPace : null;
+  const etaMonth = pace ? shiftMonth(currentMonth(), Math.ceil(remaining / pace - 1e-9)) : null;
+  const percent = dream.goal > 0 ? (saved / dream.goal) * 100 : 0;
+  return {
+    id: dream.id, name: dream.name, icon: dream.icon, goal: dream.goal, share: dream.share, closed: dream.closed, createdAt: dream.createdAt,
+    saved, percent, remaining, status, effectiveShare, pace, etaMonth, almostThere: status === 'active' && percent >= 80,
+  };
+}
+
+function dreamItems(state: State): DreamItem[] {
+  const effective = effectiveSharesOf(activeDreamsOf(state));
+  const income = dreamIncomeOf(state);
+  const rank = { active: 0, reached: 1, closed: 2 };
+  return state.dreams.filter((d) => !d.archived).map((d) => toDreamItem(state, d, effective, income))
+    .sort((a, b) => rank[a.status] - rank[b.status] || a.id - b.id);
+}
+
+// RF-01 / RF-02 / RN-17
+export async function getDreams(): Promise<Dreams> {
+  const state = await load();
+  const items = dreamItems(state);
+  return { items, activeCount: items.filter((i) => i.status === 'active').length };
+}
+
+// RF-05
+export async function getDream(dreamId: number): Promise<DreamDetail> {
+  const state = await load();
+  const item = dreamItems(state).find((d) => d.id === dreamId);
+  if (!item) throw new Error('Sonho não encontrado.');
+  const entries = state.dreamEntries.filter((e) => e.dreamId === dreamId).sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+  return { ...item, entries };
+}
+
+// RF-03: o plano, o que sobra do mês e a divisão entre os sonhos ativos (partes inteiras que somam 100).
+export async function getDreamPlan(): Promise<DreamPlan> {
+  const state = await load();
+  const now = currentMonth();
+  const active = activeDreamsOf(state);
+  const referenceIncome = dreamIncomeOf(state);
+  const percent = dreamPlanPercent(state);
+  const monthlyAmount = cents(referenceIncome * percent / 100);
+  const invoiceAmount = consolidatedOf(state, now).invoiceAmount;
+  const shares = apportion(100, active.map((d) => d.share));
+  const effective = effectiveSharesOf(active);
+  return {
+    percent, hasPlan: state.dreamPlan !== null, referenceIncome, monthlyAmount, invoiceAmount,
+    leftoverAmount: cents(referenceIncome - monthlyAmount - invoiceAmount),
+    savedThisMonth: savingsOf(state, now),
+    items: active.map((d, i) => ({ id: d.id, name: d.name, icon: d.icon, share: shares[i], effectiveShare: effective.get(d.id) ?? 0, saved: dreamSavedOf(state, d.id), goal: d.goal })),
+  };
+}
+
+// RF-10: os aportes e as retiradas do mês, do mais novo para o mais antigo (inclui os de sonhos excluídos, D10).
+export async function getDreamEntries(month: MonthKey): Promise<DreamEntries> {
+  const state = await load();
+  const items = state.dreamEntries.filter((e): e is StoredDreamEntry & { kind: 'deposit' | 'withdraw' } => e.kind !== 'initial' && monthOf(e.date) === month)
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
+    .map((e) => {
+      const dream = state.dreams.find((d) => d.id === e.dreamId);
+      return { id: e.id, dreamId: e.dreamId, dreamName: dream?.name ?? 'Sonho', dreamArchived: dream?.archived ?? true, kind: e.kind, amount: e.amount, date: e.date };
+    });
+  return {
+    month, savingsAmount: savingsOf(state, month),
+    depositCount: items.filter((i) => i.kind === 'deposit').length, withdrawCount: items.filter((i) => i.kind === 'withdraw').length, items,
+  };
+}
+
+function findDream(state: State, dreamId: number) {
+  const dream = state.dreams.find((d) => d.id === dreamId && !d.archived);
+  if (!dream) throw new Error('Sonho não encontrado.');
+  return dream;
+}
+
+function requireOpenDream(state: State, dreamId: number) {
+  const dream = findDream(state, dreamId);
+  if (dream.closed) throw new Error('Este sonho já foi encerrado.');
+  return dream;
+}
+
+function requireDreamFields(input: { name: string; goal: number; icon: DreamIcon; share: number }) {
+  const name = requireText(input.name, 'Nome do sonho', 60);
+  const goal = Number(input.goal);
+  if (!Number.isFinite(goal) || cents(goal) < 0.01) throw new Error('A meta deve ser maior que zero.');
+  if (!(DREAM_ICONS as readonly string[]).includes(input.icon)) throw new Error('Ícone inválido.');
+  const share = Number(input.share);
+  if (!Number.isInteger(share) || share < 1 || share > 100) throw new Error('A parte deve ser um número inteiro de 1 a 100.');
+  return { name, goal: cents(goal), icon: input.icon, share };
+}
+
+// RN-06: os outros sonhos ativos encolhem na proporção para a soma voltar a 100 (nunca abaixo de 1).
+function placeShare(state: State, others: StoredDream[], share: number) {
+  if (others.length === 0) return 100;
+  if (share > 100 - others.length) throw new Error(`A parte pode ser de até ${100 - others.length}%, para os outros sonhos ficarem com pelo menos 1%.`);
+  const redistributed = apportion(100 - share, others.map((d) => d.share));
+  others.forEach((d, i) => { d.share = redistributed[i]; });
+  return share;
+}
+
+// RF-04 / D7 / RN-05
+export function createDream(input: DreamInput) {
+  return mutate((state) => {
+    const fields = requireDreamFields(input);
+    const initial = cents(Number(input.initial ?? 0));
+    if (!Number.isFinite(initial) || initial < 0) throw new Error('O valor já guardado não pode ser negativo.');
+    if (initial >= fields.goal) throw new Error('O valor já guardado deve ser menor que a meta.');
+    const others = activeDreamsOf(state);
+    if (others.length >= MAX_ACTIVE_DREAMS) throw new Error(`Você pode ter até ${MAX_ACTIVE_DREAMS} sonhos ativos.`);
+    const dream: StoredDream = { id: state.nextId++, ...fields, share: placeShare(state, others, fields.share), closed: false, archived: false, createdAt: today() };
+    state.dreams.push(dream);
+    if (initial > 0) state.dreamEntries.push({ id: state.nextId++, dreamId: dream.id, kind: 'initial', amount: initial, date: today() });
+    return dream;
+  });
+}
+
+// D10: muda nome, ícone, meta e parte.
+export function updateDream(dreamId: number, input: DreamUpdate) {
+  return mutate((state) => {
+    const dream = findDream(state, dreamId);
+    const fields = requireDreamFields(input);
+    if (fields.goal <= dreamSavedOf(state, dream.id)) throw new Error('A meta deve ser maior que o valor já guardado.');
+    if (dreamStatusOf(state, dream) === 'active') {
+      dream.share = placeShare(state, activeDreamsOf(state).filter((d) => d.id !== dream.id), fields.share);
+    }
+    Object.assign(dream, { name: fields.name, icon: fields.icon, goal: fields.goal });
+    return dream;
+  });
+}
+
+// D10 / RN-11: devolve o guardado ao saldo com uma retirada e arquiva; os lançamentos antigos ficam.
+export function deleteDream(dreamId: number) {
+  return mutate((state) => {
+    const dream = findDream(state, dreamId);
+    const saved = dreamSavedOf(state, dream.id);
+    if (saved > 0) state.dreamEntries.push({ id: state.nextId++, dreamId: dream.id, kind: 'withdraw', amount: saved, date: today() });
+    dream.archived = true;
+  });
+}
+
+// RF-03 / D3 / RN-06
+export function saveDreamPlan(input: DreamPlanInput) {
+  return mutate((state) => {
+    const percent = Number(input.percent);
+    if (!Number.isInteger(percent) || percent < 0 || percent > MAX_PLAN_PERCENT) throw new Error(`O percentual deve ser um número inteiro de 0 a ${MAX_PLAN_PERCENT}.`);
+    const active = activeDreamsOf(state);
+    const given = new Map((input.shares ?? []).map((s) => [Number(s.dreamId), Number(s.share)]));
+    if (given.size !== active.length || active.some((d) => !given.has(d.id))) throw new Error('A divisão deve cobrir todos os sonhos ativos.');
+    for (const d of active) {
+      const share = given.get(d.id)!;
+      if (!Number.isInteger(share) || share < 1 || share > 100) throw new Error('Cada parte deve ser um número inteiro de 1 a 100.');
+    }
+    if (active.length > 0 && [...given.values()].reduce((a, b) => a + b, 0) !== 100) throw new Error('A divisão deve somar 100%.');
+    for (const d of active) d.share = given.get(d.id)!;
+    state.dreamPlan = { percent };
+  });
+}
+
+// RF-06 / D6 / RN-03 / RN-04 / RN-14
+export function depositDream(dreamId: number, amount: number) {
+  return mutate((state): DreamDeposit => {
+    const dream = requireOpenDream(state, dreamId);
+    const value = requireAmount(amount, 'Valor');
+    const balance = balanceOf(state, currentMonth());
+    if (value > balance + 1e-9) throw new Error(`Você só tem ${reais(Math.max(0, balance))} de saldo hoje.`);
+    const before = dreamSavedOf(state, dream.id);
+    state.dreamEntries.push({ id: state.nextId++, dreamId: dream.id, kind: 'deposit', amount: value, date: today() });
+    const saved = dreamSavedOf(state, dream.id);
+    const pct = (n: number) => (n / dream.goal) * 100;
+    const milestone = ([75, 50, 25] as const).find((m) => pct(before) < m && pct(saved) >= m && pct(saved) < 100) ?? null;
+    return { dreamId: dream.id, amount: value, saved, goal: dream.goal, percent: pct(saved), milestone, reached: saved >= dream.goal };
+  });
+}
+
+// RF-08 / D6 / RN-04
+export function withdrawDream(dreamId: number, amount: number) {
+  return mutate((state) => {
+    const dream = requireOpenDream(state, dreamId);
+    const value = requireAmount(amount, 'Valor');
+    const saved = dreamSavedOf(state, dream.id);
+    if (value > saved + 1e-9) throw new Error(`A caixinha tem só ${reais(saved)} guardados.`);
+    state.dreamEntries.push({ id: state.nextId++, dreamId: dream.id, kind: 'withdraw', amount: value, date: today() });
+    return { dreamId: dream.id, saved: dreamSavedOf(state, dream.id) };
+  });
+}
+
+// D9 / RN-09: "manter" só encerra; "usar" devolve o guardado ao saldo e registra um gasto do dia a dia, tudo ou nada.
+export function closeDream(dreamId: number, choice: 'keep' | 'use') {
+  return mutate((state) => {
+    const dream = requireOpenDream(state, dreamId);
+    const saved = dreamSavedOf(state, dream.id);
+    if (saved < dream.goal) throw new Error('O sonho ainda não chegou à meta.');
+    if (choice === 'use') {
+      const expense: StoredDailyExpense = { id: state.nextId++, categoryId: null, description: dream.name, amount: saved, date: today() };
+      state.dailyExpenses.push(expense);
+      state.dreamEntries.push({ id: state.nextId++, dreamId: dream.id, kind: 'withdraw', amount: saved, date: today(), linkedExpenseId: expense.id });
+    } else if (choice !== 'keep') {
+      throw new Error('Escolha usar o dinheiro ou manter guardado.');
+    }
+    dream.closed = true;
   });
 }

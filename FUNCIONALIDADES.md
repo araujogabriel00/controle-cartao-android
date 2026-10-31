@@ -57,6 +57,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 34. [Desfazer a exclusão](#34-desfazer-a-exclusão)
 35. [Aba Entradas no desenho v3](#35-aba-entradas-no-desenho-v3)
 36. [Aba Cartões na nova versão](#36-aba-cartões-na-nova-versão)
+37. [Sonhos](#37-sonhos)
 
 ---
 
@@ -1706,7 +1707,7 @@ Funcionalidade: Aba Entradas na Opção D
 
   Cenário: Abrir o resumo pelo link de Entradas
     Quando eu toco em "Resumo" no cartão "Entrou e saiu" da aba "Entradas"
-    Então abre a tela "Resumo do mês" com "Saldo anterior", "Resultado do mês" e as quatro linhas
+    Então abre a tela "Resumo do mês" com "Saldo anterior", "Resultado do mês" e as cinco linhas (a quinta, "Guardado em sonhos", vem da seção 37)
 
   Cenário: O link Resumo só existe em Entradas
     Quando eu abro as abas "Cartões" e "Benefícios"
@@ -2008,7 +2009,7 @@ Funcionalidade: Início com mini-gráficos
   Cenário: Painéis do Início
     Dado que há saldo, uma fatura e um benefício
     Quando eu abro o Início
-    Então vejo os painéis "Saldo", "Cartões" e "Benefícios", nessa ordem
+    Então vejo os painéis "Saldo", "Cartões", "Benefícios" e "Sonhos" (seção 37), nessa ordem
     E cada painel mostra o valor e um mini-gráfico
 
   Cenário: Tendência do saldo
@@ -2152,7 +2153,7 @@ Detalhes que a spec fecha na implementação: o aviso diz o alcance nas recorren
 
 ## 35. Aba Entradas no desenho v3
 
-Resumo. A especificação completa está em [`specs/redesign-v2-entradas.md`](specs/redesign-v2-entradas.md). Nenhuma regra de cálculo muda e a aba só lê. O gráfico de barras divergentes "Entrou e saiu" saiu: a aba mostra o saldo com o resultado do mês, um gráfico de linha "Saldo mês a mês" (saldo ao fim de cada um dos últimos 6 meses, do mesmo `getBalanceSeries` do Início) e as quatro origens como linhas tocáveis com barra. A tela "Resumo do mês" e as quatro listas não mudam.
+Resumo. A especificação completa está em [`specs/redesign-v2-entradas.md`](specs/redesign-v2-entradas.md). Nenhuma regra de cálculo muda e a aba só lê. O gráfico de barras divergentes "Entrou e saiu" saiu: a aba mostra o saldo com o resultado do mês, um gráfico de linha "Saldo mês a mês" (saldo ao fim de cada um dos últimos 6 meses, do mesmo `getBalanceSeries` do Início) e as origens como linhas tocáveis com barra: as quatro de sempre mais a quinta, "Guardado em sonhos" (aportes − retiradas do mês, seção 37), que abre a lista `#/entradas/lista/sonhos`. O resultado do mês passa a descontar essa linha; a tela "Resumo do mês" ganha a mesma linha.
 
 ```gherkin
 # language: pt
@@ -2294,3 +2295,129 @@ Funcionalidade: Aba Cartões na nova versão
 ```
 
 Detalhes que a spec fecha na implementação: o valor da Fatura tem 36 px abaixo de 380 px, 42 px até 419 px e 48 px a partir de 420 px; trocar de cartão também remove o filtro; com o olho fechado as barras de `Para onde foi` e as colunas (e as de Benefícios e do Histórico, que usam os mesmos componentes) perdem a forma e o percentual. O item de compra tem a parcela junto do nome ("Teste 1/7"), "Categoria · data" embaixo e os selos "Mensal" e "prevista" ao lado; o mínimo é de 64 px. Identificadores: sai `section-pace`, `text-pace-empty`, `filter-categories` e os `filter-…`; entram `section-purchases` e `button-clear-filter`; os demais ficam (`section-invoice`, `text-invoice`, `button-card-menu`, `section-where`, `list-category-summary`, `row-summary-…`, `section-next`, `button-history`, `button-all-purchases`, `list-movements`, `row-movement-…`, `row-planned-…`, `text-movements-empty`, `text-filter-total`, `button-create-card`).
+
+---
+
+## 37. Sonhos
+
+Resumo. A especificação completa está em [`specs/sonhos.md`](specs/sonhos.md). Cada sonho é uma **caixinha** com meta, valor guardado, ritmo e previsão de chegada. A pessoa define quanto da renda quer guardar por mês e como dividir entre os sonhos (**plano**), guarda dinheiro quando quiser (o valor sai do saldo e vai para a caixinha) e, ao chegar na meta, escolhe entre **usar** o dinheiro ou **mantê-lo guardado**. Aportes e retiradas entram numa quinta linha, **"Guardado em sonhos"**, em Entradas, no Resumo do mês e numa lista própria; o resultado do mês passa a descontar essa linha. O formato salvo é a versão 12 (`dreams`, `dreamEntries`, `dreamPlan`). As telas ficam em `#/sonhos`, `#/sonhos/plano`, `#/sonhos/novo`, `#/sonhos/ID`, `#/sonhos/ID/editar`, `#/sonhos/ID/conquista` e `#/entradas/lista/sonhos`; o acesso é pelo painel do Início e pelo item "Sonhos" do menu ⋯.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Sonhos
+
+  Contexto:
+    Dado que hoje é 15 de outubro de 2026
+    E as entradas do mês somam R$ 4.527,00
+
+  Cenário: Estado vazio
+    Quando eu abro "Sonhos" pelo menu ⋯
+    Então vejo "Criar meu primeiro sonho"
+
+  Cenário: Criar um sonho
+    Quando eu crio "Viagem ao Japão", meta R$ 18.000,00, já guardado R$ 4.320,00, parte 100%
+    Então ele aparece em "Meus sonhos" com 24% e "R$ 4.320,00 de R$ 18.000,00"
+    E o saldo não muda
+
+  Cenário: Validar o novo sonho
+    Quando eu tento criar um sonho com já guardado igual à meta
+    Então vejo o erro no formulário e nada é salvo
+
+  Cenário: Dividir o plano
+    Dado os sonhos "Japão", "Reserva" e "Notebook" ativos
+    Quando eu defino o plano em 20% e a divisão 40%, 35% e 25%
+    Então vejo "R$ 905,40 por mês" e o total 100%
+    E o botão "Salvar plano" fica ativo
+
+  Cenário: Divisão que não fecha
+    Quando eu aumento uma parte sem diminuir outra
+    Então o total passa de 100% e "Salvar plano" fica desativado
+
+  Cenário: Sobra do mês
+    Dado uma fatura de R$ 417,16 e o plano em 20%
+    Então o plano mostra "sobram R$ 3.204,44 para o mês"
+
+  Cenário: Ritmo e previsão
+    Dado o sonho "Japão" com parte 40%, falta R$ 13.680,00 e o plano em 20%
+    Então o ritmo é "R$ 362,16/mês" e a previsão é "dez/2029"
+
+  Cenário: Guardar agora
+    Dado o sonho "Japão" com R$ 4.320,00 guardados
+    Quando eu guardo R$ 200,00
+    Então a caixinha passa a R$ 4.520,00
+    E o saldo cai R$ 200,00
+    E "Guardado em sonhos" do mês mostra "− R$ 200,00" e "1 aporte"
+    E o resultado do mês diminui R$ 200,00
+
+  Cenário: Guardar mais do que o saldo
+    Quando eu tento guardar mais do que o saldo de hoje
+    Então vejo o motivo e nada é salvo
+
+  Cenário: Marco de 25%
+    Dado o sonho "Japão" com 24% da meta
+    Quando eu guardo R$ 200,00
+    Então a tela "Guardado!" diz "Primeiro quarto da meta!"
+
+  Cenário: Retirar
+    Dado o sonho "Japão" com R$ 4.520,00 guardados
+    Quando eu retiro R$ 100,00
+    Então a caixinha passa a R$ 4.420,00 e o saldo sobe R$ 100,00
+
+  Cenário: Retirar mais do que o guardado
+    Quando eu tento retirar mais do que a caixinha tem
+    Então vejo o motivo e nada é salvo
+
+  Cenário: Conquistar um sonho
+    Dado o sonho "Notebook novo" com R$ 5.900,00 de R$ 6.000,00
+    Quando eu guardo R$ 100,00
+    Então abre "Você conquistou o Notebook novo!"
+
+  Cenário: Manter guardado
+    Dado o sonho "Notebook novo" conquistado
+    Quando eu toco em "Manter guardado"
+    Então ele vai para "Conquistados" com o dinheiro na caixinha
+    E o saldo não muda
+
+  Cenário: Usar o dinheiro
+    Dado o sonho "Notebook novo" conquistado com R$ 6.000,00
+    Quando eu toco em "Usar o dinheiro"
+    Então o saldo não muda
+    E existe um gasto do dia a dia "Notebook novo" de R$ 6.000,00 hoje
+    E a parte dele passa aos outros sonhos
+
+  Cenário: Excluir um sonho
+    Dado o sonho "Reserva" com R$ 6.750,00 guardados
+    Quando eu excluo "Reserva" e confirmo
+    Então o saldo sobe R$ 6.750,00
+    E os aportes antigos continuam nos meses em que aconteceram
+
+  Cenário: Linha nas contas do mês
+    Dado um aporte de R$ 200,00 hoje
+    Quando eu abro a aba "Entradas"
+    Então vejo a linha "Guardado em sonhos" com "− R$ 200,00" e "1 aporte"
+    E a lista "Guardado em sonhos" mostra o aporte; tocar nele abre o sonho
+
+  Cenário: Painel no Início
+    Dado os 3 sonhos ativos e o plano em 20%
+    Quando eu abro o Início
+    Então vejo "Guardando R$ 905,40 por mês · 20% da renda" e uma barra por sonho
+
+  Cenário: Animações reduzidas
+    Dado que o aparelho pede menos movimento
+    Quando eu abro a caixinha
+    Então os números, o anel e a caixinha aparecem já no estado final
+
+  Cenário: Valores escondidos
+    Quando o olho está fechado
+    Então os valores e os percentuais aparecem mascarados
+    E anéis e caixinhas viram formas neutras
+
+  Cenário: Falha ao ler os sonhos
+    Dado que a leitura dos sonhos falha
+    Quando eu abro "Meus sonhos"
+    Então vejo o erro com "Tentar de novo"
+    E o Início mostra "Sonhos indisponível" sem afetar o resto
+```
+
+Detalhes que a spec fecha na implementação: o plano guarda partes inteiras (de 1 a 100) que somam 100% entre os sonhos ativos, e o "−" e o "+" mexem de 5 em 5 pontos; o percentual vai de 0 a 50%; no máximo 12 sonhos ativos; o guardado inicial não mexe no saldo e deve ser menor que a meta; um sonho conquistado ou encerrado devolve a parte aos outros na proporção; editar a meta não a deixa menor que o já guardado; sonhos não entram no Desfazer. Os testes dos cenários estão em `src/data/dreams.test.ts` (dados) e `src/pages/sonhos.test.tsx` (telas).
