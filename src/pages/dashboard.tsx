@@ -38,7 +38,6 @@ import {
 } from '@/lib/format';
 
 // D4: a lista "Compras" da aba mostra só as mais recentes; o resto fica em "Todas as compras".
-const RECENT_PURCHASES = 3;
 
 type DialogKind = 'card' | 'movement';
 export type DialogRecord = {
@@ -356,7 +355,7 @@ export default function Dashboard({ month }: { month: MonthKey }) {
           </div>}
           <div className="mt-2 overflow-hidden rounded-2xl border border-line bg-surface">
             {visibleRows.length ? <div data-testid="list-movements" className="divide-y divide-line">
-              {visibleRows.slice(0, RECENT_PURCHASES).map((row) => {
+              {visibleRows.map((row) => {
                 // RF-08: a registered purchase or a planned installment opens its edit form; a planned recurring charge has no action.
                 const open = row.movement ? () => editMovement(row.movement!) : row.planned ? () => editPlanned(row.planned!) : null;
                 const content = <>

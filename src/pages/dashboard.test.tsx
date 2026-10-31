@@ -9,6 +9,31 @@ describe('Cartões', () => {
     expect(screen.getByTestId('list-movements')).toHaveTextContent('Mercado');
   });
 
+  it('lista todas as compras do mês, não só as 3 mais recentes', async () => {
+    const { screen } = await openApp('#/cartoes', async (s) => {
+      const card = await withCard(s);
+      for (let i = 1; i <= 10; i++) await s.createMovement(card.id, null, { description: `Compra ${i}`, amount: 10, date: '2026-10-10' });
+    });
+    expect(await screen.findByTestId('text-invoice')).toBeInTheDocument();
+    const list = screen.getByTestId('list-movements');
+    expect(list.querySelectorAll('[data-testid^="row-movement-"]')).toHaveLength(11);
+  });
+
+  it('com filtro de categoria, lista todas as compras da categoria', async () => {
+    Element.prototype.scrollIntoView = () => {};
+    let food = 0;
+    const { user, screen } = await openApp('#/cartoes', async (s) => {
+      const card = await withCard(s);
+      food = ((await s.createCategory({ name: 'Mercado' })) as { id: number }).id;
+      for (let i = 1; i <= 5; i++) await s.createMovement(card.id, food, { description: `Feira ${i}`, amount: 10, date: '2026-10-10' });
+    });
+    const row = await screen.findByTestId(`row-summary-${food}`);
+    await user.click(row.querySelector('button')!);
+    expect(await screen.findByTestId('text-filter-total')).toHaveTextContent('R$ 50,00');
+    const list = screen.getByTestId('list-movements');
+    expect(list.querySelectorAll('[data-testid^="row-movement-"]')).toHaveLength(5);
+  });
+
   it('o mês anterior abre vazio e volta ao atual', async () => {
     const { user, screen, waitFor } = await openApp('#/cartoes', withCard);
     await user.click(await screen.findByTestId('button-previous-month'));

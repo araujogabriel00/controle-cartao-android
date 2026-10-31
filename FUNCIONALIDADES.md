@@ -59,6 +59,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 36. [Aba Cartões na nova versão](#36-aba-cartões-na-nova-versão)
 37. [Sonhos](#37-sonhos)
 38. [Carrinho de compras](#38-carrinho-de-compras)
+39. [Fatura com todas as compras do mês](#39-fatura-com-todas-as-compras-do-mês)
 
 ---
 
@@ -243,7 +244,7 @@ Funcionalidade: Registrar e acompanhar compras
 
   Cenário: Lista do mês
     Dado que o mês tem compras
-    Então "Compras" mostra as 3 mais recentes, da mais recente para a mais antiga (seção 36)
+    Então "Compras" mostra todas as compras do mês, da mais recente para a mais antiga (seção 39)
     E cada compra mostra a descrição, a categoria, a data e o valor com sinal de menos
 
   Cenário: Filtrar por categoria
@@ -258,8 +259,8 @@ Funcionalidade: Registrar e acompanhar compras
 
   Cenário: Lista longa de compras
     Dado que o mês tem 11 compras
-    Então "Compras" mostra só as 3 mais recentes
-    E o link "Todas as compras" abre a lista completa, sem filtro (seção 24)
+    Então "Compras" mostra as 11, da mais recente para a mais antiga (seção 39)
+    E o link "Todas as compras" abre a lista de todos os meses, sem filtro (seção 24)
 
   Cenário: Mês sem compras
     Dado que o mês não tem compras
@@ -1726,7 +1727,7 @@ Funcionalidade: Aba Entradas na Opção D
 
 ## 28. Opção D: Cartões
 
-Resumo. A especificação completa está em [`specs/redesign-opcao-d-cartoes.md`](specs/redesign-opcao-d-cartoes.md). Nenhuma regra de fatura, parcela, categoria ou histórico muda. A face colorida do cartão saiu: a aba mostra uma fileira de botões de cartão, a fatura em texto grande e três gráficos ("Ritmo do mês", "Para onde foi" e "Próximas faturas") antes da lista de compras. Na v2 o "Ritmo do mês" foi removido e a lista de compras ficou com as 3 mais recentes (seção 36).
+Resumo. A especificação completa está em [`specs/redesign-opcao-d-cartoes.md`](specs/redesign-opcao-d-cartoes.md). Nenhuma regra de fatura, parcela, categoria ou histórico muda. A face colorida do cartão saiu: a aba mostra uma fileira de botões de cartão, a fatura em texto grande e três gráficos ("Ritmo do mês", "Para onde foi" e "Próximas faturas") antes da lista de compras. Na v2 o "Ritmo do mês" foi removido; a lista de compras mostra todas as compras do mês (seções 36 e 39).
 
 ```gherkin
 # language: pt
@@ -2234,7 +2235,7 @@ Detalhes que a spec fecha na implementação: os rótulos do eixo ficam dentro d
 
 ## 36. Aba Cartões na nova versão
 
-Resumo. A especificação completa está em [`specs/redesign-v2-cartoes.md`](specs/redesign-v2-cartoes.md). Nenhuma regra de cálculo muda. A aba fica com: seletor de cartão, Fatura, Próximas faturas, Para onde foi e Compras. O gráfico "Ritmo do mês" (e o `StepLine`) foi removido, e a lista longa "O que já aconteceu", com chips de categoria e "Ver mais", virou "Compras" com as 3 mais recentes.
+Resumo. A especificação completa está em [`specs/redesign-v2-cartoes.md`](specs/redesign-v2-cartoes.md). Nenhuma regra de cálculo muda. A aba fica com: seletor de cartão, Fatura, Próximas faturas, Para onde foi e Compras. O gráfico "Ritmo do mês" (e o `StepLine`) foi removido, e a lista longa "O que já aconteceu", com chips de categoria e "Ver mais", virou "Compras" (que na seção 39 passou a listar todas as compras do mês).
 
 ```gherkin
 # language: pt
@@ -2269,11 +2270,11 @@ Funcionalidade: Aba Cartões na nova versão
     Então "Compras" mostra só as de "Eletrônicos", com "Total do filtro"
     E aparece o botão "Limpar filtro"
     Quando eu toco em "Limpar filtro"
-    Então "Compras" volta a mostrar as 3 mais recentes do mês
+    Então "Compras" volta a mostrar todas as compras do mês
 
-  Cenário: Três compras mais recentes
+  Cenário: Compras do mês (substituído pela seção 39)
     Dado que o mês tem 5 compras
-    Então "Compras" mostra as 3 mais recentes
+    Então "Compras" mostra as 5
     E o link "Todas as compras" leva à lista completa, sem filtro
 
   Cenário: Editar uma compra pela lista
@@ -2559,3 +2560,31 @@ Funcionalidade: Carrinho de compras
 ```
 
 Detalhes que a spec fecha na implementação: o item "Carrinho" do menu ⋯ aparece sempre (abre o estado vazio) e mostra a quantidade só quando há produtos; a barra do Início some com o carrinho vazio; o benefício **dividido** só cobre categorias da divisão que estejam abertas (produto sem categoria não é coberto) e o benefício **sem divisão** cobre qualquer produto até o disponível; o "Saldo depois" vem de uma simulação do fechamento, então inclui o gasto do dia a dia e a 1.ª parcela (ou a compra à vista) que entra na fatura; sem cartão, "Sugerir divisão" põe o resto no saldo. O rascunho do pagamento vive só na memória: recarregar o app em qualquer passo leva de volta a `#/carrinho`. Os testes dos cenários estão em `src/lib/cart-checkout.test.ts` (distribuição), `src/data/cart.test.ts` (dados) e `src/pages/carrinho.test.tsx` (telas).
+
+---
+
+## 39. Fatura com todas as compras do mês
+
+Resumo. A especificação completa está em [`specs/fatura-com-todas-as-compras.md`](specs/fatura-com-todas-as-compras.md). A lista "Compras" da aba Cartões deixou de mostrar só as 3 mais recentes: agora lista **todas** as compras do mês aberto, da mais recente para a mais antiga, e o "N compras" da Fatura bate com as linhas. Em mês futuro entram também as parcelas e recorrentes previstas (com o selo "prevista"); com filtro de categoria, a lista mostra todas as da categoria. O botão "Todas as compras" continua abrindo a lista de todos os meses. Nenhuma regra de cálculo muda.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Fatura com todas as compras do mês
+
+  Cenário: Lista completa do mês
+    Dado um cartão com 11 compras no mês
+    Quando eu abro a aba "Cartões"
+    Então a fatura mostra "11 compras"
+    E "Compras" lista as 11, da mais recente para a mais antiga
+
+  Cenário: Filtro mostra todas da categoria
+    Dado 6 compras em "Mercado" e 5 em "Eletrônicos" no mês
+    Quando eu toco em "Mercado" em "Para onde foi"
+    Então "Compras" lista as 6 de "Mercado" e o "Total do filtro"
+
+  Cenário: Mês futuro lista as previstas
+    Dado uma compra parcelada em 7 vezes
+    Quando eu abro o mês seguinte
+    Então "Compras" lista a parcela prevista com o selo "prevista"
+```
