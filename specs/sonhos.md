@@ -38,7 +38,7 @@ O app registra o que entrou e o que saiu, mas não ajuda a **guardar para um obj
 
 | # | Decisão | Motivo |
 | - | ------- | ------ |
-| D1 | **Acesso** pelo painel **Sonhos** do Início (V5_08) e pelo item **Sonhos** do menu ⋯ do cabeçalho. Não é uma área da barra inferior (que já tem 5 itens). As telas de Sonhos são subtelas com "voltar" e título, sem barra de mês. | Escolha do usuário. |
+| D1 | **Acesso** pelo painel **Sonhos** do Início (V5_08) e pelo item **Sonhos** do menu ⋯ do cabeçalho. Não é uma área da barra inferior (que já tem 5 itens). As telas de Sonhos são subtelas com "voltar" e título, sem barra de mês. As subtelas (caixinha, novo/editar, plano, conquista) formam uma **pilha**: voltar, ou terminar de criar, salvar, excluir ou fechar uma conquista, desempilha com o "voltar" do histórico, de modo que o "Voltar" da lista sai de Sonhos para a tela de onde a pessoa veio (nunca reabre o formulário). | Escolha do usuário. |
 | D2 | **Aporte só manual.** O plano é uma **meta mensal** (e a base da previsão de chegada); nada sai do saldo sozinho. A pessoa guarda com **Guardar agora**. | Escolha do usuário. |
 | D3 | **Plano**: percentual da renda por mês (0 a 50%, passos de 1; atalhos 10, 15, 20, 25, 30) e **divisão entre os sonhos ativos que soma 100%**. A renda de referência é o total de **Entradas do mês corrente** (inclui previsões que já entraram); se for zero, usa a do mês anterior. | Desenho V5_02; sem renda não há ritmo. |
 | D4 | **Ritmo** de um sonho = renda de referência × percentual do plano × parte efetiva do sonho. **Previsão de chegada** = mês corrente + `ceil(falta ÷ ritmo)` meses, escrita "dez/2029". Sem ritmo (plano 0%, sem renda ou sem parte), a previsão é "—". | Desenho V5_01/V5_04. |
@@ -60,9 +60,9 @@ O app registra o que entrou e o que saiu, mas não ajuda a **guardar para um obj
 
 | ID | Requisito |
 | -- | --------- |
-| RF-01 | **Meus sonhos** (`/sonhos`) mostra o cartão do plano (percentual, valor por mês, barra empilhada com a divisão, link "Ajustar plano"), "Neste mês você guardou R$ X de R$ Y", a lista de sonhos e o botão "Novo sonho". |
+| RF-01 | **Meus sonhos** (`/sonhos`) mostra o cartão do plano (percentual, valor por mês, barra empilhada com a divisão, link "Ajustar plano"), "Neste mês você guardou R$ X de R$ Y" (se as retiradas passarem dos aportes, "Neste mês você retirou R$ X das caixinhas"), a lista de sonhos e o botão "Novo sonho". |
 | RF-02 | Cada sonho na lista mostra anel com o percentual (animado), ícone, nome, "R$ guardado de R$ meta", "N% da economia · previsão" e, com 80% ou mais, "Quase lá". Sonhos conquistados vão para uma seção "Conquistados" ao fim. |
-| RF-03 | **Plano** (`/sonhos/plano`): percentual com controle deslizante e atalhos, o valor por mês, o texto "Depois de guardar e pagar os cartões, sobram R$ X para o mês" (renda − guardado planejado − faturas do mês), e a divisão com "−" e "+" por sonho; o botão "Salvar plano" só fica ativo com a soma em 100%. |
+| RF-03 | **Plano** (`/sonhos/plano`): percentual com controle deslizante e atalhos, o valor por mês, o texto "Depois de guardar e pagar os cartões, sobram R$ X para o mês" (renda − guardado planejado − faturas do mês), e a divisão com "−" e "+" por sonho (cada toque leva a parte ao **múltiplo de 5 seguinte**, de 38 sobe para 40 e desce para 35, para que qualquer divisão em múltiplos de 5 seja alcançável); o botão "Salvar plano" só fica ativo com a soma em 100%. |
 | RF-04 | **Novo sonho** (`/sonhos/novo`): nome, quanto custa, já guardado, ícone (6 opções), parte da economia, e a previsão calculada na hora; botão fixo "Criar sonho". |
 | RF-05 | **Caixinha** (`/sonhos/:id`): a caixinha animada com o percentual, "Guardado R$ X de R$ meta", três indicadores (Ritmo, Faltam, Previsão), os botões "Guardar agora" e "Retirar", e "Últimos aportes" (aportes, retiradas e o guardado inicial). Menu ⋯ com "Editar" e "Excluir sonho". |
 | RF-06 | **Guardar agora** abre uma folha com a caixinha, o valor (com atalhos +50, +100, +200, +500), o aviso "Sai do saldo e vai para a caixinha. Saldo depois: R$ X" e o botão "Guardar R$ X". |
