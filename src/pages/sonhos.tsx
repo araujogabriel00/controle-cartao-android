@@ -2,6 +2,7 @@ import { useLocation } from 'wouter';
 import { getGetDreamPlanQueryKey, getGetDreamsQueryKey, useGetDreamPlan, useGetDreams, type DreamItem } from '@workspace/api-client-react';
 import { ChevronRight, CircleHelp, Moon, Plus, Sparkles } from 'lucide-react';
 import { BackButton } from '@/components/back-button';
+import { leaveDreamScreen } from '@/lib/dream-nav';
 import { DreamIconView, etaLabel, pct, ShareBar, SHARE_COLORS, useCountUp, useFirstShow } from '@/components/dream-parts';
 import { DreamRing } from '@/components/charts/dream-ring';
 import { money } from '@/lib/format';
@@ -41,7 +42,7 @@ export default function Sonhos() {
   const retry = () => { void dreams.refetch(); void plan.refetch(); };
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
-      <BackButton onClick={() => (window.history.length > 1 ? window.history.back() : navigate('/'))}/>
+      <BackButton onClick={() => leaveDreamScreen(navigate, '/')}/>
       <section className="enter mt-3" style={{ animationDelay: '.06s' }}>
         <div className="flex items-center gap-2 text-eyebrow"><Moon size={14}/><p className="font-mono-data text-xs uppercase tracking-[.08em]">Caixinhas para objetivos</p></div>
         <h1 className="mt-1 font-display text-[28px] leading-tight text-ink">Meus sonhos</h1>
@@ -78,7 +79,10 @@ export default function Sonhos() {
                 {data.items.map((item, index) => <li key={item.id} className="flex items-center gap-1.5"><span aria-hidden className={`h-2.5 w-2.5 rounded-full ${SHARE_COLORS[index % SHARE_COLORS.length]}`}/>{item.name} {pct(item.share)}</li>)}
               </ul>
             </div>}
-            <p data-testid="text-dreams-month" className="mt-3 text-[15px] text-ink">Neste mês você guardou <span className="font-mono-data font-semibold">{money(data.savedThisMonth)}</span> de <span className="font-mono-data">{money(data.monthlyAmount)}</span></p>
+            <p data-testid="text-dreams-month" className="mt-3 text-[15px] text-ink">{data.savedThisMonth < 0
+              // Retiradas maiores que os aportes (ex.: "Usar o dinheiro"): "guardou -R$ X" confunde, então a frase vira "retirou".
+              ? <>Neste mês você retirou <span className="font-mono-data font-semibold">{money(-data.savedThisMonth)}</span> das caixinhas</>
+              : <>Neste mês você guardou <span className="font-mono-data font-semibold">{money(data.savedThisMonth)}</span> de <span className="font-mono-data">{money(data.monthlyAmount)}</span></>}</p>
             <button type="button" data-testid="button-adjust-plan" onClick={() => navigate('/sonhos/plano')} className="-mx-2 mt-1 flex h-12 items-center gap-1 rounded-full px-3 text-[15px] font-semibold text-brand transition hover:bg-hover">{data.hasPlan ? 'Ajustar plano' : 'Definir plano'}<ChevronRight size={16}/></button>
           </section>}
 

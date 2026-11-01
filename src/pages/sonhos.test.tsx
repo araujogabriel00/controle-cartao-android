@@ -31,6 +31,43 @@ describe('Meus sonhos', () => {
     expect(await screen.findByRole('button', { name: /Criar meu primeiro sonho/ })).toBeInTheDocument();
   });
 
+  // Criar, salvar o plano, excluir e fechar uma conquista voltam à lista sem empilhar outra entrada: o "Voltar" da lista sai de Sonhos.
+  it('depois de criar um sonho o "Voltar" da lista leva ao Início, sem reabrir o formulário', async () => {
+    const { user, screen, waitFor } = await openApp('#/', withCash);
+    await user.click(await screen.findByTestId('button-header-menu'));
+    await user.click(await screen.findByTestId('menu-dreams'));
+    await user.click(await screen.findByTestId('button-new-dream'));
+    await user.type(await screen.findByTestId('input-dream-name'), 'Viagem');
+    await user.type(screen.getByTestId('input-dream-goal'), '1000');
+    await user.click(screen.getByTestId('button-save-dream'));
+    await screen.findByTestId('list-dreams');
+    await user.click(screen.getByTestId('button-back'));
+    await waitFor(() => expect(window.location.hash).toBe('#/'));
+  });
+
+  it('depois de salvar o plano o "Voltar" da lista leva ao Início', async () => {
+    const { user, screen, waitFor } = await openApp('#/', async (s) => { await withThreeDreams(s, 0); });
+    await user.click(await screen.findByTestId('button-header-menu'));
+    await user.click(await screen.findByTestId('menu-dreams'));
+    await user.click(await screen.findByTestId('button-adjust-plan'));
+    await user.click(await screen.findByTestId('button-plan-chip-20'));
+    await user.click(screen.getByTestId('button-save-plan'));
+    await screen.findByTestId('list-dreams');
+    await user.click(screen.getByTestId('button-back'));
+    await waitFor(() => expect(window.location.hash).toBe('#/'));
+  });
+
+  it('depois de abrir e voltar de uma caixinha o "Voltar" da lista leva ao Início', async () => {
+    const { user, screen, waitFor } = await openApp('#/', async (s) => { await withThreeDreams(s); });
+    await user.click(await screen.findByTestId('button-header-menu'));
+    await user.click(await screen.findByTestId('menu-dreams'));
+    await user.click((await screen.findAllByTestId(/^row-dream-\d+$/))[0]);
+    await user.click(await screen.findByTestId('button-back'));
+    await screen.findByTestId('list-dreams');
+    await user.click(screen.getByTestId('button-back'));
+    await waitFor(() => expect(window.location.hash).toBe('#/'));
+  });
+
   it('criar um sonho: aparece com 24% e o saldo não muda', async () => {
     const { user, screen, store } = await openApp('#/sonhos', withRenda);
     const before = await balance(store);
@@ -77,6 +114,16 @@ describe('Meus sonhos', () => {
     expect(screen.getByTestId('list-dreams-done')).toHaveTextContent('Notebook novo');
   });
 
+  it('com retiradas maiores que os aportes a frase diz "retirou", sem valor negativo', async () => {
+    const { screen } = await openApp('#/sonhos', async (s) => {
+      const { japan } = await withThreeDreams(s);
+      await s.withdrawDream(japan.id, 500);
+    });
+    const text = plain((await screen.findByTestId('text-dreams-month')).textContent);
+    expect(text).toContain('retirou R$ 500,00 das caixinhas');
+    expect(text).not.toContain('-R$');
+  });
+
   it('com 80% ou mais o sonho leva "Quase lá"', async () => {
     const { screen } = await openApp('#/sonhos', async (s) => { await withRenda(s); await newDream(s, 'Quase', 1000, 100, 850); });
     expect(await screen.findByText('Quase lá')).toBeInTheDocument();
@@ -92,7 +139,9 @@ describe('Meus sonhos', () => {
 
 describe('Plano', () => {
   it('dividir o plano: 20% dá R$ 905,40 por mês, total 100% e Salvar plano ativo', async () => {
-    const { user, screen, store } = await openApp('#/sonhos/plano', async (s) => { await withThreeDreams(s, 0); });
+    // Entra pela lista (como a pessoa): salvar desempilha o plano e volta a ela.
+    const { user, screen, store } = await openApp('#/sonhos', async (s) => { await withThreeDreams(s, 0); });
+    await user.click(await screen.findByTestId('button-adjust-plan'));
     await user.click(await screen.findByTestId('button-plan-chip-20'));
     expect(plain(screen.getByTestId('text-plan-monthly').textContent)).toContain('R$ 905,40 por mês');
     expect(screen.getByTestId('text-plan-total')).toHaveTextContent('Total: 100%');
@@ -118,6 +167,25 @@ describe('Plano', () => {
     expect(screen.getByTestId('text-plan-total')).toHaveTextContent('Total: 105%');
     expect(screen.getByTestId('button-save-plan')).toBeDisabled();
     await user.click(screen.getByTestId(`button-plan-minus-${japan}`));
+    expect(screen.getByTestId('button-save-plan')).toBeEnabled();
+  });
+
+  // A parte salva pode não ser múltipla de 5 (38/37/25 depois de criar três sonhos); "+" e "−" vão ao múltiplo seguinte.
+  it('"+" e "−" levam a parte ao múltiplo de 5: de 38/37/25 chega-se a 40/35/25', async () => {
+    const { user, screen, store } = await openApp('#/sonhos/plano', async (s) => {
+      await withRenda(s);
+      await newDream(s, 'Viagem ao Japão', 18000, 100, 4320);
+      await newDream(s, 'Reserva', 20000, 50, 6750, 'shield');
+      await newDream(s, 'Notebook novo', 6000, 25, 5900, 'laptop');
+    });
+    const japan = await idOf(store, 'Viagem ao Japão');
+    const reserve = await idOf(store, 'Reserva');
+    expect(await screen.findByTestId(`text-plan-share-${japan}`)).toHaveTextContent('38%');
+    await user.click(screen.getByTestId(`button-plan-plus-${japan}`));
+    await user.click(screen.getByTestId(`button-plan-minus-${reserve}`));
+    expect(screen.getByTestId(`text-plan-share-${japan}`)).toHaveTextContent('40%');
+    expect(screen.getByTestId(`text-plan-share-${reserve}`)).toHaveTextContent('35%');
+    expect(screen.getByTestId('text-plan-total')).toHaveTextContent('Total: 100%');
     expect(screen.getByTestId('button-save-plan')).toBeEnabled();
   });
 

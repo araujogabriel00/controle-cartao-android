@@ -6,6 +6,7 @@ import {
   type DreamDeposit, type DreamDetail,
 } from '@workspace/api-client-react';
 import { BackButton } from '@/components/back-button';
+import { leaveDreamScreen } from '@/lib/dream-nav';
 import { useConfirm } from '@/components/confirm-dialog';
 import { Jar } from '@/components/charts/jar';
 import { DreamIconView, etaLabel, pct, useCountUp, useFirstShow } from '@/components/dream-parts';
@@ -52,13 +53,13 @@ function Caixinha({ dream }: { dream: DreamDetail }) {
         // A conquista lê o sonho de novo: espera a leitura atualizada para a tela não abrir com o sonho ainda "ativo".
         await client.invalidateQueries();
         setSheet(null);
-        if (result.reached) navigate(`/sonhos/${dream.id}/conquista`); else setSaved(result);
+        if (result.reached) navigate(`/sonhos/${dream.id}/conquista`, { replace: true }); else setSaved(result);
       },
       onError: failed,
     },
   });
   const withdraw = useWithdrawDream({ mutation: { onSuccess: () => { refresh(); setSheet(null); notify('Dinheiro devolvido ao saldo.'); }, onError: failed } });
-  const remove = useDeleteDream({ mutation: { onSuccess: () => { refresh(); navigate('/sonhos'); }, onError: failed } });
+  const remove = useDeleteDream({ mutation: { onSuccess: () => { refresh(); leaveDreamScreen(navigate, '/sonhos'); }, onError: failed } });
   const shownSaved = useCountUp(dream.saved, animate);
 
   if (saved) return <SavedScreen dream={dream} result={saved} onBack={() => setSaved(null)}/>;
@@ -74,7 +75,7 @@ function Caixinha({ dream }: { dream: DreamDetail }) {
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
       <div className="flex items-center justify-between">
-        <BackButton onClick={() => navigate('/sonhos')}/>
+        <BackButton onClick={() => leaveDreamScreen(navigate, '/sonhos')}/>
         <RowMenu title={dream.name} menuTestId="menu-dream" editTestId="button-edit-dream" deleteTestId="button-delete-dream" deleteLabel="Excluir sonho" onEdit={() => navigate(`/sonhos/${dream.id}/editar`)} onDelete={() => void askDelete()}/>
       </div>
       <section className="enter mt-1 flex items-center gap-3" style={{ animationDelay: '.06s' }}>
@@ -96,7 +97,7 @@ function Caixinha({ dream }: { dream: DreamDetail }) {
         <div className={indicator}><dt className="text-[13px] text-ink-soft">Previsão</dt><dd data-testid="text-dream-eta" className="font-mono-data text-[14px] text-ink">{etaLabel(dream.etaMonth)}</dd></div>
       </dl>
 
-      {dream.status === 'reached' && <button type="button" data-testid="button-dream-decide" onClick={() => navigate(`/sonhos/${dream.id}/conquista`)} className="mt-4 h-14 w-full rounded-full border-2 border-brand text-base font-semibold text-brand transition hover:bg-hover">Escolher o que fazer com o dinheiro</button>}
+      {dream.status === 'reached' && <button type="button" data-testid="button-dream-decide" onClick={() => navigate(`/sonhos/${dream.id}/conquista`, { replace: true })} className="mt-4 h-14 w-full rounded-full border-2 border-brand text-base font-semibold text-brand transition hover:bg-hover">Escolher o que fazer com o dinheiro</button>}
       {!closed && <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
         <button type="button" data-testid="button-save-money" onClick={() => setSheet('deposit')} className="h-14 rounded-full bg-brand px-6 text-base font-semibold text-on-brand transition hover:bg-brand-hover">Guardar agora</button>
         <button type="button" data-testid="button-withdraw" disabled={dream.saved <= 0} onClick={() => setSheet('withdraw')} className="h-14 rounded-full border border-line px-6 text-base font-semibold text-ink transition hover:bg-hover disabled:opacity-50">Retirar</button>
@@ -125,7 +126,7 @@ export default function SonhoCaixinha({ dreamId }: { dreamId: number }) {
   const dream = useGetDream(dreamId, { query: { queryKey: getGetDreamQueryKey(dreamId), refetchOnWindowFocus: true } });
   const [, navigate] = useLocation();
   if (dream.isError) return <Redirect to="/sonhos" replace />;
-  if (!dream.data) return <main className="notebook-grain min-h-safe bg-paper"><div className="relative z-10 mx-auto max-w-[860px] px-4 pt-5"><BackButton onClick={() => navigate('/sonhos')}/><div aria-busy="true" className="mt-6 h-[300px] animate-pulse rounded-2xl bg-line"/></div></main>;
+  if (!dream.data) return <main className="notebook-grain min-h-safe bg-paper"><div className="relative z-10 mx-auto max-w-[860px] px-4 pt-5"><BackButton onClick={() => leaveDreamScreen(navigate, '/sonhos')}/><div aria-busy="true" className="mt-6 h-[300px] animate-pulse rounded-2xl bg-line"/></div></main>;
   return <Caixinha dream={dream.data}/>;
 }
 

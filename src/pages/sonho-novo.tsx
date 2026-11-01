@@ -6,6 +6,7 @@ import {
   type DreamDetail, type DreamIcon, type DreamPlan,
 } from '@workspace/api-client-react';
 import { BackButton } from '@/components/back-button';
+import { leaveDreamScreen } from '@/lib/dream-nav';
 import { DREAM_ICON_VIEW, DreamIconView, etaLabel } from '@/components/dream-parts';
 import { currentMonth, shiftMonth } from '@/lib/format';
 
@@ -20,7 +21,7 @@ function DreamForm({ dream, plan }: { dream?: DreamDetail; plan?: DreamPlan }) {
   // Com outros sonhos ativos, sugere uma parte igual para todos (100 seria recusado: os outros precisam de pelo menos 1%).
   const [share, setShare] = useState(dream ? String(dream.share) : String(plan?.items.length ? Math.floor(100 / (plan.items.length + 1)) : 100));
   const [error, setError] = useState<string | null>(null);
-  const done = (path: string) => () => { void client.invalidateQueries(); navigate(path); };
+  const done = (path: string) => () => { void client.invalidateQueries(); leaveDreamScreen(navigate, path); };
   const fail = (e: Error) => setError(e.message);
   const create = useCreateDream({ mutation: { onSuccess: done('/sonhos'), onError: fail } });
   const update = useUpdateDream({ mutation: { onSuccess: done(dream ? `/sonhos/${dream.id}` : '/sonhos'), onError: fail } });
@@ -87,7 +88,7 @@ export default function SonhoNovo({ dreamId }: { dreamId?: number }) {
   const ready = (dreamId === undefined || Boolean(dream.data)) && (Boolean(plan.data) || plan.isError);
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pt-5 sm:px-8">
-      <BackButton onClick={() => navigate(dreamId === undefined ? '/sonhos' : `/sonhos/${dreamId}`)}/>
+      <BackButton onClick={() => leaveDreamScreen(navigate, dreamId === undefined ? '/sonhos' : `/sonhos/${dreamId}`)}/>
       <h1 className="enter mt-3 font-display text-[28px] leading-tight text-ink">{dreamId === undefined ? 'Novo sonho' : 'Editar sonho'}</h1>
       {ready ? <DreamForm dream={dream.data} plan={plan.data}/> : <div aria-busy="true" className="mt-6 h-[300px] animate-pulse rounded-2xl bg-line"/>}
     </div>

@@ -1,3 +1,4 @@
+import { leaveDreamScreen } from '@/lib/dream-nav';
 import { useQueryClient } from '@tanstack/react-query';
 import { Redirect, useLocation } from 'wouter';
 import { getGetDreamQueryKey, useCloseDream, useGetDream } from '@workspace/api-client-react';
@@ -13,7 +14,7 @@ export default function SonhoConquista({ dreamId }: { dreamId: number }) {
   const { notice, failed } = useNotice();
   const dream = useGetDream(dreamId, { query: { queryKey: getGetDreamQueryKey(dreamId) } });
   const animate = useFirstShow(`conquista-${dreamId}`);
-  const close = useCloseDream({ mutation: { onSuccess: () => { void client.invalidateQueries(); navigate('/sonhos'); }, onError: failed } });
+  const close = useCloseDream({ mutation: { onSuccess: () => { void client.invalidateQueries(); leaveDreamScreen(navigate, '/sonhos'); }, onError: failed } });
 
   if (dream.isError) return <Redirect to="/sonhos" replace />;
   if (!dream.data || (dream.isFetching && dream.data.status !== 'reached')) return <main className="notebook-grain min-h-safe bg-paper"><div aria-busy="true" className="mx-auto mt-24 h-[300px] max-w-[440px] animate-pulse rounded-2xl bg-line"/></main>;

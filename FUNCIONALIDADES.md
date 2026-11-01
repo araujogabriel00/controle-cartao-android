@@ -2340,6 +2340,21 @@ Funcionalidade: Sonhos
     Então vejo "R$ 905,40 por mês" e o total 100%
     E o botão "Salvar plano" fica ativo
 
+  Cenário: Sair de Sonhos depois de criar, salvar ou abrir uma caixinha
+    Dado que abri "Sonhos" pelo menu ⋯ do Início
+    E criei um sonho (ou salvei o plano, ou abri e voltei de uma caixinha)
+    Quando eu toco em "Voltar" na lista "Meus sonhos"
+    Então volto ao Início, sem reabrir o formulário nem o plano
+
+  Cenário: Os botões da divisão vão ao múltiplo de 5
+    Dado os sonhos "Japão" 38%, "Reserva" 37% e "Notebook" 25%
+    Quando eu toco em "+" no Japão e em "−" na Reserva
+    Então a divisão fica 40%, 35% e 25% e "Salvar plano" fica ativo
+
+  Cenário: Retirou mais do que guardou no mês
+    Dado que as retiradas do mês passam dos aportes
+    Então "Meus sonhos" diz "Neste mês você retirou R$ 500,00 das caixinhas", sem valor negativo
+
   Cenário: Divisão que não fecha
     Quando eu aumento uma parte sem diminuir outra
     Então o total passa de 100% e "Salvar plano" fica desativado
