@@ -1949,7 +1949,7 @@ Funcionalidade: Fundação da nova versão
     Dado que o endereço está vazio
     Quando eu abro o app
     Então vejo o Início do mês corrente
-    E a barra inferior mostra "Início" como ativo
+    E a barra inferior, só com ícones (o nome vem do aria-label), mostra "Início" como ativo
 
   Cenário: Abrir o app num mês lembrado
     Dado que eu fechei o app em outro mês
@@ -2712,3 +2712,5 @@ Funcionalidade: Previsões com o saldo de cada dia
 ```
 
 Detalhes que a implementação fecha: o botão "Nova previsão" sobe junto com a folha (a altura dela vai na variável CSS `--forecast-sheet-h`); a rota do Saldo previsto do mês corrente é `#/previsoes/saldo`, e o item do menu não aparece em mês passado. Os testes estão em `src/pages/previsoes.test.tsx` e `src/pages/previsao-saldo.test.tsx`.
+
+> **Barra inferior só com ícones.** A barra inferior (seção 32) não mostra mais o texto dos itens: ficam os 5 ícones, com o nome da área em `aria-label` e `title` (dica ao segurar) e o item ativo com `aria-current="page"`, pílula `tint` e traço mais grosso. Rotas, mês compartilhado e altura (72 px) não mudam. Veja [`specs/barra-inferior-sem-rotulos.md`](specs/barra-inferior-sem-rotulos.md); os testes estão em `src/App.test.tsx`.

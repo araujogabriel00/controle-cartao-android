@@ -23,7 +23,7 @@ A v2 foi desenhada com 13 telas, claras e escuras. Esta spec cobre a **primeira 
 
 | # | Decisão | Motivo |
 | - | ------- | ------ |
-| D1 | **Barra inferior** com 4 itens, sempre com texto: **Início, Entradas, Cartões, Benefícios**. Item ativo com pílula de 56–64 × 32 px, alvo de toque de 48 px. | Navegação principal ao alcance do polegar; os rótulos evitam ícones ambíguos. |
+| D1 | *(Substituída por [`barra-inferior-sem-rotulos.md`](barra-inferior-sem-rotulos.md): a barra agora mostra só ícones.)* **Barra inferior** com 4 itens, sempre com texto: **Início, Entradas, Cartões, Benefícios**. Item ativo com pílula de 56–64 × 32 px, alvo de toque de 48 px. | Navegação principal ao alcance do polegar; os rótulos evitam ícones ambíguos. |
 | D2 | **Início é a rota `/`** (mês corrente) e `/inicio/mes/AAAA-MM` (outro mês). Cartões passa para `/cartoes` (e `/cartoes/mes/AAAA-MM`). As rotas `/mes/AAAA-MM` antigas **redirecionam** para `/cartoes/mes/AAAA-MM`. | Escolha do usuário: quem abre o app cai no Início. O Início em outro mês precisa de endereço próprio (D3, RF-02), no mesmo padrão das outras áreas. |
 | D3 | Ao abrir o app com endereço vazio, o app abre o **Início** no mês lembrado (hoje abre Cartões). | Segue o comportamento já existente de lembrar o mês, trocando só o destino. |
 | D4 | O botão **Lançar** vira um botão flutuante estendido (ícone "+" e texto), no canto inferior direito, 88 px acima do fim da tela, sobre a barra. "Categorias" e "Resumo" saem do rodapé. | Libera a barra para a navegação. |
@@ -158,7 +158,7 @@ Sem mudança no formato salvo, na camada de dados nem na API. Duas chaves novas 
 - **Cores com nome**, com valor claro e escuro (a base é o que o tema já tem; os escuros vêm do canvas v2): `paper` #f5f1e7 / #0f1f18, `surface` #fbf8f0 / #16291f, `raise` #ffffff / #1d3528, `line` #d9d2c2 / #2b4636, `ink` #1f3a2e / #f1ede2, `ink-soft` #4f6256 / #a9b9ad, `brand` #28513f / #7cc0a1, `on-brand` #fffaf0 / #0c1a13, `tint` #dde7da / #24412f, `alert` #8c3f2f / #f0a090, `chart-in` #2a78d6 / #6aaaf2, `chart-out` #c8501f / #f2905f, `chart-violet` #5b46b0 / #a99cf2, `chart-rose` #a63d5a / #e58aa3, `chart-rose-tint` #e6c3cc / #5a3340, `chart-track` #e6e1d5 / #2b4636.
 - Os cerca de 40 hexadecimais que aparecem mais de uma vez nas telas (por exemplo `#e9e3d7`, `#e4ece2`, `#eee9dd`, `#ece7dc`) são trocados pelo nome mais próximo (`tint`, `hover`, `chip`); os que só aparecem uma vez são trocados pelo nome mais próximo também, sem criar cor nova por tela.
 - O tema escuro liga a classe `dark` em `<html>` (a variante `dark` já existe em `index.css`). O mapeamento fica nas variáveis de `:root` e `.dark`.
-- **Barra inferior:** 72 px de altura mais a área segura; 4 itens iguais; ícone de 22 px; rótulo de 12 px sempre visível; pílula do item ativo na cor `tint`.
+- **Barra inferior:** 72 px de altura mais a área segura; 4 itens iguais; ícone de 22 px; rótulo de 12 px sempre visível *(removido por `barra-inferior-sem-rotulos.md`: só ícones, com `aria-label` e `title`)*; pílula do item ativo na cor `tint`.
 - **Botão Lançar:** 56 px de altura, canto inferior direito, 16 px da borda, 88 px acima do fim da tela (sobre a barra); espaço reservado no fim das telas para ele não cobrir o último item.
 - **Cabeçalho:** 56 px de altura; olho e ⋯ com alvo de 48 px.
 - **Início:** card de Saldo no topo (RF-04), linha Entrou/Saiu, card Próxima fatura, lista de benefícios e atalhos. Medidas exatas: telas V2_01 (clara e escura) do canvas.
