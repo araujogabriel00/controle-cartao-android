@@ -61,6 +61,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 38. [Carrinho de compras](#38-carrinho-de-compras)
 39. [Fatura com todas as compras do mês](#39-fatura-com-todas-as-compras-do-mês)
 40. [Histórico e Todas as compras na nova versão](#40-histórico-e-todas-as-compras-na-nova-versão)
+41. [Previsões com o saldo de cada dia](#41-previsões-com-o-saldo-de-cada-dia)
 
 ---
 
@@ -2677,3 +2678,37 @@ Funcionalidade: Histórico e Todas as compras na nova versão
 ```
 
 Detalhes que a implementação fecha: o rótulo da média é sempre "Média dos últimos 5 meses", mesmo quando há menos de 5 meses fechados (a média usa os que existem); em "Todos os meses" tocar num mês abre o painel dele na aba Cartões (não a lista de compras); o ⋯ de cada compra e o botão voltar têm 48 px. Os testes estão em `src/pages/historico.test.tsx` e `src/pages/compras.test.tsx`.
+
+## 41. Previsões com o saldo de cada dia
+
+Resumo. A especificação completa está em [`specs/previsoes-saldo-por-dia.md`](specs/previsoes-saldo-por-dia.md). O cartão de resumo de Previsões saiu. Cada dia do calendário mostra o **saldo no fim do dia** em reais inteiros (base do mês + previsões que mexem no saldo; lembretes não entram), e a lista do dia virou uma **folha fixa** acima da barra inferior, com o total do dia, as previsões e "Saldo no fim do dia". No mês corrente o saldo aparece de hoje ao fim do mês, em mês futuro do dia 1 ao fim, e em mês passado não aparece. A tela **Saldo previsto** continua, aberta agora pelo item "Saldo previsto" do menu ⋯ da área Previsões. Nenhuma regra de cálculo muda.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Previsões com o saldo de cada dia
+
+  Cenário: Saldo em cada dia do calendário
+    Dado que hoje o saldo é R$ 1.850,00 e há R$ 800,00 a receber no dia 20 e R$ 350,00 a pagar no dia 25
+    Quando eu abro "Previsões"
+    Então o dia de hoje mostra "1.850" em negrito
+    E o dia 20 mostra "2.650" em negrito e o dia 25 mostra "2.300" em negrito
+    E os dias passados não mostram saldo
+
+  Cenário: A folha do dia
+    Quando eu toco no dia 20
+    Então a folha mostra a previsão do dia, o total "+ R$ 800,00" e "Saldo no fim do dia" "R$ 2.650,00"
+
+  Cenário: Saldo negativo e muito grande
+    Então um saldo negativo aparece com "−" em cor de alerta e "saldo negativo" no nome acessível
+    E um saldo acima de 6 caracteres aparece com "k" (112k)
+
+  Cenário: Saldo previsto pelo menu
+    Quando eu abro o menu ⋯ em "Previsões"
+    Então vejo "Saldo previsto" e, ao tocar, abre a tela do saldo previsto do mês aberto
+
+  Cenário: Olho fechado
+    Então as células mostram "•••" e nenhum valor em reais aparece na folha
+```
+
+Detalhes que a implementação fecha: o botão "Nova previsão" sobe junto com a folha (a altura dela vai na variável CSS `--forecast-sheet-h`); a rota do Saldo previsto do mês corrente é `#/previsoes/saldo`, e o item do menu não aparece em mês passado. Os testes estão em `src/pages/previsoes.test.tsx` e `src/pages/previsao-saldo.test.tsx`.

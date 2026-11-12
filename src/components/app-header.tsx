@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { Check, Eye, EyeOff, History, type LucideIcon, MoreHorizontal, Moon, ShoppingCart, Smartphone, Sparkles, Sun, Tag } from 'lucide-react';
+import { Check, Eye, EyeOff, History, LineChart, type LucideIcon, MoreHorizontal, Moon, ShoppingCart, Smartphone, Sparkles, Sun, Tag } from 'lucide-react';
 import { useGetCart } from '@workspace/api-client-react';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { MonthNav } from '@/components/month-nav';
-import { type Area, type MonthKey } from '@/lib/format';
+import { type Area, currentMonth, forecastBalancePath, type MonthKey } from '@/lib/format';
 import { toggleHideValues, useHideValues } from '@/lib/hide-values';
 import { chooseTheme, type Theme, useTheme } from '@/lib/theme';
 
@@ -33,6 +33,7 @@ export function AppHeader({ area, month, canGoPrevious, canGoNext }: { area: Are
     </header>
     {menu && <BottomSheet title="Mais opções" onClose={() => setMenu(false)}>
       <div className="space-y-2">
+        {area === 'forecasts' && month >= currentMonth() && <button data-testid="menu-balance-forecast" onClick={() => go(month > currentMonth() ? forecastBalancePath(month) : '/previsoes/saldo')} className={item}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-tint text-brand"><LineChart size={18}/></span>Saldo previsto</button>}
         <button data-testid="menu-cart" onClick={() => go('/carrinho')} className={item}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-tint text-brand"><ShoppingCart size={18}/></span><span className="min-w-0 flex-1">Carrinho</span>{cartCount > 0 && <span data-testid="text-menu-cart-count" className="shrink-0 rounded-full bg-tint px-2.5 py-0.5 font-mono-data text-[14px] text-brand">{cartCount}</span>}</button>
         <button data-testid="menu-dreams" onClick={() => go('/sonhos')} className={item}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-tint text-brand"><Sparkles size={18}/></span>Sonhos</button>
         <button data-testid="menu-categories" onClick={() => go('/categorias')} className={item}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-tint text-brand"><Tag size={18}/></span>Categorias</button>

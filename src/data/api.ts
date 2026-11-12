@@ -16,7 +16,7 @@ export type {
   BalancePoint, InvoicePoint, RecentSpend, UndoResult,
   Cart, CartItem, CartItemInput, CartFormInput, CartDraft, CartArea, CartCoverage, CartBenefitCoverage, CartCardCoverage, CartFormPreview, CartPaymentPreview, CartCheckoutResult, StoredCartItem,
   DreamIcon, DreamStatus, DreamItem, DreamDetail, Dreams, DreamPlan, DreamPlanItem, DreamPlanInput, DreamEntries, DreamMonthEntry, DreamInput, DreamUpdate, DreamDeposit, StoredDream, StoredDreamEntry,
-  ForecastKind, ForecastPayAs, ForecastState, ForecastOccurrence, ForecastInput, ForecastMonth, ForecastDay, ForecastSummary, BalanceForecast, StoredForecast,
+  ForecastKind, ForecastPayAs, ForecastState, ForecastOccurrence, ForecastInput, ForecastMonth, ForecastDay, BalanceForecast, StoredForecast,
   Benefits, BenefitItem, BenefitSpend, BenefitRange, BenefitInput, BenefitUpdate, BenefitSpendInput, BenefitSplitItem, BenefitCategoryRow, StoredBenefit, StoredBenefitSpend,
 } from './store';
 export { INCOME_KINDS, DREAM_ICONS, CartDraftError } from './store';
@@ -247,7 +247,7 @@ export const useDiscardUndo = (options?: MutationOpts<void, { undoId: number }>)
 export const getGetForecastsQueryKey = (month?: store.MonthKey) => key('forecasts', month);
 export const getGetForecastDayQueryKey = (date?: string) => key('forecasts', 'day', date);
 export const getGetForecastRangeQueryKey = () => ['forecasts', 'range'] as const;
-export const getGetForecastSummaryQueryKey = (month?: store.MonthKey) => key('forecasts', 'summary', month);
+export const getGetForecastDayBalancesQueryKey = (month?: store.MonthKey) => key('forecasts', 'day-balances', month);
 export const getGetBalanceForecastQueryKey = (month?: store.MonthKey, days?: number) => key('forecasts', 'balance', month, days);
 export const getGetForecastAlertsQueryKey = (since?: string | null) => ['forecasts', 'alerts', since ?? 'none'] as const;
 
@@ -262,8 +262,8 @@ export const useGetForecastDay = (date: string, options?: QueryOpts<store.Foreca
 export const useGetForecastRange = (options?: QueryOpts<{ first: store.MonthKey; last: store.MonthKey }>) =>
   useLocalQuery(getGetForecastRangeQueryKey(), () => store.getForecastRange(), noRetry(options));
 
-export const useGetForecastSummary = (month: store.MonthKey, options?: QueryOpts<store.ForecastSummary>) =>
-  useLocalQuery(getGetForecastSummaryQueryKey(month), () => store.getForecastSummary(month), noRetry(options));
+export const useGetForecastDayBalances = (month: store.MonthKey, options?: QueryOpts<store.ForecastDayBalance[]>) =>
+  useLocalQuery(getGetForecastDayBalancesQueryKey(month), () => store.getForecastDayBalances(month), noRetry(options));
 
 export const useGetBalanceForecast = (month: store.MonthKey, days: number, options?: QueryOpts<store.BalanceForecast>) =>
   useLocalQuery(getGetBalanceForecastQueryKey(month, days), () => store.getBalanceForecast(month, days), noRetry(options));
