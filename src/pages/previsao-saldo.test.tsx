@@ -30,9 +30,9 @@ describe('Saldo previsto', () => {
     const november = (await store.getMonthCash('2026-11')).balanceAmount;
     // +400 (20/10, ainda por vir) −100 (10/11) sobre o saldo de novembro.
     const expected = Math.round((november + 300) * 100) / 100;
-    const summary = await store.getForecastSummary('2026-11');
+    const days = await store.getForecastDayBalances('2026-11');
     const forecast = await store.getBalanceForecast('2026-11');
-    expect(summary.projected).toBe(expected);
+    expect(days[days.length - 1].balance).toBe(expected);
     expect(forecast.endBalance).toBe(expected);
     expect(forecast.points[0].date).toBe('2026-11-01');
     expect(forecast.points).toHaveLength(30);
@@ -47,8 +47,9 @@ describe('Saldo previsto', () => {
       await s.createForecast({ kind: 'receive', description: 'Venda', amount: 1000, date: '2026-11-10', affects: true, recurring: false });
       await s.createForecast({ kind: 'pay', description: 'Seguro', amount: 200, date: '2026-12-05', affects: true, recurring: false });
     });
-    const november = await store.getForecastSummary('2026-11');
-    const december = await store.getForecastSummary('2026-12');
+    const lastOf = async (month: string) => { const d = await store.getForecastDayBalances(month); return d[d.length - 1].balance; };
+    const november = { balance: (await store.getBalanceForecast('2026-11')).balance, projected: await lastOf('2026-11') };
+    const december = { balance: (await store.getBalanceForecast('2026-12')).balance, projected: await lastOf('2026-12') };
     const base = (await store.getMonthCash('2026-12')).balanceAmount;
     expect(november.projected).toBe(Math.round((november.balance + 1000) * 100) / 100);
     // O saldo de dezembro já traz os R$ 1.000 pendentes de novembro; o previsto só soma o que é de dezembro.
@@ -64,18 +65,21 @@ describe('Saldo previsto', () => {
       await s.createIncome({ kind: 'salario', amount: 11, date: '2026-10-05', recurring: false });
       await s.createForecast({ kind: 'receive', description: 'Venda', amount: 1000, date: '2026-10-25', affects: true, recurring: false });
     });
-    expect(await store.getForecastSummary('2026-10')).toMatchObject({ balance: 11, projected: 1011 });
+    const days = await store.getForecastDayBalances('2026-10');
+    expect(days.find((d) => d.date === '2026-10-15')?.balance).toBe(11);
+    expect(days[days.length - 1].balance).toBe(1011);
   });
 
   it('mês passado não tem projeção', async () => {
     const { store } = await openApp('#/previsoes', withForecasts);
-    expect((await store.getForecastSummary('2026-09')).projected).toBeNull();
+    expect((await store.getForecastDayBalances('2026-09')).every((d) => d.balance === null)).toBe(true);
     expect((await store.getBalanceForecast('2026-09')).points).toEqual([]);
   });
 
-  it('chega pelo link do resumo de Previsões', async () => {
+  it('chega pelo menu ⋯ de Previsões', async () => {
     const { user, screen, waitFor } = await openApp('#/previsoes', withForecasts);
-    await user.click(await screen.findByTestId('link-balance-forecast'));
+    await user.click(await screen.findByTestId('button-header-menu'));
+    await user.click(await screen.findByTestId('menu-balance-forecast'));
     await waitFor(() => expect(window.location.hash).toBe('#/previsoes/saldo'));
   });
 
