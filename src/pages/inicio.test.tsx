@@ -26,10 +26,36 @@ describe('Início', () => {
     expect(plain(screen.getByTestId('text-home-balance').textContent)).toContain('R$ 1.850,00');
   });
 
-  it('os atalhos levam às áreas', async () => {
+  // specs/inicio-sem-atalhos.md
+  it('o Início termina em "Lançamentos recentes", sem a fileira de atalhos', async () => {
+    const { screen } = await openApp('#/', withCash);
+    await screen.findByTestId('list-home-recent');
+    expect(screen.queryByRole('navigation', { name: 'Atalhos' })).toBeNull();
+    expect(screen.queryByTestId('shortcut-income')).toBeNull();
+    expect(screen.queryByTestId('shortcut-cards')).toBeNull();
+    expect(screen.queryByTestId('shortcut-benefits')).toBeNull();
+    const main = screen.getByTestId('list-home-recent').closest('main')!;
+    const lastSection = Array.from(main.querySelectorAll('section')).pop()!;
+    expect(lastSection).toContainElement(screen.getByTestId('list-home-recent'));
+  });
+
+  it('as áreas continuam alcançáveis pela barra inferior e pelo painel', async () => {
     const { user, screen, waitFor } = await openApp('#/', withCash);
-    await user.click(await screen.findByTestId('shortcut-cards'));
+    await user.click(await screen.findByRole('button', { name: 'Cartões' }));
     await waitFor(() => expect(window.location.hash).toBe('#/cartoes'));
+    await user.click(screen.getByRole('button', { name: 'Início' }));
+    await waitFor(() => expect(window.location.hash).toBe('#/'));
+    await user.click(await screen.findByRole('button', { name: /^Abrir Cartões/ }));
+    await waitFor(() => expect(window.location.hash).toBe('#/cartoes'));
+  });
+
+  it('a linha de lançamento recente abre a área e "Ver todos" abre o Resumo do mês', async () => {
+    const { user, screen, waitFor } = await openApp('#/', withCash);
+    await user.click(await screen.findByTestId('row-home-recent-0'));
+    await waitFor(() => expect(window.location.hash).not.toBe('#/'));
+    window.location.hash = '#/';
+    await user.click(await screen.findByTestId('link-home-recent-all'));
+    await waitFor(() => expect(window.location.hash).toMatch(/resumo/));
   });
 
   it('um mês anterior mantém o Início no mês escolhido', async () => {

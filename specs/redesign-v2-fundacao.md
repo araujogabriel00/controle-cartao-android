@@ -44,7 +44,7 @@ A v2 foi desenhada com 13 telas, claras e escuras. Esta spec cobre a **primeira 
 | RF-01 | A barra inferior aparece nas telas de área (Início, Entradas, Cartões, Benefícios) e nas telas abertas a partir delas, com o item da área ativo e `aria-current="page"`. |
 | RF-02 | Tocar num item da barra abre a área **no mês aberto** (mês compartilhado). Tocar no item já ativo volta à tela raiz da área. |
 | RF-03 | `/` abre o Início e `/inicio/mes/AAAA-MM` abre o Início em outro mês. `/cartoes` e `/cartoes/mes/AAAA-MM` abrem Cartões. `/mes/AAAA-MM` redireciona para `/cartoes/mes/AAAA-MM`. |
-| RF-04 | O Início mostra, no mês aberto: **Saldo** (com anterior e resultado), **Entrou** e **Saiu**, **Próxima fatura** (valor e cartão), **Benefícios** (saldo disponível por benefício) e atalhos para cada área. Cada bloco abre a área correspondente. |
+| RF-04 | O Início mostra, no mês aberto: **Saldo** (com anterior e resultado), **Entrou** e **Saiu**, **Próxima fatura** (valor e cartão), **Benefícios** (saldo disponível por benefício) e atalhos para cada área *(os atalhos saíram: veja `inicio-sem-atalhos.md`)*. Cada bloco abre a área correspondente. |
 | RF-05 | O Início tem estado vazio com chamada para ação ("Lance sua primeira entrada") e, no primeiro uso, 3 passos: cadastrar um cartão, registrar uma entrada, ver o saldo. |
 | RF-06 | O botão flutuante **Lançar** abre as mesmas cinco opções do menu de hoje e os mesmos formulários, no mês aberto, sem sair da tela. |
 | RF-07 | O cabeçalho mostra o botão do olho, o seletor de mês (RF de `mes-compartilhado.md`) e o botão ⋯ com **Categorias**, **Histórico** e **Aparência**. |
