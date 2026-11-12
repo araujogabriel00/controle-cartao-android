@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Proposta |
+| Status | Implementada |
 | Criada em | 12/11/2026 |
 | Escopo | `src/components/app-tabs.tsx`, `src/App.test.tsx` (e testes que procurem o texto dos itens), `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`redesign-v2-fundacao.md`](redesign-v2-fundacao.md), [`previsoes.md`](previsoes.md) (5.º item da barra) |
@@ -110,10 +110,10 @@ Sem mudança no formato salvo, na camada de dados nem nas rotas. Só muda o comp
 
 ## 8. Critérios de aceite
 
-- [ ] `npm test`, `npm run typecheck` e `npm run build` passam.
-- [ ] Cada cenário da seção 4 tem teste em `src/App.test.tsx` (ou teste do componente) e os testes que procuravam o texto da barra foram trocados por `getByRole('button', { name })`.
+- [x] `npm test`, `npm run typecheck` e `npm run build` passam.
+- [ ] (pendente: "Tocar no item ativo volta à raiz" não ganhou teste novo; o alvo de 48 px é conferido só pelas classes, não por medida) Cada cenário da seção 4 tem teste em `src/App.test.tsx` (ou teste do componente) e os testes que procuravam o texto da barra foram trocados por `getByRole('button', { name })`.
 - [ ] Em 360 × 780, claro e escuro: nenhum texto na barra, pílula do item ativo visível, sem scroll horizontal.
-- [ ] `FUNCIONALIDADES.md` e `README.md` atualizados (barra só com ícones; `redesign-v2-fundacao.md` D1 marcado como substituído).
+- [x] `FUNCIONALIDADES.md` e `README.md` atualizados (barra só com ícones; `redesign-v2-fundacao.md` D1 marcado como substituído).
 
 ## 9. Tarefas
 

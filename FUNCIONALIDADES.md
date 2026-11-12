@@ -1948,7 +1948,7 @@ Funcionalidade: Fundação da nova versão
     Dado que o endereço está vazio
     Quando eu abro o app
     Então vejo o Início do mês corrente
-    E a barra inferior mostra "Início" como ativo
+    E a barra inferior, só com ícones (o nome vem do aria-label), mostra "Início" como ativo
 
   Cenário: Abrir o app num mês lembrado
     Dado que eu fechei o app em outro mês
@@ -2677,3 +2677,5 @@ Funcionalidade: Histórico e Todas as compras na nova versão
 ```
 
 Detalhes que a implementação fecha: o rótulo da média é sempre "Média dos últimos 5 meses", mesmo quando há menos de 5 meses fechados (a média usa os que existem); em "Todos os meses" tocar num mês abre o painel dele na aba Cartões (não a lista de compras); o ⋯ de cada compra e o botão voltar têm 48 px. Os testes estão em `src/pages/historico.test.tsx` e `src/pages/compras.test.tsx`.
+
+> **Barra inferior só com ícones.** A barra inferior (seção 32) não mostra mais o texto dos itens: ficam os 5 ícones, com o nome da área em `aria-label` e `title` (dica ao segurar) e o item ativo com `aria-current="page"`, pílula `tint` e traço mais grosso. Rotas, mês compartilhado e altura (72 px) não mudam. Veja [`specs/barra-inferior-sem-rotulos.md`](specs/barra-inferior-sem-rotulos.md); os testes estão em `src/App.test.tsx`.

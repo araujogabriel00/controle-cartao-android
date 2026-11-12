@@ -66,4 +66,32 @@ describe('rotas e guardas', () => {
     await user.click(screen.getByTestId('nav-home'));
     await waitFor(() => expect(window.location.hash).toBe('#/'));
   });
+
+  // specs/barra-inferior-sem-rotulos.md
+  it('a barra mostra só ícones, com nome acessível e dica em cada item', async () => {
+    const { screen } = await openApp('#/', withCard);
+    const nav = await screen.findByRole('navigation', { name: 'Áreas do app' });
+    const buttons = Array.from(nav.querySelectorAll('button'));
+    expect(buttons).toHaveLength(5);
+    expect(nav.textContent).toBe('');
+    expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual(['Início', 'Entradas', 'Previsões', 'Cartões', 'Benefícios']);
+    expect(buttons.map((b) => b.getAttribute('title'))).toEqual(['Início', 'Entradas', 'Previsões', 'Cartões', 'Benefícios']);
+    buttons.forEach((b) => expect(b).toHaveClass('min-h-12', 'min-w-12'));
+  });
+
+  it('só o item da área ativa tem aria-current e o traço mais grosso', async () => {
+    const { screen } = await openApp('#/cartoes', withCard);
+    const nav = await screen.findByRole('navigation', { name: 'Áreas do app' });
+    const current = nav.querySelectorAll('[aria-current="page"]');
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveAttribute('aria-label', 'Cartões');
+    expect(current[0].querySelector('svg')).toHaveAttribute('stroke-width', '2.4');
+    expect(nav.querySelector('[data-testid="tab-income"] svg')).toHaveAttribute('stroke-width', '2');
+  });
+
+  it('navegar pela barra mantém o mês aberto', async () => {
+    const { user, screen, waitFor } = await openApp('#/', withCard);
+    await user.click(await screen.findByRole('button', { name: 'Entradas' }));
+    await waitFor(() => expect(window.location.hash).toBe('#/entradas'));
+  });
 });

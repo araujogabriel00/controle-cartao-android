@@ -22,7 +22,7 @@ A especificação completa está em [`specs/compras-e-categorias.md`](specs/comp
 
 ### Botão Lançar
 
-- Uma **barra inferior** (Início, Entradas, Cartões, Benefícios) e o botão flutuante **"Lançar"** (ícone "+" e texto; "Categorias" e "Histórico" ficam no menu "⋯" do cabeçalho) que abre os formulários de entrada, conta fixa, gasto do dia a dia, compra no cartão e gasto de benefício no mês aberto, sem trocar de aba ([`specs/botao-lancar.md`](specs/botao-lancar.md)).
+- Uma **barra inferior só com ícones** (Início, Entradas, Previsões, Cartões, Benefícios; o nome fica em `aria-label` e `title`) e o botão flutuante **"Lançar"** (ícone "+" e texto; "Categorias" e "Histórico" ficam no menu "⋯" do cabeçalho) que abre os formulários de entrada, conta fixa, gasto do dia a dia, compra no cartão e gasto de benefício no mês aberto, sem trocar de aba ([`specs/botao-lancar.md`](specs/botao-lancar.md)).
 
 ### Histórico mensal
 
