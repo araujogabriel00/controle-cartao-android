@@ -228,6 +228,18 @@ describe('Previsões', () => {
     expect(await screen.findByTestId('balance-2026-10-18')).toHaveTextContent('112k');
   });
 
+  it('a legenda mostra o saldo do dia selecionado, não um número fixo', async () => {
+    const { user, screen } = await openApp('#/previsoes', withDays);
+    expect(await screen.findByTestId('legend-balance')).toHaveTextContent('1.850');
+    await user.click(screen.getByTestId('day-2026-10-20'));
+    expect(screen.getByTestId('legend-balance')).toHaveTextContent('2.650');
+    await user.click(screen.getByTestId('day-2026-10-05'));
+    expect(screen.getByTestId('legend-balance')).toHaveTextContent('1.850');
+    expect(document.body.textContent).not.toContain('10.070');
+    await user.click(screen.getByTestId('button-hide-values'));
+    expect(screen.getByTestId('legend-balance')).toHaveTextContent('•••');
+  });
+
   it('com o olho fechado as células, a barra e a folha não mostram valores', async () => {
     const { user, screen } = await openApp('#/previsoes', withDays);
     await screen.findByTestId('balance-2026-10-15');

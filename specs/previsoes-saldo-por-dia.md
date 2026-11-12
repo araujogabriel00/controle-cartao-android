@@ -43,7 +43,7 @@ O calendário de Previsões mostra só pontos (a receber, a pagar, lembrete) e, 
 | D9 | Saldo **negativo** aparece com sinal "−" e cor `alert`, e o nome acessível diz "saldo negativo". | Nunca só cor. |
 | D10 | Se o saldo formatado passar de 6 caracteres (por exemplo `112.420` ou `−12.420`), a célula usa **milhares com "k"** (`112k`, `−12k`). | Em 360 px a célula tem ~46 px; 6 caracteres mono de 12 px cabem, 7 não. |
 | D11 | Com o **olho fechado**, as células mostram `•••` no lugar do saldo e a folha mostra o valor mascarado como o resto do app. | Regra global v2. |
-| D12 | A **legenda** ganha o item "10.070 saldo em R$ no fim do dia" além de "A receber", "A pagar" e "Fora do saldo". | V10_04. |
+| D12 | A **legenda** ganha o item "‹saldo› saldo em R$ no fim do dia" além de "A receber", "A pagar" e "Fora do saldo". O ‹saldo› é o **do dia selecionado** (mesmo formato das células); em dia sem saldo, o do primeiro dia que tem; em mês passado, o item não aparece. *(O desenho V10_04 usava "10.070" só como exemplo.)* | V10_04. |
 
 ## 4. Requisitos
 
@@ -231,7 +231,7 @@ export async function getForecastDayBalances(month: MonthKey): Promise<ForecastD
 ## 7. Interface
 
 - **Calendário:** 7 colunas; células de 64 px de altura (cabe 5 semanas acima da folha em 360 × 780); número do dia 15 px, pontos de 6 a 7 px e saldo em `font-mono-data` 12 px; hoje com contorno de 2 px e o dia selecionado preenchido em `ink`; os saldos seguem o texto da célula (`paper` no selecionado).
-- **Legenda:** A receber, A pagar, Fora do saldo e "10.070 saldo em R$ no fim do dia" (14 px).
+- **Legenda:** A receber, A pagar, Fora do saldo e "‹saldo do dia› saldo em R$ no fim do dia" (14 px).
 - **Folha do dia:** `position: fixed` acima da barra inferior, `surface`, cantos de 24 px em cima, alça de 40 × 4 px, sombra; título em 20 px (toque de 48 px que abre o dia), total à direita, lista de previsões com o item atual (72 px), linha final "Saldo no fim do dia" (valor em 18 px, mono, com centavos; `alert` se negativo). Altura máxima 45% da tela, lista com rolagem interna.
 - **Botão Lançar:** continua o do app (56 px), com `bottom` calculado para ficar 12 px acima da folha.
 - **Menu ⋯:** item "Saldo previsto" (ícone de gráfico) acima de "Carrinho", só na área Previsões.
