@@ -87,7 +87,7 @@ function FooterBar({ month, location }: { month: MonthKey; location: string }) {
     <AppTabs/>
     {/* previsoes D14: na área Previsões o botão faz o que a área é. */}
     {areaOf(location) === 'forecasts'
-      ? <button data-testid="button-new-forecast" onClick={() => navigate('/previsoes/nova')} className="fixed right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand shadow-[0_8px_18px_-10px_rgba(0,0,0,.7)] transition hover:bg-brand-hover bottom-[calc(88px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]"><Plus size={22} strokeWidth={2.2}/>Nova previsão</button>
+      ? <button data-testid="button-new-forecast" onClick={() => navigate('/previsoes/nova')} className="fixed right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand shadow-[0_8px_18px_-10px_rgba(0,0,0,.7)] transition hover:bg-brand-hover bottom-[calc(88px+var(--forecast-sheet-h,0px)+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]"><Plus size={22} strokeWidth={2.2}/>Nova previsão</button>
       : <button data-testid="button-quick-add" onClick={() => setSheet(true)} className={`fixed right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand shadow-[0_8px_18px_-10px_rgba(0,0,0,.7)] transition hover:bg-brand-hover ${cartBar ? 'bottom-[calc(160px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]' : 'bottom-[calc(88px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]'}`}><Plus size={22} strokeWidth={2.2}/>Lançar</button>}
 
     {sheet && <BottomSheet title="Lançar" onClose={() => setSheet(false)}>

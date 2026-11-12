@@ -1938,15 +1938,26 @@ function baseBalance(state: State, month: MonthKey) {
   return cents(balance + pendingForecasts(state, today(), addDays(`${month}-01`, -1)));
 }
 
-export type ForecastSummary = { balance: number; targetDate: string | null; projected: number | null };
+export type ForecastDayBalance = { date: string; balance: number | null; hasForecast: boolean };
 
-// RN-09: the open month's balance and "Previsto em ‹último dia do mês aberto›"; "—" (null) in a past month.
-export async function getForecastSummary(month: MonthKey): Promise<ForecastSummary> {
+// RN-01 to RN-04: the balance at the end of each day of the open month (base balance + forecasts that affect it).
+// `balance` is null on days without one: every day of a past month, and the days before today in the current month (D3).
+export async function getForecastDayBalances(month: MonthKey): Promise<ForecastDayBalance[]> {
   const state = await load();
-  const balance = baseBalance(state, month);
-  if (month < currentMonth()) return { balance, targetDate: null, projected: null };
-  const targetDate = lastDayOf(month);
-  return { balance, targetDate, projected: cents(balance + pendingForecasts(state, month === currentMonth() ? today() : addDays(`${month}-01`, -1), targetDate)) };
+  const now = today();
+  const past = month < currentMonth();
+  const isCurrent = month === currentMonth();
+  const after = isCurrent ? now : addDays(`${month}-01`, -1);
+  const items = forecastsOf(state, month);
+  let running = baseBalance(state, month);
+  const days = Number(lastDayOf(month).slice(8, 10));
+  return Array.from({ length: days }, (_, i) => {
+    const date = `${month}-${String(i + 1).padStart(2, '0')}`;
+    const todays = items.filter((o) => o.date === date && o.affects);
+    if (past || (isCurrent && date < now)) return { date, balance: null, hasForecast: false };
+    if (date > after) for (const o of todays) running = cents(running + signedForecast(o));
+    return { date, balance: running, hasForecast: date > now && todays.length > 0 };
+  });
 }
 
 export type BalanceForecast = {

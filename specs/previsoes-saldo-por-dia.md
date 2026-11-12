@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Proposta |
+| Status | Implementada |
 | Criada em | 12/11/2026 |
 | Escopo | `src/pages/previsoes.tsx` (cartão de resumo removido, calendário com saldo, folha do dia), `src/components/app-header.tsx` (item "Saldo previsto" no menu da área Previsões), `src/data/store.ts` e `src/data/api.ts` (saldo por dia), testes de `previsoes.test.tsx` e `previsao-saldo.test.tsx`, `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`previsoes.md`](previsoes.md), [`redesign-v2-fundacao.md`](redesign-v2-fundacao.md), [`botao-lancar.md`](botao-lancar.md) |
@@ -246,13 +246,13 @@ export async function getForecastDayBalances(month: MonthKey): Promise<ForecastD
 
 ## 9. Critérios de aceite
 
-- [ ] `npm test`, `npm run typecheck` e `npm run build` passam.
-- [ ] Cada cenário da seção 5 tem teste (`previsoes.test.tsx`, `previsao-saldo.test.tsx`, `store.test.ts` para `getForecastDayBalances`).
-- [ ] O saldo do último dia de um mês é igual ao "Previsto" do Saldo previsto do mesmo mês (RN-03).
-- [ ] O cartão de resumo, o `getForecastSummary` e seus testes foram removidos; nada mais os usa.
+- [x] `npm test`, `npm run typecheck` e `npm run build` passam.
+- [ ] Cada cenário da seção 5 tem teste (pendente: "Mês passado não tem Saldo previsto no menu", que o jsdom não alcança porque não se cria previsão no passado, e "Lançar acima da folha", que é layout e fica para o navegador) (`previsoes.test.tsx`, `previsao-saldo.test.tsx`, `store.test.ts` para `getForecastDayBalances`).
+- [x] O saldo do último dia de um mês é igual ao "Previsto" do Saldo previsto do mesmo mês (RN-03).
+- [x] O cartão de resumo, o `getForecastSummary` e seus testes foram removidos; nada mais os usa.
 - [ ] Em 360 × 780: sem scroll horizontal, saldos legíveis sem cortar (`−1.250` cabe), células ≥ 48 px de toque, folha e botão Lançar sem sobreposição.
 - [ ] Temas claro e escuro conferidos no navegador, com o olho fechado (`•••`) e com saldo negativo.
-- [ ] `FUNCIONALIDADES.md` (seção de Previsões) e `README.md` atualizados.
+- [x] `FUNCIONALIDADES.md` (seção 41) e `README.md` atualizados.
 
 ## 10. Tarefas
 
