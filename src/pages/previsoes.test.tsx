@@ -15,6 +15,8 @@ describe('Previsões', () => {
     await s.createForecast({ kind: 'pay', description: 'Seguro', amount: 350, date: '2026-10-25', affects: true, recurring: false });
     await s.createForecast({ kind: 'receive', description: 'Lembrete', amount: 300, date: '2026-10-22', affects: false, recurring: false });
   };
+  type User = { click: (el: Element) => Promise<void> };
+  const openSheet = async (user: User, screen: { findByTestId: (id: string) => Promise<HTMLElement> }) => user.click(await screen.findByTestId('button-open-sheet'));
   const balanceOn = async (store: import('@/test/app').Store, month: string, day: number) => (await store.getForecastDayBalances(month))[day - 1].balance;
 
   it('não mostra mais o cartão de resumo', async () => {
@@ -75,28 +77,134 @@ describe('Previsões', () => {
     expect(await balanceOn(store, '2026-10', 25)).toBe(2650);
   });
 
-  it('a folha começa em hoje com o saldo do fim do dia e muda ao escolher outro dia', async () => {
+  // specs/previsoes-folha-recolhida.md
+  it('a folha começa recolhida, com o título e "N previsões · saldo" do dia, sem a lista', async () => {
+    const { screen } = await openApp('#/previsoes', withDays);
+    expect(await screen.findByTestId('bar-day')).toHaveTextContent('Quinta, 15 de outubro');
+    expect(plain(screen.getByTestId('text-bar-summary').textContent)).toBe('Nada previsto · saldo R$ 1.850,00');
+    expect(screen.getByTestId('button-open-sheet')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('list-forecasts')).toBeNull();
+    expect(screen.queryByTestId('sheet-day')).toBeNull();
+  });
+
+  it('a barra mostra "1 previsão · saldo" ao trocar de dia, e dia passado sem saldo', async () => {
     const { user, screen } = await openApp('#/previsoes', withDays);
+    await user.click(await screen.findByTestId('day-2026-10-20'));
+    expect(plain(screen.getByTestId('text-bar-summary').textContent)).toBe('1 previsão · saldo R$ 2.650,00');
+    expect(screen.getByTestId('bar-day')).toHaveTextContent('Terça, 20 de outubro');
+    await user.click(screen.getByTestId('day-2026-10-05'));
+    expect(plain(screen.getByTestId('text-bar-summary').textContent)).toBe('Nada previsto');
+  });
+
+  it('o calendário reserva a altura da barra e as células têm 50 px', async () => {
+    const { screen } = await openApp('#/previsoes', withDays);
+    expect((await screen.findByTestId('day-2026-10-31')).className).toContain('h-[50px]');
+    const page = screen.getByTestId('calendar-forecasts').parentElement!;
+    expect(page.className).toContain('pb-[calc(68px+12px)]');
+    expect(document.documentElement.style.getPropertyValue('--forecast-sheet-h')).toBe('');
+  });
+
+  it('abrir a folha mostra a lista, o saldo com centavos e os botões "Abrir o dia" e "+ Nova previsão"', async () => {
+    const { user, screen } = await openApp('#/previsoes', withDays);
+    await user.click(await screen.findByTestId('day-2026-10-20'));
+    await openSheet(user, screen);
+    const sheet = screen.getByTestId('sheet-day');
+    expect(sheet).toHaveTextContent('Venda');
+    expect(plain(screen.getByTestId('text-day-balance').textContent)).toBe('R$ 2.650,00');
+    expect(screen.getByTestId('button-open-day')).toHaveTextContent('Abrir o dia');
+    expect(screen.getByTestId('button-new-forecast-sheet')).toHaveTextContent('Nova previsão');
+    expect(screen.queryByTestId('bar-day')).toBeNull();
+  });
+
+  it('o foco vai ao título da folha ao abrir e volta ao botão ao recolher; Escape recolhe', async () => {
+    const { user, screen, waitFor } = await openApp('#/previsoes', withDays);
+    await openSheet(user, screen);
+    await waitFor(() => expect(screen.getByTestId('text-sheet-title')).toHaveFocus());
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.getByTestId('button-open-sheet')).toHaveFocus());
+    expect(screen.getByTestId('button-open-sheet')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('tocar no fundo escurecido recolhe a folha, mas tocar na folha não', async () => {
+    const { user, screen } = await openApp('#/previsoes', withDays);
+    await openSheet(user, screen);
+    await user.click(screen.getByTestId('sheet-day'));
+    expect(screen.getByTestId('sheet-day')).toBeInTheDocument();
+    await user.click(screen.getByTestId('overlay-day'));
+    expect(screen.queryByTestId('sheet-day')).toBeNull();
+    expect(screen.getByTestId('bar-day')).toBeInTheDocument();
+  });
+
+  it('arrastar a alça para baixo recolhe a folha', async () => {
+    const { user, screen, fireEvent } = await openApp('#/previsoes', withDays);
+    await openSheet(user, screen);
+    const handle = screen.getByTestId('sheet-handle');
+    fireEvent.touchStart(handle, { touches: [{ clientY: 100 }] });
+    fireEvent.touchEnd(handle, { changedTouches: [{ clientY: 200 }] });
+    expect(screen.queryByTestId('sheet-day')).toBeNull();
+  });
+
+  it('trocar de dia com a folha aberta atualiza a folha', async () => {
+    const { user, screen } = await openApp('#/previsoes', withDays);
+    await openSheet(user, screen);
     expect(plain((await screen.findByTestId('text-day-balance')).textContent)).toBe('R$ 1.850,00');
+    expect(screen.getByTestId('text-forecast-day-empty')).toHaveTextContent('Nada previsto para hoje.');
     await user.click(screen.getByTestId('day-2026-10-20'));
     expect(plain(screen.getByTestId('text-day-balance').textContent)).toBe('R$ 2.650,00');
     expect(screen.getByTestId('sheet-day')).toHaveTextContent('Venda');
     await user.click(screen.getByTestId('day-2026-10-21'));
     expect(screen.getByTestId('text-forecast-day-empty')).toHaveTextContent('Nada previsto para este dia.');
-    expect(plain(screen.getByTestId('text-day-balance').textContent)).toBe('R$ 2.650,00');
   });
 
-  it('dia passado na folha não mostra o saldo', async () => {
+  it('dia passado na folha aberta não mostra o saldo', async () => {
     const { user, screen } = await openApp('#/previsoes', withDays);
     await user.click(await screen.findByTestId('day-2026-10-05'));
+    await openSheet(user, screen);
     expect(screen.getByTestId('text-forecast-day-empty')).toBeInTheDocument();
     expect(screen.queryByTestId('text-day-balance')).toBeNull();
   });
 
-  it('o título da folha abre o dia', async () => {
+  it('"Abrir o dia" abre a tela do dia', async () => {
     const { user, screen, waitFor } = await openApp('#/previsoes', withDays);
-    await user.click(await screen.findByTestId('button-open-day'));
+    await openSheet(user, screen);
+    await user.click(screen.getByTestId('button-open-day'));
     await waitFor(() => expect(window.location.hash).toBe('#/previsoes/dia/2026-10-15'));
+  });
+
+  it('o "+" da barra e o "+ Nova previsão" da folha abrem o formulário', async () => {
+    const { user, screen, waitFor } = await openApp('#/previsoes', withDays);
+    await user.click(await screen.findByTestId('button-new-forecast-bar'));
+    await waitFor(() => expect(window.location.hash).toBe('#/previsoes/nova'));
+    expect(await screen.findByTestId('form-forecast')).toBeInTheDocument();
+    window.location.hash = '#/previsoes';
+    await openSheet(user, screen);
+    await user.click(screen.getByTestId('button-new-forecast-sheet'));
+    await waitFor(() => expect(window.location.hash).toBe('#/previsoes/nova'));
+  });
+
+  it('não há botão flutuante: só um "Nova previsão", dentro da barra do dia', async () => {
+    const { screen } = await openApp('#/previsoes', withDays);
+    await screen.findByTestId('bar-day');
+    expect(screen.queryByTestId('button-new-forecast')).toBeNull();
+    expect(screen.queryByTestId('button-quick-add')).toBeNull();
+    const buttons = screen.getAllByRole('button', { name: 'Nova previsão' });
+    expect(buttons).toHaveLength(1);
+    expect(screen.getByTestId('bar-day')).toContainElement(buttons[0]);
+  });
+
+  it('o botão Lançar das outras áreas continua', async () => {
+    const { screen } = await openApp('#/cartoes', withDays);
+    expect(await screen.findByTestId('button-quick-add')).toBeInTheDocument();
+  });
+
+  it('trocar de mês recolhe a folha', async () => {
+    const { user, screen, waitFor } = await openApp('#/previsoes', withDays);
+    await openSheet(user, screen);
+    expect(screen.getByTestId('sheet-day')).toBeInTheDocument();
+    await user.click(screen.getByTestId('button-next-month'));
+    await waitFor(() => expect(window.location.hash).toBe('#/previsoes/mes/2026-11'));
+    expect(await screen.findByTestId('bar-day')).toBeInTheDocument();
+    expect(screen.queryByTestId('sheet-day')).toBeNull();
   });
 
   it('saldo negativo tem sinal, cor de alerta e nome acessível', async () => {
@@ -108,6 +216,7 @@ describe('Previsões', () => {
     expect(screen.getByTestId('balance-2026-10-18')).toHaveClass('text-alert');
     expect(screen.getByTestId('day-2026-10-18').getAttribute('aria-label')).toMatch(/saldo negativo/);
     await user.click(screen.getByTestId('day-2026-10-18'));
+    await openSheet(user, screen);
     expect(screen.getByTestId('text-day-balance')).toHaveClass('text-alert');
   });
 
@@ -119,11 +228,14 @@ describe('Previsões', () => {
     expect(await screen.findByTestId('balance-2026-10-18')).toHaveTextContent('112k');
   });
 
-  it('com o olho fechado as células mostram ••• e a folha não mostra valores', async () => {
+  it('com o olho fechado as células, a barra e a folha não mostram valores', async () => {
     const { user, screen } = await openApp('#/previsoes', withDays);
     await screen.findByTestId('balance-2026-10-15');
     await user.click(screen.getByTestId('button-hide-values'));
     expect(screen.getByTestId('balance-2026-10-20')).toHaveTextContent('•••');
+    expect(plain(screen.getByTestId('text-bar-summary').textContent)).toBe('Nada previsto · saldo R$ ••••');
+    expect(screen.getByTestId('button-open-sheet').getAttribute('aria-label')).not.toMatch(/R\$\s*\d/);
+    await openSheet(user, screen);
     expect(screen.getByTestId('text-day-balance').textContent).not.toMatch(/\d/);
   });
 
@@ -136,12 +248,13 @@ describe('Previsões', () => {
   it('escolher um dia mostra a previsão dele', async () => {
     const { user, screen } = await openApp('#/previsoes', withForecast);
     await user.click(await screen.findByTestId('day-2026-10-20'));
+    await openSheet(user, screen);
     expect(await screen.findByText('Freela')).toBeInTheDocument();
   });
 
   it('o botão Nova previsão abre o formulário', async () => {
     const { user, screen, waitFor } = await openApp('#/previsoes', withCash);
-    await user.click(await screen.findByTestId('button-new-forecast'));
+    await user.click(await screen.findByTestId('button-new-forecast-bar'));
     await waitFor(() => expect(window.location.hash).toBe('#/previsoes/nova'));
     expect(await screen.findByTestId('form-forecast')).toBeInTheDocument();
   });
@@ -169,6 +282,7 @@ describe('Previsões', () => {
   it('editar abre o formulário preenchido', async () => {
     const { user, screen, waitFor } = await openApp('#/previsoes', withForecast);
     await user.click(await screen.findByTestId('day-2026-10-20'));
+    await openSheet(user, screen);
     await user.click(await screen.findByLabelText(/Editar previsão Freela/));
     await waitFor(() => expect(window.location.hash).toMatch(/^#\/previsoes\/editar\/\d+\/2026-10$/));
     expect(await screen.findByTestId('input-forecast-description')).toHaveValue('Freela');

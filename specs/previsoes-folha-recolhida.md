@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Rascunho |
+| Status | Implementada |
 | Criada em | 12/11/2026 |
 | Escopo | `src/pages/previsoes.tsx` (folha do dia recolhida/aberta, calendário), `src/components/quick-add.tsx` (botão flutuante some em Previsões), testes de `previsoes.test.tsx`, `FUNCIONALIDADES.md` |
 | Depende de | [`previsoes-saldo-por-dia.md`](previsoes-saldo-por-dia.md) |
@@ -134,12 +134,12 @@ Funcionalidade: Previsões com a folha do dia recolhida
 
 ## 9. Critérios de aceite
 
-- [ ] Cada cenário da seção 5 tem teste em `previsoes.test.tsx` (a sobreposição de layout fica para conferência manual em 360 × 780).
-- [ ] `button-new-forecast` do `quick-add.tsx` e a variável `--forecast-sheet-h` foram removidos; testes que os usavam foram atualizados.
-- [ ] Em 360 × 780 (e 390 × 844): sem rolagem horizontal; com a folha recolhida, nenhuma célula, o dia 31 nem a legenda ficam cobertos; folha aberta fecha pelo fundo.
-- [ ] Alvos ≥ 48 px; nenhuma informação só por cor; olho fechado mascara tudo.
-- [ ] `FUNCIONALIDADES.md` (seção 41) atualizada: "folha fixa" → "barra do dia recolhida que abre em folha"; `README.md` se citar o botão flutuante.
-- [ ] `npm test`, `npm run typecheck` e `npm run build` passam.
+- [x] Cada cenário da seção 5 tem teste em `previsoes.test.tsx` (a sobreposição de layout fica para conferência manual em 360 × 780).
+- [x] `button-new-forecast` do `quick-add.tsx` e a variável `--forecast-sheet-h` foram removidos; testes que os usavam foram atualizados.
+- [ ] Em 360 × 780 (e 390 × 844): sem rolagem horizontal; com a folha recolhida, nenhuma célula, o dia 31 nem a legenda ficam cobertos; folha aberta fecha pelo fundo. (Conferido em 360 × 780, claro e escuro, em um mês de 6 semanas: dia 31, legenda e o estado vazio ficam acima da barra, sem rolagem horizontal. Pendente: 390 × 844, e o fechar pelo fundo foi conferido só por teste.)
+- [ ] Alvos ≥ 48 px; nenhuma informação só por cor; olho fechado mascara tudo. (Alvos ≥ 48 px conferidos no navegador e olho fechado por teste; não conferi o olho fechado no navegador.)
+- [x] `FUNCIONALIDADES.md` (seção 41) atualizada: "folha fixa" → "barra do dia recolhida que abre em folha"; `README.md` se citar o botão flutuante.
+- [x] `npm test`, `npm run typecheck` e `npm run build` passam.
 
 ## 10. Tarefas
 
