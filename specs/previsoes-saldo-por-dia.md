@@ -7,6 +7,7 @@
 | Escopo | `src/pages/previsoes.tsx` (cartão de resumo removido, calendário com saldo, folha do dia), `src/components/app-header.tsx` (item "Saldo previsto" no menu da área Previsões), `src/data/store.ts` e `src/data/api.ts` (saldo por dia), testes de `previsoes.test.tsx` e `previsao-saldo.test.tsx`, `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`previsoes.md`](previsoes.md), [`redesign-v2-fundacao.md`](redesign-v2-fundacao.md), [`botao-lancar.md`](botao-lancar.md) |
 | Substitui em parte | [`previsoes.md`](previsoes.md): RF-02 (cartão de resumo), RF-03 (calendário só com pontos), RF-04 (lista do dia abaixo do calendário), RF-09 (entrada do Saldo previsto pelo cartão) e RN-09 (texto do cartão) |
+| Ajustada por | [`previsoes-folha-recolhida.md`](previsoes-folha-recolhida.md) (D6, D7, RF-07 e a Interface da folha e do botão Lançar) |
 | Referência visual | Canvas "Controle do Cartão", grupo Previsões (saldo por dia): **V10_04** (saldo sem abreviar + folha do dia), clara e escura. As variações V8, V9 e V10_01 a V10_03 são alternativas descartadas |
 
 > Mudanças de comportamento entram primeiro aqui e só depois no código.

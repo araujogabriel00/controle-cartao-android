@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { getGetForecastRangeQueryKey, getGetForecastDayBalancesQueryKey, getGetForecastsQueryKey, useGetForecastDayBalances, useGetForecastRange, useGetForecasts, type ForecastOccurrence } from '@workspace/api-client-react';
-import { ChevronRight, CircleHelp, Plus } from 'lucide-react';
+import { ChevronUp, CircleHelp, Plus } from 'lucide-react';
 import { AppHeader } from '@/components/app-header';
 import { dayTitle, ForecastRowBody, signedAmount, signedDelta } from '@/components/forecast-parts';
-import { forecastDayPath, forecastEditPath, money, monthName, today, type MonthKey } from '@/lib/format';
+import { forecastDayPath, forecastEditPath, money, monthName, plural, today, type MonthKey } from '@/lib/format';
 import { useHideValues } from '@/lib/hide-values';
 import { useRememberMonth } from '@/lib/last-month';
 
@@ -37,7 +37,8 @@ function cellBalance(value: number, hidden: boolean) {
   return full.length > 6 ? `${sign}${Math.round(abs / 1000)}k` : full;
 }
 
-// specs/previsoes-saldo-por-dia.md: calendário do mês com o saldo de cada dia e a folha fixa do dia selecionado.
+// specs/previsoes-saldo-por-dia.md e specs/previsoes-folha-recolhida.md: calendário do mês com o saldo de cada dia e a barra do dia
+// selecionado, recolhida (nunca cobre o calendário) e aberta em folha com a lista completa.
 export default function Previsoes({ month }: { month: MonthKey }) {
   const [, navigate] = useLocation();
   useRememberMonth(month);
@@ -47,7 +48,13 @@ export default function Previsoes({ month }: { month: MonthKey }) {
   const forecasts = useGetForecasts(month, { query: { queryKey: getGetForecastsQueryKey(month), refetchOnWindowFocus: true } });
   const balances = useGetForecastDayBalances(month, { query: { queryKey: getGetForecastDayBalancesQueryKey(month), refetchOnWindowFocus: true } }).data;
   const hidden = useHideValues();
-  const sheetRef = useRef<HTMLElement>(null);
+  // D1, D3: a folha do dia tem dois estados; recolhida é o padrão e trocar de mês recolhe (D8).
+  const [open, setOpen] = useState(false);
+  const openerRef = useRef<HTMLButtonElement>(null);
+  const sheetTitleRef = useRef<HTMLHeadingElement>(null);
+  const toggled = useRef(false);
+  const touchY = useRef<number | null>(null);
+  const setSheetOpen = (value: boolean) => { toggled.current = true; setOpen(value); };
   const range = useGetForecastRange({ query: { queryKey: getGetForecastRangeQueryKey() } }).data;
   const canGoPrevious = !range || month > range.first;
   const canGoNext = !range || month < range.last;
@@ -61,27 +68,30 @@ export default function Previsoes({ month }: { month: MonthKey }) {
 
   const balanceOf = (date: string) => balances?.find((b) => b.date === date) ?? null;
   const selectedBalance = balanceOf(selected)?.balance ?? null;
+  // D2: "N previsões · saldo R$ X"; sem a parte do saldo em dia passado.
+  const barSummary = [dayItems.length ? plural(dayItems.length, 'previsão', 'previsões') : 'Nada previsto', selectedBalance !== null ? `saldo ${money(selectedBalance)}` : null].filter(Boolean).join(' · ');
 
-  // D7: o botão de nova previsão sobe junto com a folha (a altura vai numa variável CSS).
+  useEffect(() => { setOpen(false); }, [month]);
+  // D9: ao abrir, o foco vai para o título da folha; ao recolher, volta ao botão que abriu. Escape recolhe.
   useEffect(() => {
-    const root = document.documentElement;
-    const node = sheetRef.current;
-    const publish = () => root.style.setProperty('--forecast-sheet-h', `${node ? node.offsetHeight : 0}px`);
-    publish();
-    if (!node || typeof ResizeObserver === 'undefined') return () => root.style.removeProperty('--forecast-sheet-h');
-    const observer = new ResizeObserver(publish);
-    observer.observe(node);
-    return () => { observer.disconnect(); root.style.removeProperty('--forecast-sheet-h'); };
-  });
+    if (!toggled.current) return;
+    if (open) sheetTitleRef.current?.focus(); else openerRef.current?.focus();
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setSheetOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
 
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
-    <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8" style={{ marginBottom: 'var(--forecast-sheet-h, 0px)' }}>
+    <div className="relative z-10 mx-auto max-w-[860px] px-4 pt-5 pb-[calc(68px+12px)] sm:px-8">
       <AppHeader area="forecasts" month={month} canGoPrevious={canGoPrevious} canGoNext={canGoNext}/>
 
       {forecasts.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-brand"><CircleHelp size={18}/></div><h2 className="mt-3 font-display text-[20px] text-ink">Não conseguimos abrir as previsões.</h2><p className="mt-1 text-[14px] text-ink-soft">Seus dados continuam salvos. O saldo do resto do app não mudou.</p><button data-testid="button-retry-forecasts" onClick={() => void forecasts.refetch()} className="mt-4 h-12 rounded-full bg-brand px-6 text-[15px] font-semibold text-on-brand transition hover:bg-brand-hover">Tentar de novo</button></div>
         : forecasts.isLoading ? <div aria-busy="true" className="mt-6 space-y-3"><div className="h-[96px] animate-pulse rounded-2xl bg-line"/><div className="h-[330px] animate-pulse rounded-2xl bg-line"/></div>
         : <>
-          {/* RF-03: o calendário do mês; cada dia é um botão de 48 px com pontos para o que há nele. */}
+          {/* RF-03: o calendário do mês; cada dia é um botão de 50 px com pontos para o que há nele. */}
           <section data-testid="calendar-forecasts" aria-label={`Calendário de ${monthName(month)}`} className="enter mt-5" style={{ animationDelay: '.06s' }}>
             <div aria-hidden className="grid grid-cols-7 text-center text-[12px] font-medium text-ink-soft">{WEEK.map((d, i) => <span key={i} className="py-1">{d}</span>)}</div>
             <div role="grid" aria-label="Dias do mês" className="grid grid-cols-7">
@@ -92,8 +102,8 @@ export default function Previsoes({ month }: { month: MonthKey }) {
                 const isSelected = date === selected;
                 const day = balanceOf(date);
                 const bold = isToday || !!day?.hasForecast;
-                return <button key={date} type="button" data-testid={`day-${date}`} aria-label={dayName(date, here, day?.balance ?? null)} aria-pressed={isSelected} aria-current={isToday ? 'date' : undefined} onClick={() => setSelected(date)} className="grid h-16 place-items-center">
-                  <span className={`flex h-[60px] w-full max-w-[52px] flex-col items-center justify-center gap-0.5 rounded-xl leading-none ${isSelected ? 'bg-ink text-paper' : 'text-ink'} ${isToday && !isSelected ? 'ring-2 ring-ink' : ''}`}>
+                return <button key={date} type="button" data-testid={`day-${date}`} aria-label={dayName(date, here, day?.balance ?? null)} aria-pressed={isSelected} aria-current={isToday ? 'date' : undefined} onClick={() => setSelected(date)} className="grid h-[50px] place-items-center">
+                  <span className={`flex h-12 w-full max-w-[52px] flex-col items-center justify-center gap-0.5 rounded-xl leading-none ${isSelected ? 'bg-ink text-paper' : 'text-ink'} ${isToday && !isSelected ? 'ring-2 ring-ink' : ''}`}>
                     <span className={`text-[15px] ${isSelected ? 'font-semibold' : ''}`}>{Number(date.slice(8, 10))}</span>
                     <span aria-hidden className="flex h-1.5 items-center gap-0.5">
                       {here.some((i) => i.kind === 'receive' && i.affects) && <span className="h-1.5 w-1.5 rounded-full bg-chart-in"/>}
@@ -122,24 +132,42 @@ export default function Previsoes({ month }: { month: MonthKey }) {
             <button data-testid="button-new-forecast-empty" onClick={() => navigate('/previsoes/nova')} className="mt-4 flex h-12 items-center gap-2 rounded-full bg-brand px-6 text-[15px] font-semibold text-on-brand transition hover:bg-brand-hover"><Plus size={18}/>Nova previsão</button>
           </section>}
 
-          {/* D6, RF-04 a RF-06: a folha fixa do dia selecionado, acima da barra inferior. */}
-          <section ref={sheetRef} data-testid="sheet-day" aria-label="Previsões do dia" className="fixed inset-x-0 z-20 mx-auto flex max-h-[45vh] max-w-[860px] flex-col rounded-t-3xl border border-b-0 border-line bg-surface px-4 pb-3 shadow-[0_-10px_30px_-18px_rgba(0,0,0,.6)] bottom-[calc(72px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]">
-            <div aria-hidden className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-line"/>
-            <div className="flex shrink-0 items-center justify-between gap-3">
-              <button data-testid="button-open-day" onClick={() => navigate(forecastDayPath(selected))} aria-label={`${dayTitle(selected)}. Abrir o dia.`} className="-ml-2 flex min-h-12 min-w-0 items-center gap-1 rounded-full px-2 text-left transition hover:bg-hover"><h2 className="truncate font-display text-[20px] text-ink">{dayTitle(selected)}</h2><ChevronRight aria-hidden size={18} className="shrink-0 text-ink-soft"/></button>
-              {dayItems.some((item) => item.affects) && <span data-testid="text-day-total" className="shrink-0 font-mono-data text-[15px] text-ink-soft">{signedDelta(Math.round(dayTotal * 100) / 100)}</span>}
+          {/* D2: a barra recolhida, fixa e de altura fixa; nunca cobre o calendário (D7). */}
+          {!open && <section data-testid="bar-day" aria-label="Previsões do dia" className="fixed inset-x-0 z-20 mx-auto max-w-[860px] rounded-t-3xl border border-b-0 border-line bg-surface px-4 shadow-[0_-10px_30px_-18px_rgba(0,0,0,.6)] bottom-[calc(72px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]">
+            <div aria-hidden className="mx-auto mt-2 h-1 w-10 rounded-full bg-line"/>
+            <div className="flex h-14 items-center gap-2">
+              <button ref={openerRef} type="button" data-testid="button-open-sheet" aria-expanded={false} aria-label={`${dayTitle(selected)}. ${barSummary}. Abrir as previsões do dia.`} onClick={() => setSheetOpen(true)} className="-ml-2 flex h-12 min-w-0 flex-1 items-center gap-2 rounded-2xl px-2 text-left transition hover:bg-hover">
+                <span className="min-w-0 flex-1"><span className="block truncate font-display text-[18px] leading-tight text-ink">{dayTitle(selected)}</span><span data-testid="text-bar-summary" className="block truncate text-[14px] leading-tight text-ink-soft">{barSummary}</span></span>
+                <ChevronUp aria-hidden size={20} className="shrink-0 text-ink-soft"/>
+              </button>
+              <button type="button" data-testid="button-new-forecast-bar" aria-label="Nova previsão" onClick={() => navigate('/previsoes/nova')} className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-brand text-on-brand transition hover:bg-brand-hover"><Plus size={22} strokeWidth={2.2}/></button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              {dayItems.length > 0
-                ? <ul data-testid="list-forecasts" className="divide-y divide-line">
-                  {dayItems.map((item) => <li key={`${item.forecastId}-${item.month}`}>
-                    <button type="button" data-testid={`row-forecast-${item.forecastId}`} aria-label={`Editar previsão ${item.description}. ${signedAmount(item.kind, item.amount)}`} onClick={() => navigate(forecastEditPath(item.forecastId, item.month))} className="flex min-h-[72px] w-full items-center gap-3 py-3 text-left transition hover:bg-hover"><ForecastRowBody item={item}/></button>
-                  </li>)}
-                </ul>
-                : <p data-testid="text-forecast-day-empty" className="py-3 text-center text-[15px] text-ink-soft">{selected === todayDate ? 'Nada previsto para hoje.' : 'Nada previsto para este dia.'}</p>}
-            </div>
-            {selectedBalance !== null && <div className="mt-1 flex shrink-0 items-center justify-between gap-3 border-t border-line pt-2"><span className="text-[15px] text-ink-soft">Saldo no fim do dia</span><span data-testid="text-day-balance" className={`font-mono-data text-[18px] font-semibold ${selectedBalance < 0 ? 'text-alert' : 'text-ink'}`}>{money(selectedBalance)}</span></div>}
-          </section>
+          </section>}
+
+          {/* D4: a folha aberta, com o fundo escurecido; tocar no fundo recolhe. */}
+          {open && <div data-testid="overlay-day" onMouseDown={(event) => { if (event.target === event.currentTarget) setSheetOpen(false); }} className="fixed inset-x-0 top-0 z-20 flex items-end bg-[rgba(0,0,0,.35)] bottom-[calc(72px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]">
+            <section data-testid="sheet-day" aria-label="Previsões do dia" className="mx-auto flex max-h-[45vh] w-full max-w-[860px] flex-col rounded-t-3xl border border-b-0 border-line bg-surface px-4 pb-3 shadow-[0_-10px_30px_-18px_rgba(0,0,0,.6)]">
+              <div aria-hidden data-testid="sheet-handle" className="-mx-4 flex h-6 shrink-0 cursor-grab items-center justify-center" onTouchStart={(event) => { touchY.current = event.touches[0].clientY; }} onTouchEnd={(event) => { if (touchY.current !== null && event.changedTouches[0].clientY - touchY.current > 50) setSheetOpen(false); touchY.current = null; }}><div className="h-1 w-10 rounded-full bg-line"/></div>
+              <div className="flex shrink-0 items-center justify-between gap-3">
+                <h2 ref={sheetTitleRef} tabIndex={-1} data-testid="text-sheet-title" className="min-h-12 min-w-0 flex-1 truncate font-display text-[20px] leading-[48px] text-ink outline-none">{dayTitle(selected)}</h2>
+                {dayItems.some((item) => item.affects) && <span data-testid="text-day-total" className="shrink-0 font-mono-data text-[15px] text-ink-soft">{signedDelta(Math.round(dayTotal * 100) / 100)}</span>}
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                {dayItems.length > 0
+                  ? <ul data-testid="list-forecasts" className="divide-y divide-line">
+                    {dayItems.map((item) => <li key={`${item.forecastId}-${item.month}`}>
+                      <button type="button" data-testid={`row-forecast-${item.forecastId}`} aria-label={`Editar previsão ${item.description}. ${signedAmount(item.kind, item.amount)}`} onClick={() => navigate(forecastEditPath(item.forecastId, item.month))} className="flex min-h-[72px] w-full items-center gap-3 py-3 text-left transition hover:bg-hover"><ForecastRowBody item={item}/></button>
+                    </li>)}
+                  </ul>
+                  : <p data-testid="text-forecast-day-empty" className="py-3 text-center text-[15px] text-ink-soft">{selected === todayDate ? 'Nada previsto para hoje.' : 'Nada previsto para este dia.'}</p>}
+              </div>
+              {selectedBalance !== null && <div className="mt-1 flex shrink-0 items-center justify-between gap-3 border-t border-line pt-2"><span className="text-[15px] text-ink-soft">Saldo no fim do dia</span><span data-testid="text-day-balance" className={`font-mono-data text-[18px] font-semibold ${selectedBalance < 0 ? 'text-alert' : 'text-ink'}`}>{money(selectedBalance)}</span></div>}
+              <div className="mt-3 grid shrink-0 grid-cols-2 gap-2">
+                <button type="button" data-testid="button-open-day" onClick={() => navigate(forecastDayPath(selected))} className="h-12 rounded-full border-[1.5px] border-line text-[15px] font-semibold text-ink transition hover:bg-hover">Abrir o dia</button>
+                <button type="button" data-testid="button-new-forecast-sheet" onClick={() => navigate('/previsoes/nova')} className="flex h-12 items-center justify-center gap-1.5 rounded-full bg-brand text-[15px] font-semibold text-on-brand transition hover:bg-brand-hover"><Plus size={18} strokeWidth={2.2}/>Nova previsão</button>
+              </div>
+            </section>
+          </div>}
         </>}
     </div>
   </main>;

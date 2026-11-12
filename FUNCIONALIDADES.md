@@ -2686,7 +2686,7 @@ Detalhes que a implementação fecha: o rótulo da média é sempre "Média dos 
 
 ## 41. Previsões com o saldo de cada dia
 
-Resumo. A especificação completa está em [`specs/previsoes-saldo-por-dia.md`](specs/previsoes-saldo-por-dia.md). O cartão de resumo de Previsões saiu. Cada dia do calendário mostra o **saldo no fim do dia** em reais inteiros (base do mês + previsões que mexem no saldo; lembretes não entram), e a lista do dia virou uma **folha fixa** acima da barra inferior, com o total do dia, as previsões e "Saldo no fim do dia". No mês corrente o saldo aparece de hoje ao fim do mês, em mês futuro do dia 1 ao fim, e em mês passado não aparece. A tela **Saldo previsto** continua, aberta agora pelo item "Saldo previsto" do menu ⋯ da área Previsões. Nenhuma regra de cálculo muda.
+Resumo. A especificação completa está em [`specs/previsoes-saldo-por-dia.md`](specs/previsoes-saldo-por-dia.md). O cartão de resumo de Previsões saiu. Cada dia do calendário mostra o **saldo no fim do dia** em reais inteiros (base do mês + previsões que mexem no saldo; lembretes não entram), e a lista do dia virou uma **barra do dia recolhida** acima da barra inferior (título, "N previsões · saldo" e o "+" de nova previsão), que **abre em folha** com o total do dia, as previsões, "Saldo no fim do dia", "Abrir o dia" e "+ Nova previsão" (seção 41, revista por [`specs/previsoes-folha-recolhida.md`](specs/previsoes-folha-recolhida.md)). No mês corrente o saldo aparece de hoje ao fim do mês, em mês futuro do dia 1 ao fim, e em mês passado não aparece. A tela **Saldo previsto** continua, aberta agora pelo item "Saldo previsto" do menu ⋯ da área Previsões. Nenhuma regra de cálculo muda.
 
 ```gherkin
 # language: pt
@@ -2700,9 +2700,19 @@ Funcionalidade: Previsões com o saldo de cada dia
     E o dia 20 mostra "2.650" em negrito e o dia 25 mostra "2.300" em negrito
     E os dias passados não mostram saldo
 
-  Cenário: A folha do dia
-    Quando eu toco no dia 20
-    Então a folha mostra a previsão do dia, o total "+ R$ 800,00" e "Saldo no fim do dia" "R$ 2.650,00"
+  Cenário: A folha do dia começa recolhida
+    Quando eu abro "Previsões"
+    Então vejo a barra do dia com o título, "N previsões · saldo R$ X" e o botão "+" de nova previsão
+    E a barra não cobre nenhuma célula do calendário nem a legenda
+
+  Cenário: A folha do dia aberta
+    Quando eu toco no dia 20 e no título da barra
+    Então a folha abre com fundo escurecido, a previsão do dia, o total "+ R$ 800,00" e "Saldo no fim do dia" "R$ 2.650,00"
+    E vejo os botões "Abrir o dia" e "+ Nova previsão"
+    E tocar no fundo escurecido, arrastar a alça para baixo, Escape ou trocar de mês recolhe a folha
+
+  Cenário: Sem botão flutuante em Previsões
+    Então só existe um botão "Nova previsão", dentro da barra do dia
 
   Cenário: Saldo negativo e muito grande
     Então um saldo negativo aparece com "−" em cor de alerta e "saldo negativo" no nome acessível
@@ -2713,10 +2723,10 @@ Funcionalidade: Previsões com o saldo de cada dia
     Então vejo "Saldo previsto" e, ao tocar, abre a tela do saldo previsto do mês aberto
 
   Cenário: Olho fechado
-    Então as células mostram "•••" e nenhum valor em reais aparece na folha
+    Então as células mostram "•••" e nenhum valor em reais aparece na barra nem na folha
 ```
 
-Detalhes que a implementação fecha: o botão "Nova previsão" sobe junto com a folha (a altura dela vai na variável CSS `--forecast-sheet-h`); a rota do Saldo previsto do mês corrente é `#/previsoes/saldo`, e o item do menu não aparece em mês passado. Os testes estão em `src/pages/previsoes.test.tsx` e `src/pages/previsao-saldo.test.tsx`.
+Detalhes que a implementação fecha: as células do calendário têm 50 px e a página reserva embaixo a altura da barra recolhida (68 px); ao abrir a folha o foco vai para o título dela (`aria-expanded` no botão da barra), e ao recolher volta ao botão; o "+" cria a previsão pelo formulário normal, com a data de hoje (a rota `/previsoes/nova` ainda não aceita a data do dia selecionado); a rota do Saldo previsto do mês corrente é `#/previsoes/saldo`, e o item do menu não aparece em mês passado. Os testes estão em `src/pages/previsoes.test.tsx` e `src/pages/previsao-saldo.test.tsx`.
 
 > **Barra inferior só com ícones.** A barra inferior (seção 32) não mostra mais o texto dos itens: ficam os 5 ícones, com o nome da área em `aria-label` e `title` (dica ao segurar) e o item ativo com `aria-current="page"`, pílula `tint` e traço mais grosso. Rotas, mês compartilhado e altura (72 px) não mudam. Veja [`specs/barra-inferior-sem-rotulos.md`](specs/barra-inferior-sem-rotulos.md); os testes estão em `src/App.test.tsx`.
 

@@ -33,7 +33,6 @@ export function FooterMenu() {
 }
 
 function FooterBar({ month, location }: { month: MonthKey; location: string }) {
-  const [, navigate] = useLocation();
   const client = useQueryClient();
   const [sheet, setSheet] = useState(false);
   // Carrinho D3: com a barra do carrinho no Início, o botão Lançar sobe para não ficar sobre ela.
@@ -85,10 +84,8 @@ function FooterBar({ month, location }: { month: MonthKey; location: string }) {
     {/* Keeps the end of the page clear of the bar and of the button above it (botao-lancar D10). */}
     <div aria-hidden className="h-36"/>
     <AppTabs/>
-    {/* previsoes D14: na área Previsões o botão faz o que a área é. */}
-    {areaOf(location) === 'forecasts'
-      ? <button data-testid="button-new-forecast" onClick={() => navigate('/previsoes/nova')} className="fixed right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand shadow-[0_8px_18px_-10px_rgba(0,0,0,.7)] transition hover:bg-brand-hover bottom-[calc(88px+var(--forecast-sheet-h,0px)+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]"><Plus size={22} strokeWidth={2.2}/>Nova previsão</button>
-      : <button data-testid="button-quick-add" onClick={() => setSheet(true)} className={`fixed right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand shadow-[0_8px_18px_-10px_rgba(0,0,0,.7)] transition hover:bg-brand-hover ${cartBar ? 'bottom-[calc(160px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]' : 'bottom-[calc(88px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]'}`}><Plus size={22} strokeWidth={2.2}/>Lançar</button>}
+    {/* previsoes-folha-recolhida D6: em Previsões não há botão flutuante; o "+" mora na barra do dia. */}
+    {areaOf(location) !== 'forecasts' && <button data-testid="button-quick-add" onClick={() => setSheet(true)} className={`fixed right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand shadow-[0_8px_18px_-10px_rgba(0,0,0,.7)] transition hover:bg-brand-hover ${cartBar ? 'bottom-[calc(160px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]' : 'bottom-[calc(88px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))]'}`}><Plus size={22} strokeWidth={2.2}/>Lançar</button>}
 
     {sheet && <BottomSheet title="Lançar" onClose={() => setSheet(false)}>
       <div className="space-y-2">
