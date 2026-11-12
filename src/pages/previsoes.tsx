@@ -68,6 +68,8 @@ export default function Previsoes({ month }: { month: MonthKey }) {
 
   const balanceOf = (date: string) => balances?.find((b) => b.date === date) ?? null;
   const selectedBalance = balanceOf(selected)?.balance ?? null;
+  // D12: a legenda mostra o saldo do dia selecionado; em dia sem saldo (passado), o do primeiro dia que tem.
+  const legendBalance = selectedBalance ?? balances?.find((item) => item.balance !== null)?.balance ?? null;
   // D2: "N previsões · saldo R$ X"; sem a parte do saldo em dia passado.
   const barSummary = [dayItems.length ? plural(dayItems.length, 'previsão', 'previsões') : 'Nada previsto', selectedBalance !== null ? `saldo ${money(selectedBalance)}` : null].filter(Boolean).join(' · ');
 
@@ -119,7 +121,7 @@ export default function Previsoes({ month }: { month: MonthKey }) {
               <li className="flex items-center gap-1.5"><span aria-hidden className="h-2 w-2 rounded-full bg-chart-in"/>A receber</li>
               <li className="flex items-center gap-1.5"><span aria-hidden className="h-2 w-2 rounded-full bg-chart-out"/>A pagar</li>
               <li className="flex items-center gap-1.5"><span aria-hidden className="h-2 w-2 rounded-full border border-ink-soft"/>Fora do saldo</li>
-              <li className="flex items-center gap-1.5"><span aria-hidden className="font-mono-data font-bold text-ink">10.070</span>saldo em R$ no fim do dia</li>
+              {legendBalance !== null && <li data-testid="legend-balance" className="flex items-center gap-1.5"><span aria-hidden className="font-mono-data font-bold text-ink">{cellBalance(legendBalance, hidden)}</span>saldo em R$ no fim do dia</li>}
             </ul>
           </section>
 
