@@ -4,7 +4,7 @@ import {
   getGetBenefitsQueryKey, getGetCardsQueryKey, getGetDreamPlanQueryKey, getGetDreamsQueryKey, getGetIncomeRangeQueryKey, getGetMonthCashQueryKey,
   useGetBalanceSeries, useGetBenefits, useGetCards, useGetCart, useGetDreamPlan, useGetDreams, useGetForecastAlerts, useGetIncomeRange, useGetInvoiceSeries, useGetMonthCash, useGetRecentSpends,
 } from '@workspace/api-client-react';
-import { CalendarCheck, ChevronRight, CircleHelp, CreditCard, HandCoins, Plus, ShoppingCart, Utensils } from 'lucide-react';
+import { CalendarCheck, ChevronRight, CircleHelp, Plus, ShoppingCart } from 'lucide-react';
 import { AppHeader } from '@/components/app-header';
 import { shortDate, signedAmount } from '@/components/forecast-parts';
 import { openQuickAdd } from '@/components/quick-add';
@@ -223,10 +223,6 @@ export default function Inicio({ month }: { month: MonthKey }) {
                 </li>)}
               </ul>}
           </section>
-
-          <nav aria-label="Atalhos" className="grid grid-cols-3 gap-2 pt-1">
-            {([['income', 'Entradas', HandCoins], ['cards', 'Cartões', CreditCard], ['benefits', 'Benefícios', Utensils]] as const).map(([area, label, Icon]) => <button key={area} data-testid={`shortcut-${area}`} onClick={() => go(area)} className="flex min-h-12 items-center justify-center gap-1.5 rounded-full border border-line bg-surface px-2 text-[14px] font-semibold text-brand transition hover:bg-hover"><Icon size={16}/>{label}</button>)}
-          </nav>
         </div>}
     </div>
 

@@ -1,95 +1,95 @@
-# Spec — Início sem os atalhos no fim de "Lançamentos recentes"
+﻿# Spec â€” InÃ­cio sem os atalhos no fim de "LanÃ§amentos recentes"
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Proposta |
+| Status | Implementada |
 | Criada em | 12/11/2026 |
 | Escopo | `src/pages/inicio.tsx` (remove o bloco "Atalhos"), `src/pages/inicio.test.tsx`, `FUNCIONALIDADES.md` |
 | Depende de | [`inicio-com-minigraficos.md`](inicio-com-minigraficos.md), [`redesign-v2-fundacao.md`](redesign-v2-fundacao.md) |
-| Substitui em parte | [`redesign-v2-fundacao.md`](redesign-v2-fundacao.md) RF-04 e a linha de Interface do Início, que citam "atalhos para cada área" |
+| Substitui em parte | [`redesign-v2-fundacao.md`](redesign-v2-fundacao.md) RF-04 e a linha de Interface do InÃ­cio, que citam "atalhos para cada Ã¡rea" |
 
-> Mudanças de comportamento entram primeiro aqui e só depois no código.
+> MudanÃ§as de comportamento entram primeiro aqui e sÃ³ depois no cÃ³digo.
 
 ---
 
 ## 1. Contexto e objetivo
 
-No fim do Início, depois de "Lançamentos recentes", há uma fileira de três botões (Entradas, Cartões, Benefícios; `nav aria-label="Atalhos"`, `data-testid="shortcut-*"`). **Pedido do usuário:** removê-los. Eles repetem a barra inferior (e os painéis Saldo, Cartões e Benefícios do próprio Início já abrem as áreas), então o Início fica mais curto sem perder navegação.
+No fim do InÃ­cio, depois de "LanÃ§amentos recentes", hÃ¡ uma fileira de trÃªs botÃµes (Entradas, CartÃµes, BenefÃ­cios; `nav aria-label="Atalhos"`, `data-testid="shortcut-*"`). **Pedido do usuÃ¡rio:** removÃª-los. Eles repetem a barra inferior (e os painÃ©is Saldo, CartÃµes e BenefÃ­cios do prÃ³prio InÃ­cio jÃ¡ abrem as Ã¡reas), entÃ£o o InÃ­cio fica mais curto sem perder navegaÃ§Ã£o.
 
-## 2. Decisões de produto
+## 2. DecisÃµes de produto
 
-| # | Decisão | Motivo |
+| # | DecisÃ£o | Motivo |
 | - | ------- | ------ |
-| D1 | O Início **não mostra mais** a fileira "Atalhos" (Entradas, Cartões, Benefícios) depois de "Lançamentos recentes". | Pedido do usuário. |
-| D2 | O resto do Início **não muda**: painéis, "Lançamentos recentes" com "Ver todos", estado vazio, botão Lançar e a barra do carrinho. | Ajuste pequeno e isolado. |
-| D3 | A navegação para as áreas continua pela **barra inferior** e pelos **painéis** do Início. Nada é adicionado no lugar. | Evita duplicar o que a barra já faz. |
+| D1 | O InÃ­cio **nÃ£o mostra mais** a fileira "Atalhos" (Entradas, CartÃµes, BenefÃ­cios) depois de "LanÃ§amentos recentes". | Pedido do usuÃ¡rio. |
+| D2 | O resto do InÃ­cio **nÃ£o muda**: painÃ©is, "LanÃ§amentos recentes" com "Ver todos", estado vazio, botÃ£o LanÃ§ar e a barra do carrinho. | Ajuste pequeno e isolado. |
+| D3 | A navegaÃ§Ã£o para as Ã¡reas continua pela **barra inferior** e pelos **painÃ©is** do InÃ­cio. Nada Ã© adicionado no lugar. | Evita duplicar o que a barra jÃ¡ faz. |
 
 ## 3. Requisitos
 
 | ID | Requisito |
 | -- | --------- |
-| RF-01 | O fim do Início é a lista "Lançamentos recentes" (ou o texto de vazio); não há mais botões "Entradas", "Cartões" e "Benefícios" abaixo dela (D1). |
-| RF-02 | As linhas de "Lançamentos recentes", o "Ver todos", os painéis e a barra inferior continuam abrindo o que abriam (D2, D3). |
-| RN-01 | Nenhuma regra de cálculo, rota ou dado salvo muda. |
+| RF-01 | O fim do InÃ­cio Ã© a lista "LanÃ§amentos recentes" (ou o texto de vazio); nÃ£o hÃ¡ mais botÃµes "Entradas", "CartÃµes" e "BenefÃ­cios" abaixo dela (D1). |
+| RF-02 | As linhas de "LanÃ§amentos recentes", o "Ver todos", os painÃ©is e a barra inferior continuam abrindo o que abriam (D2, D3). |
+| RN-01 | Nenhuma regra de cÃ¡lculo, rota ou dado salvo muda. |
 
-## 4. Cenários
+## 4. CenÃ¡rios
 
 ```gherkin
 # language: pt
 
-Funcionalidade: Início sem os atalhos do fim da tela
+Funcionalidade: InÃ­cio sem os atalhos do fim da tela
 
-  Cenário: Sem a fileira de atalhos
-    Dado um mês com gastos
-    Quando eu abro o Início
-    Então "Lançamentos recentes" é a última seção
-    E não vejo os botões "Entradas", "Cartões" e "Benefícios" abaixo dela
+  CenÃ¡rio: Sem a fileira de atalhos
+    Dado um mÃªs com gastos
+    Quando eu abro o InÃ­cio
+    EntÃ£o "LanÃ§amentos recentes" Ã© a Ãºltima seÃ§Ã£o
+    E nÃ£o vejo os botÃµes "Entradas", "CartÃµes" e "BenefÃ­cios" abaixo dela
 
-  Cenário: Chegar às áreas continua possível
-    Quando eu toco em "Cartões" na barra inferior
-    Então abre a área Cartões
-    E tocar no painel Cartões do Início também abre a área
+  CenÃ¡rio: Chegar Ã s Ã¡reas continua possÃ­vel
+    Quando eu toco em "CartÃµes" na barra inferior
+    EntÃ£o abre a Ã¡rea CartÃµes
+    E tocar no painel CartÃµes do InÃ­cio tambÃ©m abre a Ã¡rea
 
-  Cenário: Lançamentos recentes não mudam
-    Quando eu toco numa linha de "Lançamentos recentes"
-    Então abre a área do gasto
-    E "Ver todos" abre o Resumo do mês
+  CenÃ¡rio: LanÃ§amentos recentes nÃ£o mudam
+    Quando eu toco numa linha de "LanÃ§amentos recentes"
+    EntÃ£o abre a Ã¡rea do gasto
+    E "Ver todos" abre o Resumo do mÃªs
 ```
 
-| Requisito / regra | Cenário(s) |
+| Requisito / regra | CenÃ¡rio(s) |
 | ----------------- | ---------- |
 | RF-01, D1 | Sem a fileira de atalhos |
-| RF-02, D2, D3 | Chegar às áreas continua possível; Lançamentos recentes não mudam |
+| RF-02, D2, D3 | Chegar Ã s Ã¡reas continua possÃ­vel; LanÃ§amentos recentes nÃ£o mudam |
 | RN-01 | todos (nenhum valor muda) |
 
 ## 5. Dados e contrato
 
-Sem mudança no formato salvo, na camada de dados nem nas rotas.
+Sem mudanÃ§a no formato salvo, na camada de dados nem nas rotas.
 
 ## 6. Interface
 
-Remove o `<nav aria-label="Atalhos">` ao fim de `inicio.tsx` e os ícones/imports que só ele usava. O espaço abaixo de "Lançamentos recentes" é o do espaçador de rodapé do app, como nas outras telas.
+Remove o `<nav aria-label="Atalhos">` ao fim de `inicio.tsx` e os Ã­cones/imports que sÃ³ ele usava. O espaÃ§o abaixo de "LanÃ§amentos recentes" Ã© o do espaÃ§ador de rodapÃ© do app, como nas outras telas.
 
 ## 7. Fora de escopo
 
-- Trocar o que "Lançamentos recentes" mostra ou o "Ver todos".
-- Mexer nos painéis do Início, na barra inferior ou no botão Lançar.
+- Trocar o que "LanÃ§amentos recentes" mostra ou o "Ver todos".
+- Mexer nos painÃ©is do InÃ­cio, na barra inferior ou no botÃ£o LanÃ§ar.
 
-## 8. Critérios de aceite
+## 8. CritÃ©rios de aceite
 
-- [ ] `npm test`, `npm run typecheck` e `npm run build` passam.
-- [ ] O teste "os atalhos levam às áreas" é trocado por testes dos cenários acima (a área continua alcançável pela barra e pelo painel).
-- [ ] Nenhum `shortcut-*`, `Atalhos` ou import sem uso restou em `inicio.tsx`.
-- [ ] Em 360 × 780, claro e escuro, o Início termina em "Lançamentos recentes" sem espaço sobrando estranho.
-- [ ] `FUNCIONALIDADES.md` não cita mais os atalhos do Início; `redesign-v2-fundacao.md` RF-04 marcado como substituído nesse ponto.
+- [x] `npm test`, `npm run typecheck` e `npm run build` passam.
+- [x] O teste "os atalhos levam Ã s Ã¡reas" Ã© trocado por testes dos cenÃ¡rios acima (a Ã¡rea continua alcanÃ§Ã¡vel pela barra e pelo painel).
+- [x] Nenhum `shortcut-*`, `Atalhos` ou import sem uso restou em `inicio.tsx`.
+- [ ] Em 360 Ã— 780, claro e escuro, o InÃ­cio termina em "LanÃ§amentos recentes" sem espaÃ§o sobrando estranho.
+- [x] `FUNCIONALIDADES.md` nÃ£o cita mais os atalhos do InÃ­cio; `redesign-v2-fundacao.md` RF-04 marcado como substituÃ­do nesse ponto.
 
 ## 9. Tarefas
 
 1. Remover o bloco "Atalhos" e os imports sem uso de `inicio.tsx`.
-2. Trocar o teste dos atalhos pelos cenários da seção 4.
-3. Ajustar `FUNCIONALIDADES.md` (seção do Início, 33) e rodar `test`, `typecheck` e `build`.
+2. Trocar o teste dos atalhos pelos cenÃ¡rios da seÃ§Ã£o 4.
+3. Ajustar `FUNCIONALIDADES.md` (seÃ§Ã£o do InÃ­cio, 33) e rodar `test`, `typecheck` e `build`.
 
-## 10. Roteiro de verificação
+## 10. Roteiro de verificaÃ§Ã£o
 
-1. `npm run dev`, 360 × 780, claro e escuro, `#/`.
-2. Conferir que o Início termina em "Lançamentos recentes" e que a barra e os painéis abrem as áreas.
+1. `npm run dev`, 360 Ã— 780, claro e escuro, `#/`.
+2. Conferir que o InÃ­cio termina em "LanÃ§amentos recentes" e que a barra e os painÃ©is abrem as Ã¡reas.

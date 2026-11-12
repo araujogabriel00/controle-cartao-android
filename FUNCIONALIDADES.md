@@ -2003,7 +2003,7 @@ Funcionalidade: Fundação da nova versão
 
 Endereços: `#/` (Início), `#/inicio/mes/AAAA-MM`, `#/cartoes`, `#/cartoes/mes/AAAA-MM`. O Início só lê os dados das outras áreas e não grava nada.
 
-> O corpo do Início (saldo, entrou/saiu, próxima fatura e lista de benefícios) foi trocado por painéis com mini-gráfico na seção 33. O estado vazio, os 3 passos do primeiro uso e os atalhos seguem como aqui.
+> O corpo do Início (saldo, entrou/saiu, próxima fatura e lista de benefícios) foi trocado por painéis com mini-gráfico na seção 33. O estado vazio, os 3 passos do primeiro uso seguem como aqui. Os atalhos (Entradas, Cartões, Benefícios) do fim do Início saíram, veja a seção 33.
 
 ---
 
@@ -2076,6 +2076,8 @@ Funcionalidade: Início com mini-gráficos
 ```
 
 O que mudou em relação à seção 32 (Início da fundação): os blocos "Entrou", "Saiu", "Próxima fatura" e a lista de benefícios saíram (`card-home-in`, `card-home-out` e `row-home-benefit-N`). "Entrou" e "Saiu" continuam na aba Entradas e no Resumo do mês. O painel Saldo mostra o resultado do mês ("+ R$ X neste mês"), o painel Cartões mostra a fatura total do mês aberto e o Benefícios soma todos os benefícios.
+
+> **Sem os atalhos no fim.** O Início termina em "Lançamentos recentes": a fileira de botões Entradas, Cartões e Benefícios saiu (a barra inferior e os painéis já abrem as áreas). Nada mais muda. Veja [`specs/inicio-sem-atalhos.md`](specs/inicio-sem-atalhos.md); os testes estão em `src/pages/inicio.test.tsx`.
 
 ---
 
