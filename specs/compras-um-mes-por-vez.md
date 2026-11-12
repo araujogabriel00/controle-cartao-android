@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Proposta |
+| Status | Implementada |
 | Criada em | 12/11/2026 |
 | Escopo | `src/pages/compras.tsx` (faixa de meses, busca, folha de filtros, mês vazio), `src/App.tsx` (rota sem remontar ao trocar de mês), `src/lib/format.ts` (se precisar de rótulos curtos de mês), `src/pages/compras.test.tsx`, `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`redesign-v2-historico-e-compras.md`](redesign-v2-historico-e-compras.md), [`todas-as-compras.md`](todas-as-compras.md), [`compras-em-qualquer-mes.md`](compras-em-qualquer-mes.md), [`desfazer-exclusao.md`](desfazer-exclusao.md) |
@@ -213,7 +213,7 @@ Funcionalidade: Todas as compras, um mês por vez
 Sem mudança no formato salvo, na camada de dados, nos hooks nem nas rotas. A faixa, os totais, a busca e os filtros são calculados **na tela** a partir de `useGetAllMovements` (lançadas + previstas). Pontos de implementação:
 
 - **Rota sem remontar:** hoje `/compras` e `/compras/mes/:month` são duas `Route`; como trocar de mês não pode zerar busca e filtros, usar **uma só** `Route` (por exemplo, `/compras/:rest*`) ou levantar o estado de filtros para um contexto da tela, e trocar o mês com `navigate(path, { replace: true })`.
-- **Lançar compra do mês vazio:** disparar `openQuickAdd('purchase')` de `quick-add.tsx`, que já usa o mês da rota para a data padrão (`defaultDateFor`).
+- **Lançar compra do mês vazio:** disparar `openQuickAdd('purchase')` de `quick-add.tsx`, que já usa o mês da rota para a data padrão (`defaultDateFor`). *(Na implementação: `/compras` não tem o rodapé, então ninguém escuta esse evento; a tela abre o formulário de compra por conta própria, com `defaultDateFor` do mês aberto.)*
 
 ## 7. Interface
 
@@ -233,13 +233,13 @@ Sem mudança no formato salvo, na camada de dados, nos hooks nem nas rotas. A fa
 
 ## 9. Critérios de aceite
 
-- [ ] `npm test`, `npm run typecheck` e `npm run build` passam.
-- [ ] Cada cenário da seção 5 tem teste em `src/pages/compras.test.tsx` (os testes do campo de busca fixo e do `select-category` foram trocados pelos novos fluxos, com testids novos para a faixa, a busca, os filtros e as etiquetas).
-- [ ] Os valores das compras e dos totais são iguais aos da versão anterior para os mesmos dados.
-- [ ] Trocar de mês mantém busca e filtros, não empilha histórico e leva a lista ao topo.
-- [ ] Em 360 × 780, claro e escuro: sem scroll horizontal da página (só a faixa rola), pílulas e botões ≥ 48 px, textos ≥ 14 px.
-- [ ] Com o olho fechado nenhum valor aparece (texto, `aria-label`, HTML).
-- [ ] `FUNCIONALIDADES.md` (seção 24 e a do Histórico/Todas as compras) e `README.md` atualizados; `redesign-v2-historico-e-compras.md` marcada como substituída nos itens do campo "Substitui em parte".
+- [x] `npm test`, `npm run typecheck` e `npm run build` passam.
+- [x] Cada cenário da seção 5 tem teste em `src/pages/compras.test.tsx` (os testes do campo de busca fixo e do `select-category` foram trocados pelos novos fluxos, com testids novos para a faixa, a busca, os filtros e as etiquetas).
+- [ ] Os valores das compras e dos totais são iguais aos da versão anterior para os mesmos dados. (Pendente: os totais usam a mesma soma em centavos de antes, mas não comparei as duas versões lado a lado.)
+- [x] Trocar de mês mantém busca e filtros, não empilha histórico e leva a lista ao topo.
+- [ ] Em 360 × 780, claro e escuro: sem scroll horizontal da página (só a faixa rola), pílulas e botões ≥ 48 px, textos ≥ 14 px. (Conferido: sem scroll horizontal e alvos ≥ 48 px nos dois temas. Pendente: o contador do ícone de Filtros usa 12 px, dentro do círculo de 18 px do desenho.)
+- [x] Com o olho fechado nenhum valor aparece (texto, `aria-label`, HTML).
+- [x] `FUNCIONALIDADES.md` (seções 24, 40 e a nova 42) e `README.md` atualizados; `redesign-v2-historico-e-compras.md` marcada como substituída nos itens do campo "Substitui em parte".
 
 ## 10. Tarefas
 

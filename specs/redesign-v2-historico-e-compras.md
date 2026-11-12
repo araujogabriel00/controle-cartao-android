@@ -8,6 +8,8 @@
 | Depende de | [`redesign-v2-fundacao.md`](redesign-v2-fundacao.md), [`redesign-v2-cartoes.md`](redesign-v2-cartoes.md), [`historico-mensal.md`](historico-mensal.md), [`todas-as-compras.md`](todas-as-compras.md), [`desfazer-exclusao.md`](desfazer-exclusao.md) |
 | Referência visual | Canvas "Controle do Cartão", grupo v2: V2_10 (Histórico), V2_14 (Todas as compras) e V2_15 (Todas as compras com filtro), claras e escuras |
 
+> **Substituída em parte por [`compras-um-mes-por-vez.md`](compras-um-mes-por-vez.md)** (implementada): na tela "Todas as compras", D6 a D9, D13, D14, RF-06, RF-07, RF-08, RF-10 e RF-13 (cabeçalho, busca e categoria sempre visíveis, lista de todos os meses e rolagem até o mês) passam a ser o "um mês por vez" com faixa de meses, busca e filtros recolhidos. O item da lista (D10), editar e excluir (D11), o olho (D12) e o **Histórico** continuam como aqui.
+
 > Mudanças de comportamento entram primeiro aqui e só depois no código.
 
 ---
