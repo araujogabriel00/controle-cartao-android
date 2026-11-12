@@ -62,6 +62,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 39. [Fatura com todas as compras do mês](#39-fatura-com-todas-as-compras-do-mês)
 40. [Histórico e Todas as compras na nova versão](#40-histórico-e-todas-as-compras-na-nova-versão)
 41. [Previsões com o saldo de cada dia](#41-previsões-com-o-saldo-de-cada-dia)
+42. [Todas as compras, um mês por vez](#42-todas-as-compras-um-mês-por-vez)
 
 ---
 
@@ -1603,12 +1604,14 @@ Funcionalidade: Todas as compras do cartão
     Quando abro novembro de 2026 e excluo a parcela "Fone" "2/3"
     Então "Fone" é removido de todos os meses
 
-  Cenário: Abrir no mês de onde vim (seção 40)
+  Cenário: Abrir no mês de onde vim (seção 40, revisto na seção 42)
     Dado que estou na aba Cartões em setembro de 2026
     Quando eu toco em "Todas as compras"
-    Então abre `#/compras/mes/2026-09` rolada até "Setembro de 2026"
-    E o voltar leva à aba Cartões em setembro
+    Então abre `#/compras/mes/2026-09` com "Setembro de 2026" na lista
+    E o voltar leva à aba Cartões no mês aberto no momento
 ```
+
+> **Um mês por vez.** A lista de todos os meses em sequência, com a busca e a categoria sempre visíveis, foi trocada na seção 42 por um mês de cada vez, escolhido numa faixa de meses. Os cenários "Ver as compras de todos os meses" acima passam a valer **mês a mês** (cada mês tem a própria pílula); editar, excluir e o escopo das recorrentes não mudam.
 
 
 ---
@@ -2618,7 +2621,7 @@ Funcionalidade: Fatura com todas as compras do mês
 
 ## 40. Histórico e Todas as compras na nova versão
 
-Resumo. A especificação completa está em [`specs/redesign-v2-historico-e-compras.md`](specs/redesign-v2-historico-e-compras.md). As duas telas que saem da aba Cartões ganham o visual v2 (voltar de 48 px, listas em cartões, sem selos coloridos) e duas mudanças de comportamento: o **Histórico** mostra um gráfico de 6 colunas (5 meses fechados + o mês atual "em aberto") e a **média dos últimos 5 meses fechados**; **Todas as compras** abre `#/compras/mes/AAAA-MM`, rolada até o mês de onde a pessoa veio (o mês atual em `#/compras`), e o voltar leva de volta a esse mês. Nenhuma regra de cálculo muda.
+Resumo. A especificação completa está em [`specs/redesign-v2-historico-e-compras.md`](specs/redesign-v2-historico-e-compras.md). As duas telas que saem da aba Cartões ganham o visual v2 (voltar de 48 px, listas em cartões, sem selos coloridos) e duas mudanças de comportamento: o **Histórico** mostra um gráfico de 6 colunas (5 meses fechados + o mês atual "em aberto") e a **média dos últimos 5 meses fechados**; **Todas as compras** abre `#/compras/mes/AAAA-MM` no mês de onde a pessoa veio (o mês atual em `#/compras`) *(a rolagem até o mês e a lista de todos os meses foram substituídas pela seção 42: um mês por vez)*. Nenhuma regra de cálculo muda.
 
 ```gherkin
 # language: pt
@@ -2716,3 +2719,45 @@ Funcionalidade: Previsões com o saldo de cada dia
 Detalhes que a implementação fecha: o botão "Nova previsão" sobe junto com a folha (a altura dela vai na variável CSS `--forecast-sheet-h`); a rota do Saldo previsto do mês corrente é `#/previsoes/saldo`, e o item do menu não aparece em mês passado. Os testes estão em `src/pages/previsoes.test.tsx` e `src/pages/previsao-saldo.test.tsx`.
 
 > **Barra inferior só com ícones.** A barra inferior (seção 32) não mostra mais o texto dos itens: ficam os 5 ícones, com o nome da área em `aria-label` e `title` (dica ao segurar) e o item ativo com `aria-current="page"`, pílula `tint` e traço mais grosso. Rotas, mês compartilhado e altura (72 px) não mudam. Veja [`specs/barra-inferior-sem-rotulos.md`](specs/barra-inferior-sem-rotulos.md); os testes estão em `src/App.test.tsx`.
+
+## 42. Todas as compras, um mês por vez
+
+Resumo. A especificação completa está em [`specs/compras-um-mes-por-vez.md`](specs/compras-um-mes-por-vez.md). "Todas as compras" mostra **um mês de cada vez**: uma **faixa de meses** no alto (uma pílula por mês, do mais recente ao mais antigo, com o total de cada um) escolhe o mês da lista. A busca e os filtros ficam recolhidos em dois ícones do cabeçalho. Trocar de mês troca a rota (`#/compras` no mês atual, `#/compras/mes/AAAA-MM` nos outros) sem empilhar histórico e sem perder busca e filtros. Nenhum dado, cálculo, rota ou regra de edição e exclusão muda; o Histórico não muda.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Todas as compras, um mês por vez
+
+  Cenário: A faixa traz um mês por pílula
+    Dado compras em julho, setembro e outubro e parcelas previstas em novembro e dezembro
+    Quando eu abro "Todas as compras"
+    Então vejo as pílulas "Dez 26", "Nov 26", "Out 26", "Set 26", "Ago 26" e "Jul 26", nessa ordem
+    E "Ago 26" mostra "—" e a pílula de outubro está marcada
+
+  Cenário: Trocar de mês mantém os filtros
+    Dado o filtro "Eletrônicos" ativo
+    Quando eu toco em "Set 26"
+    Então a lista mostra setembro, a rota é "#/compras/mes/2026-09" e o filtro continua ativo
+
+  Cenário: Buscar em todos os meses
+    Quando eu toco em "Buscar" e digito "fone"
+    Então vejo os resultados agrupados por mês, do mais recente ao mais antigo
+    E o rodapé mostra "2 resultados" e o total, e a faixa de meses não aparece
+
+  Cenário: Filtrar por categoria e tipo
+    Quando eu toco em "Filtros", escolho uma categoria e um ou mais tipos (Parceladas, Mensais, Previstas) e toco em "Ver N compras"
+    Então o ícone de filtros mostra o número de filtros, aparece uma etiqueta com ✕ para cada um
+    E os totais da faixa passam a somar só o que passa pelos filtros
+    E os tipos se combinam com "ou", e a categoria com os tipos com "e"
+
+  Cenário: Mês sem compras
+    Quando eu toco em "Ago 26"
+    Então vejo "Nenhuma compra em agosto", o botão "Lançar compra de agosto" e o link "Ir para o mês mais recente com compras"
+    E com filtro ativo o botão vira "Limpar filtros"
+
+  Cenário: Olho fechado
+    Então as pílulas, as listas e os totais mostram "••••" e nenhum valor em reais aparece
+```
+
+Detalhes que a implementação fecha: o botão "Lançar compra de ‹mês›" abre o formulário de compra dentro da própria tela (esta tela não tem o botão Lançar do rodapé), com a data no mês aberto; a rota é uma só (`/compras/*?`) para a tela não remontar ao trocar de mês; busca com o campo vazio não lista nada. Os testes estão em `src/pages/compras.test.tsx`.

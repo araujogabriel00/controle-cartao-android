@@ -186,10 +186,14 @@ function BenefitMonthRoute({ month }: { month: string }) {
   return <RangedMonthRoute area="benefits" month={month} range={range}><Beneficios key={month} month={month} /></RangedMonthRoute>;
 }
 
-// Todas as compras abre no mês pedido (specs/redesign-v2-historico-e-compras.md D13): mês inválido ou o atual vão para /compras.
-function PurchasesMonthRoute({ month }: { month: string }) {
-  if (!isMonthKey(month) || month === currentMonth()) return <Redirect to="/compras" replace />;
-  return <Compras key={month} month={month} />;
+// Todas as compras abre no mês pedido (specs/redesign-v2-historico-e-compras.md D13) e troca de mês sem remontar a tela
+// (specs/compras-um-mes-por-vez.md D5): uma só Route cobre /compras e /compras/mes/AAAA-MM, para busca e filtros não se perderem.
+// Mês inválido, ou o atual escrito por extenso, vão para /compras.
+function PurchasesRoute({ rest }: { rest: string }) {
+  if (!rest) return <Compras month={currentMonth()} />;
+  const month = rest.match(/^mes\/(.+)$/)?.[1];
+  if (!month || !isMonthKey(month) || month === currentMonth()) return <Redirect to="/compras" replace />;
+  return <Compras month={month} />;
 }
 
 function Router() {
@@ -206,8 +210,7 @@ function Router() {
         {/* The old address of Cartões (redesign-v2-fundacao RF-03, RN-10). */}
         <Route path="/mes/:month">{(params) => <Redirect to={`/cartoes/mes/${params.month}`} replace />}</Route>
         <Route path="/historico" component={Historico} />
-        <Route path="/compras">{() => <Compras key={currentMonth()} month={currentMonth()} />}</Route>
-        <Route path="/compras/mes/:month">{(params) => <PurchasesMonthRoute month={params.month} />}</Route>
+        <Route path="/compras/*?">{(params) => <PurchasesRoute rest={params['*'] ?? ''} />}</Route>
         <Route path="/previsoes">{() => <Previsoes key={currentMonth()} month={currentMonth()} />}</Route>
         <Route path="/previsoes/mes/:month">{(params) => <ForecastMonthRoute month={params.month} />}</Route>
         <Route path="/previsoes/dia/:date">{(params) => <ForecastDayRoute date={params.date} />}</Route>
