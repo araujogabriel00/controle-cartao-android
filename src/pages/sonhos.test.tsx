@@ -487,3 +487,90 @@ describe('Animações, olho e falhas', () => {
   });
 });
 
+
+// specs/caixinhas-quando-guardar.md: renda de R$ 6.000,00, plano de 10% (R$ 600,00) e reserva de R$ 1.500,00; hoje é 15/10.
+describe('Quando guardar', () => {
+  const seed = (balanceToday = 3280, extra?: (s: Store) => Promise<unknown>) => async (s: Store) => {
+    await s.createIncome({ kind: 'salario', amount: 6000, date: '2026-10-05', recurring: true });
+    if (balanceToday < 6000) await s.createBill({ name: 'Aluguel', amount: 6000 - balanceToday, date: '2026-10-08' });
+    const trip = await newDream(s, 'Viagem', 10000, 100);
+    await s.saveDreamPlan({ percent: 10, reserve: 1500, shares: [{ dreamId: trip.id, share: 100 }] });
+    await extra?.(s);
+    return trip;
+  };
+  const f = (s: Store, kind: 'pay' | 'receive', amount: number, date: string) => s.createForecast({ kind, description: 'Previsão', amount, date, affects: true, recurring: false });
+
+  it('cabe a partir de uma data: mostra o valor, a data, a folga e a faixa', async () => {
+    const { screen } = await openApp('#/caixinhas', seed(3280, async (s) => { await f(s, 'pay', 1350, '2026-10-17'); await f(s, 'receive', 2000, '2026-10-25'); await f(s, 'pay', 700, '2026-10-30'); }));
+    const card = await screen.findByTestId('card-saving-window');
+    expect(plain(card.textContent)).toContain('Guardar R$ 600,00');
+    expect(screen.getByTestId('text-saving-answer')).toHaveTextContent('A partir de 25/10');
+    expect(plain(screen.getByTestId('text-saving-room').textContent)).toBe('Hoje cabem R$ 430,00.');
+    const strip = screen.getByTestId('chart-saving-days');
+    expect(strip).toHaveAttribute('aria-label', expect.stringContaining('A partir de 25/10'));
+    expect(strip.querySelectorAll('[data-ok="false"]')).toHaveLength(10);
+    expect(strip.querySelectorAll('[data-ok="true"]')).toHaveLength(21);
+    expect(card).toHaveTextContent('ainda não');
+    expect(card).toHaveTextContent('pode guardar');
+  });
+
+  it('pode guardar agora: a faixa toda libera', async () => {
+    const { screen } = await openApp('#/caixinhas', seed(4000));
+    expect(await screen.findByTestId('text-saving-answer')).toHaveTextContent('Pode guardar agora');
+    expect(screen.getByTestId('chart-saving-days').querySelectorAll('[data-ok="false"]')).toHaveLength(0);
+  });
+
+  it('ainda não nos próximos 30 dias e saldo abaixo da reserva', async () => {
+    const a = await openApp('#/caixinhas', seed(1600));
+    expect(await a.screen.findByTestId('text-saving-answer')).toHaveTextContent('Ainda não nos próximos 30 dias');
+    expect(plain(a.screen.getByTestId('text-saving-room').textContent)).toBe('Hoje cabem R$ 100,00.');
+    expect(a.screen.getByTestId('chart-saving-days').querySelectorAll('[data-ok="true"]')).toHaveLength(0);
+  });
+
+  it('saldo já abaixo da reserva: "Hoje não cabe nada."', async () => {
+    const { screen } = await openApp('#/caixinhas', seed(1000));
+    expect(await screen.findByTestId('text-saving-room')).toHaveTextContent('Hoje não cabe nada.');
+  });
+
+  it('só falta uma parte: Guardar R$ 350,00', async () => {
+    const part = await openApp('#/caixinhas', seed(4000, async (s) => { await s.depositDream((await s.getDreams()).items[0].id, 250); }));
+    expect(plain((await part.screen.findByTestId('card-saving-window')).textContent)).toContain('Guardar R$ 350,00');
+  });
+
+  it('meta do mês cumprida: sem faixa', async () => {
+    const done = await openApp('#/caixinhas', seed(4000, async (s) => { await s.depositDream((await s.getDreams()).items[0].id, 600); }));
+    expect(await done.screen.findByTestId('text-saving-answer')).toHaveTextContent('Meta do mês cumprida');
+    expect(done.screen.queryByTestId('chart-saving-days')).toBeNull();
+  });
+
+  it('sem plano salvo não há cartão', async () => {
+    const { screen } = await openApp('#/caixinhas', async (s) => { await withRenda(s); await newDream(s, 'Viagem', 1000, 100); });
+    await screen.findByTestId('list-dreams');
+    expect(screen.queryByTestId('card-saving-window')).toBeNull();
+  });
+
+  it('definir a reserva em "Ajustar plano" muda a resposta do cartão', async () => {
+    const { user, screen, store } = await openApp('#/caixinhas', seed(2200));
+    expect(await screen.findByTestId('text-saving-answer')).toHaveTextContent('Pode guardar agora');
+    await user.click(screen.getByTestId('button-adjust-plan'));
+    const input = await screen.findByTestId('input-plan-reserve');
+    expect(input).toHaveValue('1500');
+    await user.clear(input);
+    await user.type(input, '2.000,00');
+    await user.click(screen.getByTestId('button-save-plan'));
+    await screen.findByTestId('list-dreams');
+    expect((await store.getDreamPlan()).reserve).toBe(2000);
+    expect(await screen.findByText('Ainda não nos próximos 30 dias')).toBeInTheDocument();
+  });
+
+  it('olho fechado: valores mascarados e a faixa continua', async () => {
+    const { user, screen } = await openApp('#/', seed(3280, async (s) => { await f(s, 'pay', 1350, '2026-10-17'); await f(s, 'receive', 2000, '2026-10-25'); }));
+    await user.click(await screen.findByTestId('button-hide-values'));
+    window.location.hash = '#/caixinhas';
+    const card = await screen.findByTestId('card-saving-window');
+    expect(card).toHaveTextContent('R$ ••••');
+    expect(card).not.toHaveTextContent('600');
+    expect(screen.getByTestId('text-saving-answer')).toHaveTextContent('A partir de 25/10');
+    expect(screen.getByTestId('chart-saving-days')).toBeInTheDocument();
+  });
+});

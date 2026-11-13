@@ -12,12 +12,15 @@ import { isHidden } from '@/lib/hide-values';
 const CHIPS = [10, 15, 20, 25, 30];
 const STEP = 5;
 const cents = (value: number) => Math.round(value * 100) / 100;
+// "2.000,00" → 2000 (pt-BR); texto vazio vale 0 e texto inválido vira NaN.
+const parseReserve = (text: string) => (text.trim() === '' ? 0 : Number(text.replace(/\./g, '').replace(',', '.')));
 
 function PlanEditor({ plan }: { plan: DreamPlan }) {
   const [, navigate] = useLocation();
   const client = useQueryClient();
   const [percent, setPercent] = useState(plan.percent);
   const [shares, setShares] = useState<Record<number, number>>(() => Object.fromEntries(plan.items.map((item) => [item.id, item.share])));
+  const [reserve, setReserve] = useState(plan.reserve > 0 ? String(plan.reserve).replace('.', ',') : '');
   const [error, setError] = useState<string | null>(null);
   const save = useSaveDreamPlan({ mutation: { onSuccess: () => { void client.invalidateQueries(); leaveDreamScreen(navigate, '/caixinhas'); }, onError: (e) => setError(e.message) } });
 
@@ -50,6 +53,14 @@ function PlanEditor({ plan }: { plan: DreamPlan }) {
       </p>
     </section>
 
+    <section className="enter mt-6" style={{ animationDelay: '.1s' }}>
+      <label htmlFor="input-plan-reserve" className="field-label">Reserva mínima</label>
+      <div className="relative"><span className="absolute left-4 top-[17px] text-ink-mute">R$</span>
+        <input id="input-plan-reserve" data-testid="input-plan-reserve" type="text" inputMode="decimal" autoComplete="off" value={reserve} onChange={(e) => setReserve(e.target.value)} placeholder="0,00" aria-describedby="help-plan-reserve" className="field-input h-14 pl-12 font-mono-data text-[20px]"/>
+      </div>
+      <p id="help-plan-reserve" className="mt-1 text-[14px] text-ink-soft">O saldo não deve ficar abaixo disso.</p>
+    </section>
+
     {plan.items.length > 0 && <section aria-label="Divisão entre as caixinhas" className="enter mt-6" style={{ animationDelay: '.12s' }}>
       <h2 className="font-display text-[20px] text-ink">Como dividir</h2>
       <div className="mt-2"><ShareBar shares={plan.items.map((item) => ({ id: item.id, share: shares[item.id] ?? 0 }))}/></div>
@@ -67,7 +78,7 @@ function PlanEditor({ plan }: { plan: DreamPlan }) {
     </section>}
 
     {error && <p role="alert" data-testid="text-form-error" className="mt-4 rounded-xl bg-alert-tint px-3 py-2.5 text-[14px] leading-5 text-alert">{error}</p>}
-    <button type="button" data-testid="button-save-plan" disabled={!ok || save.isPending} onClick={() => { setError(null); save.mutate({ data: { percent, shares: plan.items.map((item) => ({ dreamId: item.id, share: shares[item.id] ?? 0 })) } }); }}
+    <button type="button" data-testid="button-save-plan" disabled={!ok || save.isPending} onClick={() => { setError(null); save.mutate({ data: { percent, reserve: parseReserve(reserve), shares: plan.items.map((item) => ({ dreamId: item.id, share: shares[item.id] ?? 0 })) } }); }}
       className="mt-6 h-14 w-full rounded-full bg-brand px-4 text-base font-semibold text-on-brand transition hover:bg-brand-hover disabled:opacity-50">{save.isPending ? 'Salvando…' : 'Salvar plano'}</button>
   </>;
 }

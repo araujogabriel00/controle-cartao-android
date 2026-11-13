@@ -15,7 +15,7 @@ export type {
   Bills, BillOccurrence, BillInput, DailyExpense, DailyExpenses, DailyExpenseInput, MonthCash, StoredBill, StoredDailyExpense,
   BalancePoint, InvoicePoint, RecentSpend, UndoResult,
   Cart, CartItem, CartItemInput, CartFormInput, CartDraft, CartArea, CartCoverage, CartBenefitCoverage, CartCardCoverage, CartFormPreview, CartPaymentPreview, CartCheckoutResult, StoredCartItem,
-  DreamIcon, DreamStatus, DreamItem, DreamDetail, Dreams, DreamPlan, DreamPlanItem, DreamPlanInput, DreamEntries, DreamMonthEntry, DreamInput, DreamUpdate, DreamDeposit, StoredDream, StoredDreamEntry,
+  DreamIcon, DreamStatus, DreamItem, DreamDetail, Dreams, DreamPlan, DreamPlanItem, DreamSavingWindow, DreamPlanInput, DreamEntries, DreamMonthEntry, DreamInput, DreamUpdate, DreamDeposit, StoredDream, StoredDreamEntry,
   ForecastKind, ForecastPayAs, ForecastState, ForecastOccurrence, ForecastInput, ForecastMonth, ForecastDay, BalanceForecast, StoredForecast,
   Benefits, BenefitItem, BenefitSpend, BenefitRange, BenefitInput, BenefitUpdate, BenefitSpendInput, BenefitSplitItem, BenefitCategoryRow, StoredBenefit, StoredBenefitSpend,
 } from './store';
@@ -290,6 +290,7 @@ export const usePutForecastInBalance = (options?: MutationOpts<void, { forecastI
 export const getGetDreamsQueryKey = () => ['dreams'] as const;
 export const getGetDreamQueryKey = (dreamId?: number) => key('dreams', 'one', dreamId);
 export const getGetDreamPlanQueryKey = () => ['dreams', 'plan'] as const;
+export const getGetDreamSavingWindowQueryKey = () => ['dreams', 'saving-window'] as const;
 export const getGetDreamEntriesQueryKey = (month?: store.MonthKey) => key('dreams', 'entries', month);
 
 export const useGetDreams = (options?: QueryOpts<store.Dreams>) =>
@@ -300,6 +301,9 @@ export const useGetDream = (dreamId: number, options?: QueryOpts<store.DreamDeta
 
 export const useGetDreamPlan = (options?: QueryOpts<store.DreamPlan>) =>
   useLocalQuery(getGetDreamPlanQueryKey(), () => store.getDreamPlan(), noRetry(options));
+
+export const useGetDreamSavingWindow = (options?: QueryOpts<store.DreamSavingWindow>) =>
+  useLocalQuery(getGetDreamSavingWindowQueryKey(), () => store.getDreamSavingWindow(), noRetry(options));
 
 export const useGetDreamEntries = (month: store.MonthKey, options?: QueryOpts<store.DreamEntries>) =>
   useLocalQuery(getGetDreamEntriesQueryKey(month), () => store.getDreamEntries(month), noRetry(options));
