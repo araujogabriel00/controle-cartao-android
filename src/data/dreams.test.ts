@@ -388,3 +388,96 @@ describe('migração v11 → v13', () => {
     await vi.waitFor(() => expect(JSON.parse(localStorage.getItem(key)!)).toMatchObject({ version: 13, dreams: [], dreamEntries: [], dreamPlan: null, cartItems: [] }));
   });
 });
+
+// specs/caixinhas-quando-guardar.md: hoje é 15/10/2026; renda de R$ 6.000,00, plano de 10% (R$ 600,00) e reserva de R$ 1.500,00.
+describe('quando guardar', () => {
+  // `balanceToday` define o saldo de hoje com uma conta fixa que desconta a diferença da renda.
+  const setup = async (balanceToday = 3280, reserve: number | undefined = 1500) => {
+    await s.createIncome({ kind: 'salario', amount: 6000, date: '2026-10-05', recurring: true });
+    if (balanceToday < 6000) await s.createBill({ name: 'Aluguel', amount: 6000 - balanceToday, date: '2026-10-08' });
+    const trip = await dream('Viagem', 10000, 100);
+    await s.saveDreamPlan({ percent: 10, reserve, shares: [{ dreamId: trip.id, share: 100 }] });
+    return trip;
+  };
+  const forecast = (kind: 'pay' | 'receive', amount: number, date: string, affects = true) =>
+    s.createForecast({ kind, description: 'Previsão', amount, date, affects, recurring: false });
+
+  it('cabe a partir de uma data: 25/10 e hoje cabem R$ 430,00', async () => {
+    await setup();
+    await forecast('pay', 1350, '2026-10-17');
+    await forecast('receive', 2000, '2026-10-25');
+    await forecast('pay', 700, '2026-10-30');
+    const w = await s.getDreamSavingWindow();
+    expect(w).toMatchObject({ hasPlan: true, reserve: 1500, amount: 600, todayRoom: 430, state: 'later', releaseDate: '2026-10-25' });
+    expect(w.days).toHaveLength(31);
+    expect(w.days[0].date).toBe('2026-10-15');
+    expect(w.days.filter((d) => !d.ok).map((d) => d.date.slice(8))).toEqual(['15', '16', '17', '18', '19', '20', '21', '22', '23', '24']);
+    expect(w.days.slice(10).every((d) => d.ok)).toBe(true);
+  });
+
+  it('pode guardar agora quando o saldo cobre o valor e a reserva em toda a janela', async () => {
+    await setup(4000);
+    const w = await s.getDreamSavingWindow();
+    expect(w).toMatchObject({ state: 'now', releaseDate: '2026-10-15', todayRoom: 2500 });
+    expect(w.days.every((d) => d.ok)).toBe(true);
+  });
+
+  it('ainda não nos próximos 30 dias: hoje cabem R$ 100,00', async () => {
+    await setup(1600);
+    const w = await s.getDreamSavingWindow();
+    expect(w).toMatchObject({ state: 'never', releaseDate: null, todayRoom: 100 });
+    expect(w.days.every((d) => !d.ok)).toBe(true);
+  });
+
+  it('saldo já abaixo da reserva: nada cabe hoje', async () => {
+    await setup(1000);
+    expect(await s.getDreamSavingWindow()).toMatchObject({ state: 'never', todayRoom: 0 });
+  });
+
+  it('meta do mês cumprida: sem faixa; só falta uma parte: guarda o que falta', async () => {
+    const trip = await setup(4000);
+    await s.depositDream(trip.id, 250);
+    expect(await s.getDreamSavingWindow()).toMatchObject({ state: 'now', amount: 350 });
+    await s.depositDream(trip.id, 350);
+    expect(await s.getDreamSavingWindow()).toMatchObject({ state: 'done', amount: 0, days: [] });
+  });
+
+  it('lembrete que não mexe no saldo não muda a resposta', async () => {
+    await setup(4000);
+    const before = await s.getDreamSavingWindow();
+    await forecast('pay', 2000, '2026-10-20', false);
+    expect(await s.getDreamSavingWindow()).toEqual(before);
+  });
+
+  it('sem plano salvo não há janela', async () => {
+    await s.createIncome({ kind: 'salario', amount: 6000, date: '2026-10-05', recurring: true });
+    expect(await s.getDreamSavingWindow()).toMatchObject({ hasPlan: false, state: 'done', days: [] });
+  });
+
+  it('guardar além da folga continua permitido (D7)', async () => {
+    const trip = await setup();
+    await forecast('pay', 1350, '2026-10-17');
+    await expect(s.depositDream(trip.id, 600)).resolves.toBeDefined();
+  });
+
+  it('a reserva é validada e, sem informar, mantém a salva', async () => {
+    const trip = await setup(3280, 2000);
+    const shares = [{ dreamId: trip.id, share: 100 }];
+    await expect(s.saveDreamPlan({ percent: 10, reserve: -1, shares })).rejects.toThrow('A reserva deve ser um valor de 0 a 999.999,99.');
+    await expect(s.saveDreamPlan({ percent: 10, reserve: 1000000, shares })).rejects.toThrow(/reserva/);
+    await s.saveDreamPlan({ percent: 15, shares });
+    expect((await s.getDreamPlan()).reserve).toBe(2000);
+  });
+
+  it('backup sem reserve abre com reserva 0, sem subir a versão', async () => {
+    await setup();
+    const key = Object.keys(localStorage).find((k) => (localStorage.getItem(k) ?? '').includes('"version"'))!;
+    const old = JSON.parse(localStorage.getItem(key)!);
+    delete old.dreamPlan.reserve;
+    localStorage.setItem(key, JSON.stringify(old));
+    vi.resetModules();
+    s = await import('@/data/store');
+    expect((await s.getDreamPlan()).reserve).toBe(0);
+    expect(JSON.parse(localStorage.getItem(key)!).version).toBe(13);
+  });
+});

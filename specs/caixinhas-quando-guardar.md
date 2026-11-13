@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Rascunho |
+| Status | Implementada |
 | Criada em | 13/11/2026 |
 | Escopo | `src/data/store.ts` (reserva no plano, `getDreamSavingWindow`), `src/data/api.ts` (hook), `src/pages/sonhos.tsx` (cartão "Quando guardar"), `src/pages/sonhos-plano.tsx` (campo "Reserva mínima"), `src/components/dream-parts.tsx` (faixa de dias), testes (`dreams.test.ts`, `sonhos.test.tsx`), `FUNCIONALIDADES.md` |
 | Depende de | [`sonhos.md`](sonhos.md), [`sonhos-viram-caixinhas.md`](sonhos-viram-caixinhas.md), [`previsoes.md`](previsoes.md) (saldo previsto, RN-08), [`previsoes-saldo-por-dia.md`](previsoes-saldo-por-dia.md) |
@@ -164,7 +164,7 @@ Funcionalidade: Quando posso guardar nas caixinhas
 ## 9. Dados e API
 
 - `dreamPlan` passa de `{ percent }` a `{ percent, reserve?: number }`. Backup antigo abre com `reserve = 0` (`parsed.dreamPlan.reserve ??= 0` no carregamento), **sem** subir a versão do formato.
-- `DreamPlanInput` ganha `reserve: number` (≥ 0 e ≤ 999.999,99; erro: "A reserva deve ser um valor de 0 a 999.999,99."). `DreamPlan` ganha `reserve`.
+- `DreamPlanInput` ganha `reserve` (opcional na implementação: ausente mantém a reserva salva, para os chamadores antigos) (≥ 0 e ≤ 999.999,99; erro: "A reserva deve ser um valor de 0 a 999.999,99."). `DreamPlan` ganha `reserve`.
 - Nova `getDreamSavingWindow(): Promise<DreamSavingWindow>` em `store.ts`:
   `{ hasPlan; reserve; amount /* V */; todayRoom /* folga */; state: 'now' | 'later' | 'never' | 'done'; releaseDate: string | null; days: { date: string; ok: boolean }[] }`.
   Reusa `getBalanceForecast` (série de 30 dias) e `getDreamPlan`.
@@ -179,12 +179,12 @@ Funcionalidade: Quando posso guardar nas caixinhas
 
 ## 11. Critérios de aceite
 
-- [ ] Cada cenário da seção 6 tem teste (`dreams.test.ts` para `getDreamSavingWindow`; `sonhos.test.tsx` para o cartão e o campo).
-- [ ] Teste de carga: backup sem `reserve` abre com 0.
-- [ ] A conta bate com o exemplo: saldo 3.280, reserva 1.500, V = 600, pagar 1.350 no dia 17 e receber 2.000 no dia 25 dão "A partir de 25/11" e "Hoje cabem R$ 430,00".
-- [ ] Em 360 × 780 o cartão e a faixa cabem sem rolagem horizontal; nada só por cor; olho fechado mascara valores.
-- [ ] `FUNCIONALIDADES.md` ganha a seção desta funcionalidade; `README.md` se citar o plano.
-- [ ] `npm test`, `npm run typecheck` e `npm run build` passam.
+- [x] Cada cenário da seção 6 tem teste (`dreams.test.ts` para `getDreamSavingWindow`; `sonhos.test.tsx` para o cartão e o campo).
+- [x] Teste de carga: backup sem `reserve` abre com 0.
+- [x] A conta bate com o exemplo: saldo 3.280, reserva 1.500, V = 600, pagar 1.350 no dia 17 e receber 2.000 no dia 25 dão "A partir de 25/11" e "Hoje cabem R$ 430,00".
+- [ ] Em 360 × 780 o cartão e a faixa cabem sem rolagem horizontal; nada só por cor; olho fechado mascara valores. *(Verificados em teste: texto na legenda e na resposta, `aria-label` na faixa, valores mascarados. Pendente: a conferência visual em 360 px.)*
+- [x] `FUNCIONALIDADES.md` ganha a seção desta funcionalidade; `README.md` se citar o plano.
+- [x] `npm test`, `npm run typecheck` e `npm run build` passam.
 
 ## 12. Tarefas
 

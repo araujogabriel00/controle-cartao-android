@@ -130,7 +130,7 @@ type State = {
   forecastExceptions: StoredForecastException[];
   dreams: StoredDream[];
   dreamEntries: StoredDreamEntry[];
-  dreamPlan: { percent: number } | null;
+  dreamPlan: { percent: number; reserve?: number } | null;
   cartItems: StoredCartItem[];
 };
 
@@ -398,6 +398,7 @@ function load(): Promise<State> {
         parsed.dreams ??= [];
         parsed.dreamEntries ??= [];
         parsed.dreamPlan ??= null;
+        if (parsed.dreamPlan) parsed.dreamPlan.reserve ??= 0; // caixinhas-quando-guardar RN-08: sem subir a versão
         parsed.cartItems ??= [];
         return parsed;
       }
@@ -2210,7 +2211,7 @@ export type DreamDetail = DreamItem & { entries: StoredDreamEntry[] };
 export type Dreams = { items: DreamItem[]; activeCount: number };
 export type DreamPlanItem = { id: number; name: string; icon: DreamIcon; share: number; effectiveShare: number; saved: number; goal: number };
 export type DreamPlan = {
-  percent: number; hasPlan: boolean; referenceIncome: number; monthlyAmount: number;
+  percent: number; reserve: number; hasPlan: boolean; referenceIncome: number; monthlyAmount: number;
   invoiceAmount: number; leftoverAmount: number; savedThisMonth: number; items: DreamPlanItem[];
 };
 export type DreamMonthEntry = {
@@ -2219,7 +2220,8 @@ export type DreamMonthEntry = {
 export type DreamEntries = { month: MonthKey; savingsAmount: number; depositCount: number; withdrawCount: number; items: DreamMonthEntry[] };
 export type DreamInput = { name: string; goal: number; initial?: number; icon: DreamIcon; share: number };
 export type DreamUpdate = { name: string; goal: number; icon: DreamIcon; share: number };
-export type DreamPlanInput = { percent: number; shares: { dreamId: number; share: number }[] };
+// `reserve` ausente mantém a reserva já salva (caixinhas-quando-guardar D5).
+export type DreamPlanInput = { percent: number; reserve?: number; shares: { dreamId: number; share: number }[] };
 // RN-14: o marco mais alto que o aporte fez o guardado cruzar.
 export type DreamDeposit = { dreamId: number; amount: number; saved: number; goal: number; percent: number; milestone: 25 | 50 | 75 | null; reached: boolean };
 
@@ -2319,7 +2321,7 @@ export async function getDreamPlan(): Promise<DreamPlan> {
   const shares = apportion(100, active.map((d) => d.share));
   const effective = effectiveSharesOf(active);
   return {
-    percent, hasPlan: state.dreamPlan !== null, referenceIncome, monthlyAmount, invoiceAmount,
+    percent, reserve: state.dreamPlan?.reserve ?? 0, hasPlan: state.dreamPlan !== null, referenceIncome, monthlyAmount, invoiceAmount,
     leftoverAmount: cents(referenceIncome - monthlyAmount - invoiceAmount),
     savedThisMonth: savingsOf(state, now),
     items: active.map((d, i) => ({ id: d.id, name: d.name, icon: d.icon, share: shares[i], effectiveShare: effective.get(d.id) ?? 0, saved: dreamSavedOf(state, d.id), goal: d.goal })),
@@ -2426,8 +2428,38 @@ export function saveDreamPlan(input: DreamPlanInput) {
     }
     if (active.length > 0 && [...given.values()].reduce((a, b) => a + b, 0) !== 100) throw new Error('A divisão deve somar 100%.');
     for (const d of active) d.share = given.get(d.id)!;
-    state.dreamPlan = { percent };
+    const reserve = input.reserve === undefined ? (state.dreamPlan?.reserve ?? 0) : Number(input.reserve);
+    if (!Number.isFinite(reserve) || reserve < 0 || reserve > MAX_RESERVE) throw new Error('A reserva deve ser um valor de 0 a 999.999,99.');
+    state.dreamPlan = { percent, reserve: cents(reserve) };
   });
+}
+
+const MAX_RESERVE = 999999.99;
+export type DreamSavingWindow = {
+  hasPlan: boolean; reserve: number; amount: number; todayRoom: number;
+  state: 'now' | 'later' | 'never' | 'done'; releaseDate: string | null; days: { date: string; ok: boolean }[];
+};
+
+// specs/caixinhas-quando-guardar.md RN-01 a RN-07: a partir de que dia o que falta do plano cabe sem deixar o saldo previsto
+// abaixo da reserva. Só calcula: não bloqueia nenhum aporte (D7).
+export async function getDreamSavingWindow(): Promise<DreamSavingWindow> {
+  const plan = await getDreamPlan();
+  const base = { hasPlan: plan.hasPlan, reserve: plan.reserve };
+  const amount = Math.max(0, cents(plan.monthlyAmount - plan.savedThisMonth));
+  if (!plan.hasPlan || amount === 0) return { ...base, amount, todayRoom: 0, state: 'done', releaseDate: null, days: [] };
+  const { points } = await getBalanceForecast(currentMonth(), 30);
+  const c = (v: number) => Math.round(v * 100);
+  const reserve = c(plan.reserve);
+  const need = c(amount);
+  // RN-03: o menor saldo dali até o fim da janela.
+  const ahead: number[] = new Array(points.length);
+  let low = Infinity;
+  for (let i = points.length - 1; i >= 0; i--) { low = Math.min(low, c(points[i].balance)); ahead[i] = low; }
+  const release = ahead.findIndex((m) => m - need >= reserve);
+  const todayRoom = Math.max(0, ahead[0] - reserve) / 100;
+  const days = points.map((p, i) => ({ date: p.date, ok: release >= 0 && i >= release }));
+  const state = release < 0 ? 'never' : release === 0 ? 'now' : 'later';
+  return { ...base, amount, todayRoom, state, releaseDate: release < 0 ? null : points[release].date, days };
 }
 
 // RF-06 / D6 / RN-03 / RN-04 / RN-14

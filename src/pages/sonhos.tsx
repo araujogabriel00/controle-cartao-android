@@ -1,9 +1,9 @@
 import { useLocation } from 'wouter';
-import { getGetDreamPlanQueryKey, getGetDreamsQueryKey, useGetDreamPlan, useGetDreams, type DreamItem } from '@workspace/api-client-react';
+import { getGetDreamPlanQueryKey, getGetDreamSavingWindowQueryKey, getGetDreamsQueryKey, useGetDreamPlan, useGetDreamSavingWindow, useGetDreams, type DreamItem, type DreamSavingWindow } from '@workspace/api-client-react';
 import { ChevronRight, CircleHelp, Moon, Plus, Sparkles } from 'lucide-react';
 import { BackButton } from '@/components/back-button';
 import { leaveDreamScreen } from '@/lib/dream-nav';
-import { DreamIconView, etaLabel, pct, ShareBar, SHARE_COLORS, useCountUp, useFirstShow } from '@/components/dream-parts';
+import { DayStrip, DreamIconView, etaLabel, pct, savingAnswer, ShareBar, SHARE_COLORS, useCountUp, useFirstShow } from '@/components/dream-parts';
 import { DreamRing } from '@/components/charts/dream-ring';
 import { money } from '@/lib/format';
 import { isHidden } from '@/lib/hide-values';
@@ -27,11 +27,23 @@ function DreamRow({ item, animate, onOpen }: { item: DreamItem; animate: boolean
   </li>;
 }
 
+// specs/caixinhas-quando-guardar.md D1 a D4: "Guardar R$ X", a resposta e a faixa dos 30 dias.
+function SavingWindowCard({ w }: { w: DreamSavingWindow }) {
+  const { answer, support } = savingAnswer(w);
+  return <section data-testid="card-saving-window" aria-label="Quando guardar" className="enter mt-4 rounded-[20px] border border-line bg-surface p-4" style={{ animationDelay: '.1s' }}>
+    <p className="text-[14px] text-ink-soft">{w.state === 'done' ? 'Plano deste mês' : <>Guardar <span className="font-mono-data font-bold text-ink">{money(w.amount)}</span></>}</p>
+    <p data-testid="text-saving-answer" className="mt-1 font-display text-[26px] leading-tight text-ink">{answer}</p>
+    {support && <p data-testid="text-saving-room" className="mt-1 text-[15px] text-ink-soft">{support}</p>}
+    {w.state !== 'done' && <DayStrip days={w.days} label={support ? `${answer}. ${support}` : answer}/>}
+  </section>;
+}
+
 // specs/sonhos.md RF-01, RF-02, D15, RN-17: o plano, o que foi guardado no mês e a lista de caixinhas.
 export default function Sonhos() {
   const [, navigate] = useLocation();
   const dreams = useGetDreams({ query: { queryKey: getGetDreamsQueryKey(), refetchOnWindowFocus: true } });
   const plan = useGetDreamPlan({ query: { queryKey: getGetDreamPlanQueryKey(), refetchOnWindowFocus: true } });
+  const saving = useGetDreamSavingWindow({ query: { queryKey: getGetDreamSavingWindowQueryKey(), refetchOnWindowFocus: true } });
   const animate = useFirstShow('sonhos');
   const percent = Math.round(useCountUp(plan.data?.percent ?? 0, animate));
   const items = dreams.data?.items ?? [];
@@ -85,6 +97,8 @@ export default function Sonhos() {
               : <>Neste mês você guardou <span className="font-mono-data font-semibold">{money(data.savedThisMonth)}</span> de <span className="font-mono-data">{money(data.monthlyAmount)}</span></>}</p>
             <button type="button" data-testid="button-adjust-plan" onClick={() => navigate('/caixinhas/plano')} className="-mx-2 mt-1 flex h-12 items-center gap-1 rounded-full px-3 text-[15px] font-semibold text-brand transition hover:bg-hover">{data.hasPlan ? 'Ajustar plano' : 'Definir plano'}<ChevronRight size={16}/></button>
           </section>}
+
+          {open.length > 0 && saving.data?.hasPlan && <SavingWindowCard w={saving.data}/>}
 
           {open.length > 0 && <ul data-testid="list-dreams" className="enter mt-4 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface" style={{ animationDelay: '.12s' }}>
             {open.map((item) => <DreamRow key={item.id} item={item} animate={animate} onOpen={() => navigate(`/caixinhas/${item.id}`)}/>)}

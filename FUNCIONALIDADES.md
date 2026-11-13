@@ -63,6 +63,7 @@ Especificação das funcionalidades no formato BDD (Gherkin, em português), lev
 40. [Histórico e Todas as compras na nova versão](#40-histórico-e-todas-as-compras-na-nova-versão)
 41. [Previsões com o saldo de cada dia](#41-previsões-com-o-saldo-de-cada-dia)
 42. [Todas as compras, um mês por vez](#42-todas-as-compras-um-mês-por-vez)
+43. [Caixinhas: quando guardar](#43-caixinhas-quando-guardar)
 
 ---
 
@@ -2775,3 +2776,53 @@ Funcionalidade: Todas as compras, um mês por vez
 ```
 
 Detalhes que a implementação fecha: o botão "Lançar compra de ‹mês›" abre o formulário de compra dentro da própria tela (esta tela não tem o botão Lançar do rodapé), com a data no mês aberto; a rota é uma só (`/compras/*?`) para a tela não remontar ao trocar de mês; busca com o campo vazio não lista nada. Os testes estão em `src/pages/compras.test.tsx`.
+
+## 43. Caixinhas: quando guardar
+
+Resumo. A especificação completa está em [`specs/caixinhas-quando-guardar.md`](specs/caixinhas-quando-guardar.md). A lista de caixinhas ganha o cartão **"Quando guardar"**: com plano salvo e caixinha ativa, mostra **"Guardar R$ X"** (o que falta do plano no mês), a **resposta** ("Pode guardar agora", "A partir de DD/MM", "Ainda não nos próximos 30 dias" ou "Meta do mês cumprida") e uma **faixa de 31 dias** (laranja e mais baixo = ainda não, azul e mais alto = pode guardar, sempre com legenda em texto). A conta usa o saldo previsto dos próximos 30 dias (só previsões que mexem no saldo; lembretes não entram) e a **reserva mínima** que a pessoa digita em "Ajustar plano" (padrão R$ 0,00; backups antigos abrem com 0, sem mudar a versão do formato). O app só calcula: "Guardar agora" não é bloqueado. Com o olho fechado os valores viram `R$ ••••` e a data e a faixa continuam.
+
+```gherkin
+# language: pt
+
+Funcionalidade: Quando posso guardar nas caixinhas
+
+  Contexto:
+    Dado a renda de R$ 6.000,00 e o plano de 10% (R$ 600,00 por mês)
+    E a reserva mínima de R$ 1.500,00 e nada guardado neste mês
+
+  Cenário: Cabe a partir de uma data
+    Dado o saldo de hoje R$ 3.280,00, a pagar R$ 1.350,00 no dia 17, a receber R$ 2.000,00 no dia 25 e a pagar R$ 700,00 no dia 30
+    Quando eu abro "Caixinhas"
+    Então o cartão mostra "Guardar R$ 600,00", "A partir de 25/10" e "Hoje cabem R$ 430,00."
+    E os dias antes do 25 são "ainda não" e os dali em diante "pode guardar"
+
+  Cenário: Pode guardar agora
+    Dado o saldo de hoje R$ 4.000,00 e nenhuma previsão
+    Então o cartão mostra "Pode guardar agora" e a faixa toda como "pode guardar"
+
+  Cenário: Ainda não nos próximos 30 dias
+    Dado o saldo de hoje R$ 1.600,00 e nenhuma entrada prevista
+    Então o cartão mostra "Ainda não nos próximos 30 dias" e "Hoje cabem R$ 100,00."
+    E com o saldo de hoje abaixo da reserva mostra "Hoje não cabe nada."
+
+  Cenário: Meta do mês cumprida
+    Dado que já guardei R$ 600,00 neste mês
+    Então o cartão mostra "Meta do mês cumprida" e não mostra a faixa
+    E com R$ 250,00 guardados mostra "Guardar R$ 350,00"
+
+  Cenário: Definir a reserva
+    Quando eu abro "Ajustar plano", digito "2.000,00" em "Reserva mínima" e toco em "Salvar plano"
+    Então o cartão passa a usar a reserva de R$ 2.000,00
+
+  Cenário: Sem plano, lembrete e olho fechado
+    Dado que não salvei nenhum plano
+    Então não vejo o cartão "Quando guardar"
+    E um lembrete que não mexe no saldo não muda a resposta
+    E com o olho fechado o cartão mostra "R$ ••••" e mantém a data
+
+  Cenário: Guardar além da folga continua permitido
+    Quando eu guardo R$ 600,00 numa caixinha com folga de R$ 430,00
+    Então o aporte é registrado normalmente
+```
+
+Os testes estão em `src/data/dreams.test.ts` (conta, validação da reserva e carga de backup sem `reserve`) e `src/pages/sonhos.test.tsx` (cartão e campo).
