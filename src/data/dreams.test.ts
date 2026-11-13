@@ -272,9 +272,10 @@ describe('conquista', () => {
     const book = await notebook();
     await s.depositDream(book.id, 100);
     await s.closeDream(book.id, 'keep');
-    await expect(s.depositDream(book.id, 10)).rejects.toThrow(/encerrado/i);
-    await expect(s.withdrawDream(book.id, 10)).rejects.toThrow(/encerrado/i);
+    await expect(s.depositDream(book.id, 10)).rejects.toThrow(/encerrada/i);
+    await expect(s.withdrawDream(book.id, 10)).rejects.toThrow(/encerrada/i);
     await expect(s.closeDream(book.id, 'use')).rejects.toThrow();
+    await expect(s.depositDream(9999, 10)).rejects.toThrow('Caixinha não encontrada.');
   });
 
   it('retirar de um conquistado o devolve a ativo', async () => {

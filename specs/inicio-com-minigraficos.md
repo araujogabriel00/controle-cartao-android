@@ -9,6 +9,8 @@
 | Substitui em parte | O desenho do Início de `redesign-v2-fundacao.md` RF-04: os blocos "Entrou / Saiu / Próxima fatura / lista de Benefícios" são trocados por **painéis com mini-gráfico**. O estado vazio, o primeiro uso e os atalhos não mudam. |
 | Referência visual | Canvas "Controle do Cartão", grupo v3, telas V3_01 (Início, clara e escura) |
 
+> **Nota (13/11/2026):** a área de Sonhos citada aqui hoje se chama **Caixinhas**; veja [`sonhos-viram-caixinhas.md`](sonhos-viram-caixinhas.md).
+
 > Mudanças de comportamento entram primeiro aqui e só depois no código.
 
 ---

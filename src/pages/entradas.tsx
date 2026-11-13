@@ -57,7 +57,7 @@ export default function Entradas({ month }: { month: MonthKey }) {
     { id: 'daily', label: 'Gastos do dia a dia', icon: <ShoppingBasket size={18}/>, value: cash?.dailyAmount ?? 0, kind: 'out' as const, count: countText(daily.data ? daily.data.items.length + daily.data.forecastItems.length : undefined, 'gasto', 'gastos', 'nenhum neste mês'), list: 'gastos' as ListKind },
     { id: 'cards', label: 'Cartões', icon: <CreditCard size={18}/>, value: cash?.cardsAmount ?? 0, kind: 'out' as const, count: countText(cards.data?.cards.filter((card) => card.invoiceAmount > 0).length, 'fatura', 'faturas', 'nenhuma neste mês'), list: 'cartoes' as ListKind },
     // Sonhos D8: aportes − retiradas do mês. Guardar é saída (−); se as retiradas passam dos aportes, a linha vira entrada (+).
-    { id: 'dreams', label: 'Guardado em sonhos', icon: <Moon size={18}/>, value: Math.abs(cash?.savingsAmount ?? 0), kind: (cash?.savingsAmount ?? 0) < 0 ? 'in' as const : 'out' as const, count: dreamCountText(dreams.data), list: 'sonhos' as ListKind },
+    { id: 'dreams', label: 'Guardado em caixinhas', icon: <Moon size={18}/>, value: Math.abs(cash?.savingsAmount ?? 0), kind: (cash?.savingsAmount ?? 0) < 0 ? 'in' as const : 'out' as const, count: dreamCountText(dreams.data), list: 'caixinhas' as ListKind },
   ].map(({ list, ...row }) => ({ ...row, onOpen: () => navigate(listPath(list, month)) }));
 
   return <main className="notebook-grain min-h-safe bg-paper text-ink">

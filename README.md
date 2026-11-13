@@ -37,7 +37,7 @@ Os dados são organizados por **cartão** e, dentro de cada cartão, por **mês 
 - **O mês é o mesmo nas áreas** ([`specs/mes-compartilhado.md`](specs/mes-compartilhado.md)): o seletor de mês fica no cabeçalho e trocar de área na barra inferior mantém o mês (`#/entradas/mes/AAAA-MM`, `#/beneficios/mes/AAAA-MM`). Se a aba de destino não abre aquele mês, abre o mais próximo. O app **lembra o último mês aberto** (só um mês que não é o corrente) e abre o Início nele; "Voltar para o mês atual" apaga a lembrança, e um endereço com mês vale mais que ela.
 - Na virada do mês, o mês novo começa sozinho, sem perguntar nada.
 - Meses passados continuam editáveis. Um mês futuro abre até o último mês que tenha parcela prevista ou compra registrada: mostra as parcelas e cobranças previstas e as compras já registradas, e aceita "Registrar compra", editar e excluir, mas não é iniciado até chegar.
-- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, a `version: 4` acrescenta a lista vazia de compras parceladas, a `version: 5` acrescenta as listas vazias de entradas, a `version: 6` troca as categorias-envelope por categorias globais (os lançamentos viram compras no cartão em que estavam; orçamentos e o estado aberto/fechado são descartados), a `version: 7` acrescenta as listas vazias de benefícios, a `version: 8` acrescenta as listas vazias de contas fixas e de gastos do dia a dia, a `version: 9` acrescenta as listas vazias de compras recorrentes, a `version: 10` apaga o limite dos cartões e dos meses, a `version: 11` acrescenta as listas vazias de previsões, a `version: 12` as de sonhos (`dreams`, `dreamEntries` e `dreamPlan`) e a `version: 13` o carrinho vazio (`cartItems`).
+- Dados dos formatos antigos são migrados automaticamente na primeira abertura: `version: 1` vai para o mês corrente, o cartão único da `version: 2` vira o primeiro cartão (verde) da `version: 3`, a `version: 4` acrescenta a lista vazia de compras parceladas, a `version: 5` acrescenta as listas vazias de entradas, a `version: 6` troca as categorias-envelope por categorias globais (os lançamentos viram compras no cartão em que estavam; orçamentos e o estado aberto/fechado são descartados), a `version: 7` acrescenta as listas vazias de benefícios, a `version: 8` acrescenta as listas vazias de contas fixas e de gastos do dia a dia, a `version: 9` acrescenta as listas vazias de compras recorrentes, a `version: 10` apaga o limite dos cartões e dos meses, a `version: 11` acrescenta as listas vazias de previsões, a `version: 12` as de caixinhas, antes chamadas de sonhos (`dreams`, `dreamEntries` e `dreamPlan`) e a `version: 13` o carrinho vazio (`cartItems`).
 
 ### Parcelamento
 
@@ -71,7 +71,7 @@ A especificação completa está em [`specs/contas-e-gastos.md`](specs/contas-e-
 
 - **Conta fixa** (aluguel, internet…): despesa mensal com nome, valor, dia e mês final opcional. Como as entradas recorrentes, os meses são calculados e editar ou excluir pergunta "Só este mês" ou "Este e os próximos".
 - **Gasto do dia a dia**: despesa avulsa (descrição, valor, data) com categoria global opcional e um resumo por categoria no mês. Aceita datas até 12 meses à frente.
-- **Resultado do mês** = entradas − contas fixas − gastos do dia a dia − o total das faturas no mês − o que foi guardado em sonhos no mês (aportes − retiradas, a 5.ª linha de "Entrou e saiu"). O **Saldo** do mês é o **Saldo anterior + o resultado**, e passa para o mês seguinte: a sobra e a falta acumulam. O saldo anterior é a soma dos resultados desde o primeiro mês com entrada, conta fixa ou gasto (os cartões não definem o início), calculada a cada leitura, e os meses futuros projetam o saldo. A tela **só lê** os cartões: nada daqui altera cartões, compras ou benefícios, e os benefícios não entram no saldo.
+- **Resultado do mês** = entradas − contas fixas − gastos do dia a dia − o total das faturas no mês − o que foi guardado em caixinhas no mês (aportes − retiradas, a 5.ª linha de "Entrou e saiu"). O **Saldo** do mês é o **Saldo anterior + o resultado**, e passa para o mês seguinte: a sobra e a falta acumulam. O saldo anterior é a soma dos resultados desde o primeiro mês com entrada, conta fixa ou gasto (os cartões não definem o início), calculada a cada leitura, e os meses futuros projetam o saldo. A tela **só lê** os cartões: nada daqui altera cartões, compras ou benefícios, e os benefícios não entram no saldo.
 
 ### Benefícios
 
@@ -85,13 +85,13 @@ A especificação completa está em [`specs/beneficios.md`](specs/beneficios.md)
 - Editar e excluir o benefício ficam no menu "⋯" da face do card, e "Fechar categoria" / "Reabrir categoria" ficam numa linha própria abaixo de cada categoria. Dá para **fechar** uma categoria dentro do benefício: a sobra dela é liberada para "Sem categoria", a linha congela e não recebe mais gastos. Também dá para reabrir (a categoria volta com sobra zero).
 - A navegação vai do mês do benefício mais antigo até 12 meses à frente.
 
-### Sonhos
+### Caixinhas
 
-A especificação completa está em [`specs/sonhos.md`](specs/sonhos.md). Cada sonho é uma **caixinha** com meta, guardado, ritmo e previsão de chegada, aberta pelo painel do Início ou pelo item "Sonhos" do menu ⋯ (`#/sonhos`, `#/sonhos/plano`, `#/sonhos/novo`, `#/sonhos/ID`, `#/sonhos/ID/editar`, `#/sonhos/ID/conquista` e a lista `#/entradas/lista/sonhos`).
+A especificação completa está em [`specs/sonhos.md`](specs/sonhos.md). Cada **caixinha** (antes chamada de sonho) tem meta, guardado, ritmo e previsão de chegada, aberta pelo painel do Início ou pelo item "Caixinhas" do menu ⋯ (`#/caixinhas`, `#/caixinhas/plano`, `#/caixinhas/nova`, `#/caixinhas/ID`, `#/caixinhas/ID/editar`, `#/caixinhas/ID/conquista` e a lista `#/entradas/lista/caixinhas`; os endereços `#/sonhos…` redirecionam). Veja [`specs/sonhos-viram-caixinhas.md`](specs/sonhos-viram-caixinhas.md): o código mantém os nomes `dream*`/`sonhos*` e o formato dos dados.
 
 - **Guardado** = guardado inicial + aportes − retiradas. O guardado inicial é dinheiro que já estava separado e **não** mexe no saldo; aportes saem do saldo e retiradas voltam a ele (um aporte não passa do saldo de hoje).
-- **Plano**: percentual da renda por mês (0 a 50%) e divisão entre os sonhos ativos em partes inteiras que somam 100%. **Ritmo** = renda de referência (a do mês, ou a do mês anterior se aquela for zero) × percentual × parte efetiva; **previsão** = mês corrente + ⌈falta ÷ ritmo⌉ meses. Quando um sonho é conquistado ou encerrado, a parte dele passa aos outros na proporção.
-- Ao chegar na meta o sonho é **conquistado**: "Manter guardado" só o encerra; "Usar o dinheiro" devolve o guardado ao saldo e registra, no mesmo ato, um gasto do dia a dia com o nome do sonho. Excluir devolve o guardado ao saldo com uma retirada e arquiva o sonho; os aportes antigos continuam nos meses em que aconteceram. Sonhos não entram no Desfazer.
+- **Plano**: percentual da renda por mês (0 a 50%) e divisão entre as caixinhas ativas em partes inteiras que somam 100%. **Ritmo** = renda de referência (a do mês, ou a do mês anterior se aquela for zero) × percentual × parte efetiva; **previsão** = mês corrente + ⌈falta ÷ ritmo⌉ meses. Quando uma caixinha é conquistada ou encerrada, a parte dela passa às outras na proporção.
+- Ao chegar na meta a caixinha é **conquistada**: "Manter guardado" só o encerra; "Usar o dinheiro" devolve o guardado ao saldo e registra, no mesmo ato, um gasto do dia a dia com o nome da caixinha. Excluir devolve o guardado ao saldo com uma retirada e arquiva a caixinha; os aportes antigos continuam nos meses em que aconteceram. Caixinhas não entram no Desfazer.
 - Em `src/data/store.ts`: `getDreams`, `getDream`, `getDreamPlan`, `getDreamEntries` e as escritas `createDream`, `updateDream`, `deleteDream`, `saveDreamPlan`, `depositDream`, `withdrawDream` e `closeDream` (esta última tudo ou nada). As animações (anel, caixinha, moedas, confete e contagem dos números) valem só na primeira exibição de cada tela e param com `prefers-reduced-motion`; com o olho fechado, anéis e caixinhas viram formas neutras.
 
 ### Carrinho de compras
@@ -112,7 +112,7 @@ Todos os valores abaixo são calculados **por cartão e dentro de um mês**, só
 | **Fatura (cartão)** | soma das compras do cartão no mês. Num mês futuro, soma também as parcelas e as cobranças previstas |
 | **Total das faturas** | soma das faturas de todos os cartões no mês |
 | Resumo por categoria | soma das compras de cada categoria no mês e a participação no total; compras sem categoria ficam em "Sem categoria" |
-| **Resultado do mês** (aba Entradas) | entradas − contas fixas − gastos do dia a dia − total das faturas − guardado em sonhos (aportes − retiradas do mês), só do mês |
+| **Resultado do mês** (aba Entradas) | entradas − contas fixas − gastos do dia a dia − total das faturas − guardado em caixinhas (aportes − retiradas do mês), só do mês |
 | **Saldo do mês** (aba Entradas) | saldo anterior (soma dos resultados dos meses antes) + resultado do mês |
 
 Não existe limite nem reserva de orçamento: só contam as compras de fato lançadas. Remover um cartão apaga os meses, as compras e as compras parceladas dele, sem alterar os outros cartões nem as categorias.
@@ -219,9 +219,9 @@ Também dá para abrir o projeto no Android Studio com `npx cap open android` e 
 │   ├── pages/carrinho.tsx  # Carrinho: produtos e total (carrinho-produto, carrinho-pagamento, carrinho-dividir, carrinho-confirmar e carrinho-ok são as outras telas)
 │   ├── lib/cart-checkout.ts # cobertura do benefício, distribuição entre as formas de pagamento e sugestão de divisão (funções puras, em centavos)
 │   ├── lib/cart-draft.ts   # rascunho do pagamento, só na memória; components/cart-parts.tsx tem as peças das telas
-│   ├── pages/sonhos.tsx    # Meus sonhos: plano, guardado do mês e a lista de caixinhas (sonhos-plano, sonho-novo, sonho-caixinha, sonho-conquista e sonhos-lista são as outras telas)
-│   ├── components/dream-parts.tsx # ícones, contagem, confete e barra de divisão dos sonhos; dream-sheets.tsx é a folha Guardar/Retirar
-│   ├── components/charts/dream-ring.tsx # anel de progresso do sonho (jar.tsx é a caixinha)
+│   ├── pages/sonhos.tsx    # Minhas caixinhas: plano, guardado do mês e a lista de caixinhas (sonhos-plano, sonho-novo, sonho-caixinha, sonho-conquista e sonhos-lista são as outras telas)
+│   ├── components/dream-parts.tsx # ícones, contagem, confete e barra de divisão das caixinhas; dream-sheets.tsx é a folha Guardar/Retirar
+│   ├── components/charts/dream-ring.tsx # anel de progresso da caixinha (jar.tsx é o frasco)
 │   └── ...
 ├── src/test/               # ajudantes dos testes (openApp, seeds, setup)
 ├── specs/                  # especificações das funcionalidades

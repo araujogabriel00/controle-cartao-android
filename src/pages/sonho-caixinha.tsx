@@ -20,7 +20,7 @@ const NBSP = ' ';
 const ENTRY_LABEL = { initial: 'Guardado inicial', deposit: 'Aporte', withdraw: 'Retirada' } as const;
 const MILESTONE_TEXT = { 25: 'Primeiro quarto da meta!', 50: 'Metade do caminho!', 75: 'Faltam só 25%!' } as const;
 
-// RF-07: a tela "Guardado!" com a caixinha enchendo, moedas, o valor, o total, o marco e "Voltar ao sonho".
+// RF-07: a tela "Guardado!" com a caixinha enchendo, moedas, o valor, o total, o marco e "Voltar à caixinha".
 function SavedScreen({ dream, result, onBack }: { dream: DreamDetail; result: DreamDeposit; onBack: () => void }) {
   const animate = useFirstShow(`guardado-${dream.id}-${result.saved}`);
   const total = useCountUp(result.saved, animate);
@@ -31,7 +31,7 @@ function SavedScreen({ dream, result, onBack }: { dream: DreamDetail; result: Dr
       <p data-testid="text-saved-amount" className="dream-pop mt-6 font-display text-[40px] leading-none text-ink">+{NBSP}{money(result.amount)}</p>
       <p className="mt-2 text-[16px] text-ink-soft">Total guardado em {dream.name}: <span data-testid="text-saved-total" className="font-mono-data text-ink">{money(total)}</span> de {money(dream.goal)}</p>
       {result.milestone && !isHidden() && <p data-testid="text-milestone" role="status" className="mt-4 rounded-full bg-tint px-4 py-2 text-[15px] font-semibold text-brand">{MILESTONE_TEXT[result.milestone]}</p>}
-      <button type="button" data-testid="button-back-to-dream" onClick={onBack} className="mt-auto h-14 w-full rounded-full bg-brand px-4 text-base font-semibold text-on-brand transition hover:bg-brand-hover">Voltar ao sonho</button>
+      <button type="button" data-testid="button-back-to-dream" onClick={onBack} className="mt-auto h-14 w-full rounded-full bg-brand px-4 text-base font-semibold text-on-brand transition hover:bg-brand-hover">Voltar à caixinha</button>
     </div>
   </main>;
 }
@@ -50,24 +50,24 @@ function Caixinha({ dream }: { dream: DreamDetail }) {
   const deposit = useDepositDream({
     mutation: {
       onSuccess: async (result) => {
-        // A conquista lê o sonho de novo: espera a leitura atualizada para a tela não abrir com o sonho ainda "ativo".
+        // A conquista lê a caixinha de novo: espera a leitura atualizada para a tela não abrir com a caixinha ainda "ativo".
         await client.invalidateQueries();
         setSheet(null);
-        if (result.reached) navigate(`/sonhos/${dream.id}/conquista`, { replace: true }); else setSaved(result);
+        if (result.reached) navigate(`/caixinhas/${dream.id}/conquista`, { replace: true }); else setSaved(result);
       },
       onError: failed,
     },
   });
   const withdraw = useWithdrawDream({ mutation: { onSuccess: () => { refresh(); setSheet(null); notify('Dinheiro devolvido ao saldo.'); }, onError: failed } });
-  const remove = useDeleteDream({ mutation: { onSuccess: () => { refresh(); leaveDreamScreen(navigate, '/sonhos'); }, onError: failed } });
+  const remove = useDeleteDream({ mutation: { onSuccess: () => { refresh(); leaveDreamScreen(navigate, '/caixinhas'); }, onError: failed } });
   const shownSaved = useCountUp(dream.saved, animate);
 
   if (saved) return <SavedScreen dream={dream} result={saved} onBack={() => setSaved(null)}/>;
 
   const closed = dream.status === 'closed';
   const askDelete = async () => {
-    const text = dream.saved > 0 ? `Os ${money(dream.saved)} guardados voltam para o seu saldo. Os aportes antigos continuam nas contas dos meses em que aconteceram.` : 'Este sonho ainda não tem dinheiro guardado.';
-    if (await confirm({ title: `Excluir ${dream.name}?`, text, confirmLabel: 'Excluir sonho' })) remove.mutate({ dreamId: dream.id });
+    const text = dream.saved > 0 ? `Os ${money(dream.saved)} guardados voltam para o seu saldo. Os aportes antigos continuam nas contas dos meses em que aconteceram.` : 'Esta caixinha ainda não tem dinheiro guardado.';
+    if (await confirm({ title: `Excluir ${dream.name}?`, text, confirmLabel: 'Excluir caixinha' })) remove.mutate({ dreamId: dream.id });
   };
   // Em telas estreitas (360 px) os três indicadores viram linhas; a partir de 420 px ficam lado a lado.
   const indicator = 'flex items-baseline justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-3 min-[420px]:block min-[420px]:px-3';
@@ -75,8 +75,8 @@ function Caixinha({ dream }: { dream: DreamDetail }) {
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
       <div className="flex items-center justify-between">
-        <BackButton onClick={() => leaveDreamScreen(navigate, '/sonhos')}/>
-        <RowMenu title={dream.name} menuTestId="menu-dream" editTestId="button-edit-dream" deleteTestId="button-delete-dream" deleteLabel="Excluir sonho" onEdit={() => navigate(`/sonhos/${dream.id}/editar`)} onDelete={() => void askDelete()}/>
+        <BackButton onClick={() => leaveDreamScreen(navigate, '/caixinhas')}/>
+        <RowMenu title={dream.name} menuTestId="menu-dream" editTestId="button-edit-dream" deleteTestId="button-delete-dream" deleteLabel="Excluir caixinha" onEdit={() => navigate(`/caixinhas/${dream.id}/editar`)} onDelete={() => void askDelete()}/>
       </div>
       <section className="enter mt-1 flex items-center gap-3" style={{ animationDelay: '.06s' }}>
         <span aria-hidden className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-tint text-brand"><DreamIconView icon={dream.icon} size={26}/></span>
@@ -88,7 +88,7 @@ function Caixinha({ dream }: { dream: DreamDetail }) {
         <p className="mt-3 font-display text-[34px] leading-none text-ink">{pct(dream.percent)}</p>
         <p className="mt-2 text-[15px] text-ink-soft">Guardado <span data-testid="text-dream-saved" className="font-mono-data text-ink">{money(shownSaved)}</span> de {money(dream.goal)}</p>
         {dream.almostThere && <span className="mt-2 inline-block rounded-full bg-tint px-3 py-0.5 text-[14px] font-semibold text-brand">Quase lá</span>}
-        {closed && <span className="mt-2 inline-block rounded-full bg-tint px-3 py-0.5 text-[14px] font-semibold text-brand">Encerrado</span>}
+        {closed && <span className="mt-2 inline-block rounded-full bg-tint px-3 py-0.5 text-[14px] font-semibold text-brand">Encerrada</span>}
       </section>
 
       <dl className="enter mt-3 grid grid-cols-1 gap-2 min-[420px]:grid-cols-3" style={{ animationDelay: '.14s' }}>
@@ -97,7 +97,7 @@ function Caixinha({ dream }: { dream: DreamDetail }) {
         <div className={indicator}><dt className="text-[13px] text-ink-soft">Previsão</dt><dd data-testid="text-dream-eta" className="font-mono-data text-[14px] text-ink">{etaLabel(dream.etaMonth)}</dd></div>
       </dl>
 
-      {dream.status === 'reached' && <button type="button" data-testid="button-dream-decide" onClick={() => navigate(`/sonhos/${dream.id}/conquista`, { replace: true })} className="mt-4 h-14 w-full rounded-full border-2 border-brand text-base font-semibold text-brand transition hover:bg-hover">Escolher o que fazer com o dinheiro</button>}
+      {dream.status === 'reached' && <button type="button" data-testid="button-dream-decide" onClick={() => navigate(`/caixinhas/${dream.id}/conquista`, { replace: true })} className="mt-4 h-14 w-full rounded-full border-2 border-brand text-base font-semibold text-brand transition hover:bg-hover">Escolher o que fazer com o dinheiro</button>}
       {!closed && <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
         <button type="button" data-testid="button-save-money" onClick={() => setSheet('deposit')} className="h-14 rounded-full bg-brand px-6 text-base font-semibold text-on-brand transition hover:bg-brand-hover">Guardar agora</button>
         <button type="button" data-testid="button-withdraw" disabled={dream.saved <= 0} onClick={() => setSheet('withdraw')} className="h-14 rounded-full border border-line px-6 text-base font-semibold text-ink transition hover:bg-hover disabled:opacity-50">Retirar</button>
@@ -121,12 +121,12 @@ function Caixinha({ dream }: { dream: DreamDetail }) {
   </main>;
 }
 
-// specs/sonhos.md RF-05 a RF-08: a caixinha do sonho com Guardar agora, Retirar e os últimos aportes.
+// specs/sonhos.md RF-05 a RF-08: a tela da caixinha com Guardar agora, Retirar e os últimos aportes.
 export default function SonhoCaixinha({ dreamId }: { dreamId: number }) {
   const dream = useGetDream(dreamId, { query: { queryKey: getGetDreamQueryKey(dreamId), refetchOnWindowFocus: true } });
   const [, navigate] = useLocation();
-  if (dream.isError) return <Redirect to="/sonhos" replace />;
-  if (!dream.data) return <main className="notebook-grain min-h-safe bg-paper"><div className="relative z-10 mx-auto max-w-[860px] px-4 pt-5"><BackButton onClick={() => leaveDreamScreen(navigate, '/sonhos')}/><div aria-busy="true" className="mt-6 h-[300px] animate-pulse rounded-2xl bg-line"/></div></main>;
+  if (dream.isError) return <Redirect to="/caixinhas" replace />;
+  if (!dream.data) return <main className="notebook-grain min-h-safe bg-paper"><div className="relative z-10 mx-auto max-w-[860px] px-4 pt-5"><BackButton onClick={() => leaveDreamScreen(navigate, '/caixinhas')}/><div aria-busy="true" className="mt-6 h-[300px] animate-pulse rounded-2xl bg-line"/></div></main>;
   return <Caixinha dream={dream.data}/>;
 }
 

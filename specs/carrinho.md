@@ -9,6 +9,8 @@
 | Substitui em parte | Nada. O carrinho **cria** lançamentos que já existem (compra no cartão, compra parcelada, gasto de benefício e gasto do dia a dia) pelas mesmas regras de hoje. |
 | Referência visual | Canvas "Controle do Cartão", grupo v6: V6_01 Carrinho, V6_02 Adicionar produto, V6_03 Pagamento, V6_04 Dividido, V6_05 Confirmar, V6_06 Sucesso, V6_07 Vazio, V6_08 Início com carrinho; claras e escuras |
 
+> **Nota (13/11/2026):** a área de Sonhos citada aqui hoje se chama **Caixinhas**; veja [`sonhos-viram-caixinhas.md`](sonhos-viram-caixinhas.md).
+
 > Mudanças de comportamento entram primeiro aqui e só depois no código.
 
 ---

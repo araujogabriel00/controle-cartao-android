@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | ----- | ----- |
-| Status | Rascunho |
+| Status | Implementada |
 | Criada em | 13/11/2026 |
 | Escopo | Textos, rotas e menu da área hoje chamada Sonhos: `src/App.tsx` (rotas), `src/lib/format.ts` (rotas e `ListKind`), `src/lib/dream-nav.ts`, `src/components/app-header.tsx` (item do menu ⋯), `src/components/dream-parts.tsx`, `src/components/dream-sheets.tsx`, `src/pages/{sonhos,sonhos-plano,sonho-novo,sonho-caixinha,sonho-conquista,sonhos-lista,inicio,entradas,entradas-resumo,entradas-lista}.tsx`, mensagens de erro de `src/data/store.ts`, testes, `FUNCIONALIDADES.md`, `README.md` |
 | Depende de | [`sonhos.md`](sonhos.md) |
@@ -105,11 +105,11 @@ Sem mudança visual: mesmas telas V5_01 a V5_08, só com os textos novos. Nomes 
 
 ## 9. Critérios de aceite
 
-- [ ] Cada cenário da seção 5 tem teste (atualizar `sonhos.test.tsx` e os testes que citam "Sonhos" ou "Guardado em sonhos"; incluir um teste de redirecionamento `/sonhos…`).
-- [ ] Uma busca por `sonho` (sem diferenciar maiúsculas) em `src/**/*.tsx` e nas mensagens de `store.ts` não acha **texto visível**; só comentários e identificadores (D6).
-- [ ] `FUNCIONALIDADES.md` e `README.md` usam "Caixinhas"; `sonhos.md`, `carrinho.md`, `inicio-com-minigraficos.md` e `redesign-v2-fundacao.md` ganham uma nota "área hoje chamada Caixinhas, ver `sonhos-viram-caixinhas.md`".
-- [ ] Em 360 × 780 nenhum rótulo novo é cortado.
-- [ ] `npm test`, `npm run typecheck` e `npm run build` passam.
+- [x] Cada cenário da seção 5 tem teste (atualizar `sonhos.test.tsx` e os testes que citam "Sonhos" ou "Guardado em sonhos"; incluir um teste de redirecionamento `/sonhos…`).
+- [x] Uma busca por `sonho` (sem diferenciar maiúsculas) em `src/**/*.tsx` e nas mensagens de `store.ts` não acha **texto visível**; só comentários e identificadores (D6).
+- [x] `FUNCIONALIDADES.md` e `README.md` usam "Caixinhas"; `sonhos.md`, `carrinho.md`, `inicio-com-minigraficos.md` e `redesign-v2-fundacao.md` ganham uma nota "área hoje chamada Caixinhas, ver `sonhos-viram-caixinhas.md`".
+- [ ] Em 360 × 780 nenhum rótulo novo é cortado. *(Pendente: a janela do navegador de automação não encolheu para 360 px; só a lista vazia foi vista, em tela larga.)*
+- [x] `npm test`, `npm run typecheck` e `npm run build` passam.
 
 ## 10. Tarefas
 

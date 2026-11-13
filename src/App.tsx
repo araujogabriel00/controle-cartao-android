@@ -130,13 +130,15 @@ function SummaryRoute({ month }: { month?: string }) {
 
 // Lists of the Entradas tab (specs/telas-de-entradas.md RF-06): an unknown list goes back to the
 // tab; an invalid month goes to the current one; a month outside the tab's range goes to the nearest.
-const LIST_KINDS: ListKind[] = ['entradas', 'contas-fixas', 'gastos', 'cartoes', 'sonhos'];
+const LIST_KINDS: ListKind[] = ['entradas', 'contas-fixas', 'gastos', 'cartoes', 'caixinhas'];
 function ListRoute({ kind, month }: { kind: string; month?: string }) {
   const range = useGetIncomeRange({ query: { queryKey: getGetIncomeRangeQueryKey() } });
+  // Endereço antigo da lista de Guardado em caixinhas (caixinhas D4).
+  if (kind === 'sonhos') return <Redirect to={listPath('caixinhas', month !== undefined && isMonthKey(month) ? month : currentMonth())} replace />;
   if (!LIST_KINDS.includes(kind as ListKind)) return <Redirect to="/entradas" replace />;
   const list = kind as ListKind;
-  // "Guardado em sonhos" (sonhos RF-10) tem tela própria; as outras quatro listas dividem a EntradasLista.
-  const view = (m: MonthKey) => list === 'sonhos' ? <SonhosLista key={`${list}-${m}`} month={m} /> : <EntradasLista key={`${list}-${m}`} kind={list} month={m} />;
+  // "Guardado em caixinhas" (sonhos RF-10) tem tela própria; as outras quatro listas dividem a EntradasLista.
+  const view = (m: MonthKey) => list === 'caixinhas' ? <SonhosLista key={`${list}-${m}`} month={m} /> : <EntradasLista key={`${list}-${m}`} kind={list} month={m} />;
   if (month === undefined) return view(currentMonth());
   if (!isMonthKey(month) || month === currentMonth()) return <Redirect to={listPath(list, currentMonth())} replace />;
   if (range.isLoading) return null;
@@ -166,9 +168,9 @@ function SpendsRoute({ benefit, cat, month }: { benefit: string; cat: string; mo
   return <BeneficioLancamentos key={`${id}-${filter}-${target}`} benefitId={id} filter={filter} month={target} />;
 }
 
-// Sonhos (specs/sonhos.md): um endereço com id inválido volta para a lista.
+// Caixinhas (specs/sonhos.md): um endereço com id inválido volta para a lista.
 function DreamRoute({ id, view }: { id: string; view: 'caixinha' | 'conquista' | 'editar' }) {
-  if (!/^\d+$/.test(id)) return <Redirect to="/sonhos" replace />;
+  if (!/^\d+$/.test(id)) return <Redirect to="/caixinhas" replace />;
   const dreamId = Number(id);
   if (view === 'conquista') return <SonhoConquista key={dreamId} dreamId={dreamId} />;
   if (view === 'editar') return <SonhoNovo key={dreamId} dreamId={dreamId} />;
@@ -236,12 +238,19 @@ function Router() {
         <Route path="/carrinho/dividir" component={CarrinhoDividir} />
         <Route path="/carrinho/confirmar" component={CarrinhoConfirmar} />
         <Route path="/carrinho/ok" component={CarrinhoOk} />
-        <Route path="/sonhos" component={Sonhos} />
-        <Route path="/sonhos/plano" component={SonhosPlano} />
-        <Route path="/sonhos/novo">{() => <SonhoNovo />}</Route>
-        <Route path="/sonhos/:id/conquista">{(params) => <DreamRoute id={params.id} view="conquista" />}</Route>
-        <Route path="/sonhos/:id/editar">{(params) => <DreamRoute id={params.id} view="editar" />}</Route>
-        <Route path="/sonhos/:id">{(params) => <DreamRoute id={params.id} view="caixinha" />}</Route>
+        <Route path="/caixinhas" component={Sonhos} />
+        <Route path="/caixinhas/plano" component={SonhosPlano} />
+        <Route path="/caixinhas/nova">{() => <SonhoNovo />}</Route>
+        <Route path="/caixinhas/:id/conquista">{(params) => <DreamRoute id={params.id} view="conquista" />}</Route>
+        <Route path="/caixinhas/:id/editar">{(params) => <DreamRoute id={params.id} view="editar" />}</Route>
+        <Route path="/caixinhas/:id">{(params) => <DreamRoute id={params.id} view="caixinha" />}</Route>
+        {/* Endereços antigos das Caixinhas (specs/sonhos-viram-caixinhas.md D4): redirecionam para os novos. */}
+        <Route path="/sonhos">{() => <Redirect to="/caixinhas" replace />}</Route>
+        <Route path="/sonhos/plano">{() => <Redirect to="/caixinhas/plano" replace />}</Route>
+        <Route path="/sonhos/novo">{() => <Redirect to="/caixinhas/nova" replace />}</Route>
+        <Route path="/sonhos/:id/conquista">{(params) => <Redirect to={`/caixinhas/${params.id}/conquista`} replace />}</Route>
+        <Route path="/sonhos/:id/editar">{(params) => <Redirect to={`/caixinhas/${params.id}/editar`} replace />}</Route>
+        <Route path="/sonhos/:id">{(params) => <Redirect to={`/caixinhas/${params.id}`} replace />}</Route>
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

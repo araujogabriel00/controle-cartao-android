@@ -19,7 +19,7 @@ function PlanEditor({ plan }: { plan: DreamPlan }) {
   const [percent, setPercent] = useState(plan.percent);
   const [shares, setShares] = useState<Record<number, number>>(() => Object.fromEntries(plan.items.map((item) => [item.id, item.share])));
   const [error, setError] = useState<string | null>(null);
-  const save = useSaveDreamPlan({ mutation: { onSuccess: () => { void client.invalidateQueries(); leaveDreamScreen(navigate, '/sonhos'); }, onError: (e) => setError(e.message) } });
+  const save = useSaveDreamPlan({ mutation: { onSuccess: () => { void client.invalidateQueries(); leaveDreamScreen(navigate, '/caixinhas'); }, onError: (e) => setError(e.message) } });
 
   const total = plan.items.reduce((sum, item) => sum + (shares[item.id] ?? 0), 0);
   const ok = plan.items.length === 0 || total === 100;
@@ -50,7 +50,7 @@ function PlanEditor({ plan }: { plan: DreamPlan }) {
       </p>
     </section>
 
-    {plan.items.length > 0 && <section aria-label="Divisão entre os sonhos" className="enter mt-6" style={{ animationDelay: '.12s' }}>
+    {plan.items.length > 0 && <section aria-label="Divisão entre as caixinhas" className="enter mt-6" style={{ animationDelay: '.12s' }}>
       <h2 className="font-display text-[20px] text-ink">Como dividir</h2>
       <div className="mt-2"><ShareBar shares={plan.items.map((item) => ({ id: item.id, share: shares[item.id] ?? 0 }))}/></div>
       <ul className="mt-3 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
@@ -78,7 +78,7 @@ export default function SonhosPlano() {
   const plan = useGetDreamPlan({ query: { queryKey: getGetDreamPlanQueryKey() } });
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-12 pt-5 sm:px-8">
-      <BackButton onClick={() => leaveDreamScreen(navigate, '/sonhos')}/>
+      <BackButton onClick={() => leaveDreamScreen(navigate, '/caixinhas')}/>
       <h1 className="enter mt-3 font-display text-[28px] leading-tight text-ink">Plano de economia</h1>
       {plan.isError ? <div className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center"><div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-brand"><CircleHelp size={18}/></div><h2 className="mt-3 font-display text-[20px] text-ink">Não consegui abrir o plano.</h2><button type="button" onClick={() => void plan.refetch()} className="mt-3 min-h-12 px-3 text-[15px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar de novo</button></div>
         : !plan.data ? <div aria-busy="true" className="mt-6 space-y-3"><div className="h-[180px] animate-pulse rounded-2xl bg-line"/><div className="h-[160px] animate-pulse rounded-2xl bg-line"/></div>

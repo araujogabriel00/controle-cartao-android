@@ -18,13 +18,13 @@ function DreamForm({ dream, plan }: { dream?: DreamDetail; plan?: DreamPlan }) {
   const [goal, setGoal] = useState(dream ? String(dream.goal) : '');
   const [initial, setInitial] = useState('');
   const [icon, setIcon] = useState<DreamIcon>(dream?.icon ?? 'plane');
-  // Com outros sonhos ativos, sugere uma parte igual para todos (100 seria recusado: os outros precisam de pelo menos 1%).
+  // Com outras caixinhas ativas, sugere uma parte igual para todos (100 seria recusado: os outros precisam de pelo menos 1%).
   const [share, setShare] = useState(dream ? String(dream.share) : String(plan?.items.length ? Math.floor(100 / (plan.items.length + 1)) : 100));
   const [error, setError] = useState<string | null>(null);
   const done = (path: string) => () => { void client.invalidateQueries(); leaveDreamScreen(navigate, path); };
   const fail = (e: Error) => setError(e.message);
-  const create = useCreateDream({ mutation: { onSuccess: done('/sonhos'), onError: fail } });
-  const update = useUpdateDream({ mutation: { onSuccess: done(dream ? `/sonhos/${dream.id}` : '/sonhos'), onError: fail } });
+  const create = useCreateDream({ mutation: { onSuccess: done('/caixinhas'), onError: fail } });
+  const update = useUpdateDream({ mutation: { onSuccess: done(dream ? `/caixinhas/${dream.id}` : '/caixinhas'), onError: fail } });
   const busy = create.isPending || update.isPending;
 
   // RF-04: a previsão na hora, com o ritmo da renda de referência no plano (D4).
@@ -44,7 +44,7 @@ function DreamForm({ dream, plan }: { dream?: DreamDetail; plan?: DreamPlan }) {
   };
 
   return <form data-testid="form-dream" onSubmit={submit} className="mt-5 pb-28">
-    <label htmlFor="input-dream-name" className="field-label">Nome do sonho</label>
+    <label htmlFor="input-dream-name" className="field-label">Nome da caixinha</label>
     <input id="input-dream-name" data-testid="input-dream-name" required maxLength={60} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Viagem ao Japão" className="field-input mb-4"/>
 
     <label htmlFor="input-dream-goal" className="field-label">Quanto custa</label>
@@ -68,13 +68,13 @@ function DreamForm({ dream, plan }: { dream?: DreamDetail; plan?: DreamPlan }) {
 
     <label htmlFor="input-dream-share" className="field-label">Parte da economia (%)</label>
     <input id="input-dream-share" data-testid="input-dream-share" required type="number" min="1" max="100" step="1" inputMode="numeric" value={share} onChange={(e) => setShare(e.target.value)} className="field-input"/>
-    <p className="mb-4 mt-1 text-[14px] text-ink-soft">Quanto do que você guarda por mês vai para este sonho. Os outros se ajustam.</p>
+    <p className="mb-4 mt-1 text-[14px] text-ink-soft">Quanto do que você guarda por mês vai para esta caixinha. As outras se ajustam.</p>
 
     <p data-testid="text-dream-preview" className="rounded-2xl bg-tint px-4 py-3 text-[15px] text-ink">Previsão de chegada: <span className="font-semibold">{etaLabel(eta)}</span>{!eta && ' (defina o plano para ver)'}</p>
 
     {error && <p role="alert" data-testid="text-form-error" className="mt-4 rounded-xl bg-alert-tint px-3 py-2.5 text-[14px] leading-5 text-alert">{error}</p>}
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper px-4 pb-[calc(12px+var(--safe-area-inset-bottom,env(safe-area-inset-bottom)))] pt-3">
-      <button data-testid="button-save-dream" disabled={busy} type="submit" className="mx-auto block h-14 w-full max-w-[440px] rounded-full bg-brand px-4 text-base font-semibold text-on-brand transition hover:bg-brand-hover disabled:opacity-60">{busy ? 'Salvando…' : isEdit ? 'Salvar sonho' : 'Criar sonho'}</button>
+      <button data-testid="button-save-dream" disabled={busy} type="submit" className="mx-auto block h-14 w-full max-w-[440px] rounded-full bg-brand px-4 text-base font-semibold text-on-brand transition hover:bg-brand-hover disabled:opacity-60">{busy ? 'Salvando…' : isEdit ? 'Salvar caixinha' : 'Criar caixinha'}</button>
     </div>
   </form>;
 }
@@ -84,12 +84,12 @@ export default function SonhoNovo({ dreamId }: { dreamId?: number }) {
   const [, navigate] = useLocation();
   const plan = useGetDreamPlan({ query: { queryKey: getGetDreamPlanQueryKey() } });
   const dream = useGetDream(dreamId ?? 0, { query: { queryKey: getGetDreamQueryKey(dreamId ?? 0), enabled: dreamId !== undefined } });
-  if (dreamId !== undefined && dream.isError) return <Redirect to="/sonhos" replace />;
+  if (dreamId !== undefined && dream.isError) return <Redirect to="/caixinhas" replace />;
   const ready = (dreamId === undefined || Boolean(dream.data)) && (Boolean(plan.data) || plan.isError);
   return <main className="notebook-grain min-h-safe bg-paper text-ink">
     <div className="relative z-10 mx-auto max-w-[860px] px-4 pt-5 sm:px-8">
-      <BackButton onClick={() => leaveDreamScreen(navigate, dreamId === undefined ? '/sonhos' : `/sonhos/${dreamId}`)}/>
-      <h1 className="enter mt-3 font-display text-[28px] leading-tight text-ink">{dreamId === undefined ? 'Novo sonho' : 'Editar sonho'}</h1>
+      <BackButton onClick={() => leaveDreamScreen(navigate, dreamId === undefined ? '/caixinhas' : `/caixinhas/${dreamId}`)}/>
+      <h1 className="enter mt-3 font-display text-[28px] leading-tight text-ink">{dreamId === undefined ? 'Nova caixinha' : 'Editar caixinha'}</h1>
       {ready ? <DreamForm dream={dream.data} plan={plan.data}/> : <div aria-busy="true" className="mt-6 h-[300px] animate-pulse rounded-2xl bg-line"/>}
     </div>
   </main>;
