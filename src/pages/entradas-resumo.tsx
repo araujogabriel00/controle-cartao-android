@@ -25,7 +25,7 @@ export default function EntradasResumo({ month }: { month: MonthKey }) {
     { id: 'daily', label: 'Gastos do dia a dia', value: cash?.dailyAmount, list: 'gastos', kind: 'out' },
     { id: 'cards', label: 'Cartões', value: cash?.cardsAmount, list: 'cartoes', kind: 'out' },
     // Sonhos D8: aportes − retiradas; se as retiradas passam dos aportes a linha vira entrada.
-    { id: 'dreams', label: 'Guardado em sonhos', value: Math.abs(cash?.savingsAmount ?? 0), list: 'sonhos', kind: (cash?.savingsAmount ?? 0) < 0 ? 'in' : 'out' },
+    { id: 'dreams', label: 'Guardado em caixinhas', value: Math.abs(cash?.savingsAmount ?? 0), list: 'caixinhas', kind: (cash?.savingsAmount ?? 0) < 0 ? 'in' : 'out' },
   ] as const;
 
   return <main className="notebook-grain min-h-safe bg-paper text-ink">

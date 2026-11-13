@@ -9,6 +9,8 @@
 | Substitui em parte | A tela Entradas e o Resumo do mês ganham uma **5.ª linha** ("Guardado em sonhos"); a fórmula do resultado do mês ganha um termo (D8). |
 | Referência visual | Canvas "Controle do Cartão", grupo v5: V5_01 Sonhos, V5_02 Plano, V5_03 Novo sonho, V5_04 Caixinha, V5_05 Guardar agora, V5_06 Guardado, V5_07 Conquistado, V5_08 Início com Sonhos; claras e escuras, com animações |
 
+> **Nota (13/11/2026):** a área hoje se chama **Caixinhas**; veja [`sonhos-viram-caixinhas.md`](sonhos-viram-caixinhas.md). Esta spec guarda o comportamento e o texto original.
+
 > Mudanças de comportamento entram primeiro aqui e só depois no código.
 
 ---

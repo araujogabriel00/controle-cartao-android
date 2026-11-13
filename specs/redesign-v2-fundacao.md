@@ -9,6 +9,8 @@
 | Substitui em parte | As abas em pílula no topo (`redesign-entradas.md` RF-06) e o rodapé com "Resumo / Lançar / Categorias" (`redesign-entradas.md` RF-07, `redesign-opcao-d-entradas.md` D8). A rota `/` deixa de abrir Cartões. |
 | Referência visual | Canvas "Controle do Cartão", grupo "Nova versão (v2)", telas V2_01 a V2_13, claras e escuras |
 
+> **Nota (13/11/2026):** a área de Sonhos citada aqui hoje se chama **Caixinhas**; veja [`sonhos-viram-caixinhas.md`](sonhos-viram-caixinhas.md).
+
 > Mudanças de comportamento entram primeiro aqui e só depois no código.
 
 ---

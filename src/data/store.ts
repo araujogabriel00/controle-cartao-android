@@ -2302,7 +2302,7 @@ export async function getDreams(): Promise<Dreams> {
 export async function getDream(dreamId: number): Promise<DreamDetail> {
   const state = await load();
   const item = dreamItems(state).find((d) => d.id === dreamId);
-  if (!item) throw new Error('Sonho não encontrado.');
+  if (!item) throw new Error('Caixinha não encontrada.');
   const entries = state.dreamEntries.filter((e) => e.dreamId === dreamId).sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
   return { ...item, entries };
 }
@@ -2333,7 +2333,7 @@ export async function getDreamEntries(month: MonthKey): Promise<DreamEntries> {
     .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
     .map((e) => {
       const dream = state.dreams.find((d) => d.id === e.dreamId);
-      return { id: e.id, dreamId: e.dreamId, dreamName: dream?.name ?? 'Sonho', dreamArchived: dream?.archived ?? true, kind: e.kind, amount: e.amount, date: e.date };
+      return { id: e.id, dreamId: e.dreamId, dreamName: dream?.name ?? 'Caixinha', dreamArchived: dream?.archived ?? true, kind: e.kind, amount: e.amount, date: e.date };
     });
   return {
     month, savingsAmount: savingsOf(state, month),
@@ -2343,18 +2343,18 @@ export async function getDreamEntries(month: MonthKey): Promise<DreamEntries> {
 
 function findDream(state: State, dreamId: number) {
   const dream = state.dreams.find((d) => d.id === dreamId && !d.archived);
-  if (!dream) throw new Error('Sonho não encontrado.');
+  if (!dream) throw new Error('Caixinha não encontrada.');
   return dream;
 }
 
 function requireOpenDream(state: State, dreamId: number) {
   const dream = findDream(state, dreamId);
-  if (dream.closed) throw new Error('Este sonho já foi encerrado.');
+  if (dream.closed) throw new Error('Esta caixinha já foi encerrada.');
   return dream;
 }
 
 function requireDreamFields(input: { name: string; goal: number; icon: DreamIcon; share: number }) {
-  const name = requireText(input.name, 'Nome do sonho', 60);
+  const name = requireText(input.name, 'Nome da caixinha', 60);
   const goal = Number(input.goal);
   if (!Number.isFinite(goal) || cents(goal) < 0.01) throw new Error('A meta deve ser maior que zero.');
   if (!(DREAM_ICONS as readonly string[]).includes(input.icon)) throw new Error('Ícone inválido.');
@@ -2366,7 +2366,7 @@ function requireDreamFields(input: { name: string; goal: number; icon: DreamIcon
 // RN-06: os outros sonhos ativos encolhem na proporção para a soma voltar a 100 (nunca abaixo de 1).
 function placeShare(state: State, others: StoredDream[], share: number) {
   if (others.length === 0) return 100;
-  if (share > 100 - others.length) throw new Error(`A parte pode ser de até ${100 - others.length}%, para os outros sonhos ficarem com pelo menos 1%.`);
+  if (share > 100 - others.length) throw new Error(`A parte pode ser de até ${100 - others.length}%, para as outras caixinhas ficarem com pelo menos 1%.`);
   const redistributed = apportion(100 - share, others.map((d) => d.share));
   others.forEach((d, i) => { d.share = redistributed[i]; });
   return share;
@@ -2380,7 +2380,7 @@ export function createDream(input: DreamInput) {
     if (!Number.isFinite(initial) || initial < 0) throw new Error('O valor já guardado não pode ser negativo.');
     if (initial >= fields.goal) throw new Error('O valor já guardado deve ser menor que a meta.');
     const others = activeDreamsOf(state);
-    if (others.length >= MAX_ACTIVE_DREAMS) throw new Error(`Você pode ter até ${MAX_ACTIVE_DREAMS} sonhos ativos.`);
+    if (others.length >= MAX_ACTIVE_DREAMS) throw new Error(`Você pode ter até ${MAX_ACTIVE_DREAMS} caixinhas ativas.`);
     const dream: StoredDream = { id: state.nextId++, ...fields, share: placeShare(state, others, fields.share), closed: false, archived: false, createdAt: today() };
     state.dreams.push(dream);
     if (initial > 0) state.dreamEntries.push({ id: state.nextId++, dreamId: dream.id, kind: 'initial', amount: initial, date: today() });
@@ -2419,7 +2419,7 @@ export function saveDreamPlan(input: DreamPlanInput) {
     if (!Number.isInteger(percent) || percent < 0 || percent > MAX_PLAN_PERCENT) throw new Error(`O percentual deve ser um número inteiro de 0 a ${MAX_PLAN_PERCENT}.`);
     const active = activeDreamsOf(state);
     const given = new Map((input.shares ?? []).map((s) => [Number(s.dreamId), Number(s.share)]));
-    if (given.size !== active.length || active.some((d) => !given.has(d.id))) throw new Error('A divisão deve cobrir todos os sonhos ativos.');
+    if (given.size !== active.length || active.some((d) => !given.has(d.id))) throw new Error('A divisão deve cobrir todas as caixinhas ativas.');
     for (const d of active) {
       const share = given.get(d.id)!;
       if (!Number.isInteger(share) || share < 1 || share > 100) throw new Error('Cada parte deve ser um número inteiro de 1 a 100.');
@@ -2463,7 +2463,7 @@ export function closeDream(dreamId: number, choice: 'keep' | 'use') {
   return mutate((state) => {
     const dream = requireOpenDream(state, dreamId);
     const saved = dreamSavedOf(state, dream.id);
-    if (saved < dream.goal) throw new Error('O sonho ainda não chegou à meta.');
+    if (saved < dream.goal) throw new Error('A caixinha ainda não chegou à meta.');
     if (choice === 'use') {
       const expense: StoredDailyExpense = { id: state.nextId++, categoryId: null, description: dream.name, amount: saved, date: today() };
       state.dailyExpenses.push(expense);

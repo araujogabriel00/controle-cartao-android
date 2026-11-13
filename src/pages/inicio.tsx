@@ -183,9 +183,9 @@ export default function Inicio({ month }: { month: MonthKey }) {
           </Panel>
 
           {/* Sonhos D12, RN-17: o plano e uma barra por sonho ativo (até 3); sem sonhos convida a criar; a falha só derruba este painel. */}
-          <Panel testId="card-home-dreams" dot="bg-chart-in" title="Sonhos" label="Abrir Sonhos" onOpen={() => navigate('/sonhos')} delay=".1s">
+          <Panel testId="card-home-dreams" dot="bg-chart-in" title="Caixinhas" label="Abrir Caixinhas" onOpen={() => navigate('/caixinhas')} delay=".1s">
             {dreamsQuery.isError || planQuery.isError
-              ? <span data-testid="text-home-dreams-error" className="block text-[15px] text-ink-soft">Sonhos indisponível</span>
+              ? <span data-testid="text-home-dreams-error" className="block text-[15px] text-ink-soft">Caixinhas indisponíveis</span>
               : !dreamsQuery.data || !planQuery.data
                 ? <div aria-busy="true" className="h-12 w-full animate-pulse rounded-lg bg-line"/>
                 : activeDreams.length === 0

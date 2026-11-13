@@ -5,14 +5,14 @@ import { type MonthKey } from '@/lib/format';
 import { isHidden } from '@/lib/hide-values';
 import type { DreamIcon } from '@workspace/api-client-react';
 
-// Peças comuns das telas de Sonhos (specs/sonhos.md).
+// Peças comuns das telas de Caixinhas (specs/sonhos.md).
 export const DREAM_ICON_VIEW: Record<DreamIcon, { icon: LucideIcon; label: string }> = {
   plane: { icon: Plane, label: 'Viagem' },
   shield: { icon: ShieldCheck, label: 'Reserva' },
   laptop: { icon: Laptop, label: 'Tecnologia' },
   book: { icon: BookOpen, label: 'Estudo' },
   target: { icon: Target, label: 'Meta' },
-  star: { icon: Star, label: 'Sonho' },
+  star: { icon: Star, label: 'Estrela' },
 };
 
 export function DreamIconView({ icon, size = 24 }: { icon: DreamIcon; size?: number }) {
@@ -73,7 +73,7 @@ export function Confetti({ pieces = 24 }: { pieces?: number }) {
   </div>;
 }
 
-// Barra empilhada da divisão do plano (RF-01): uma cor por sonho; com o olho fechado, uma barra neutra.
+// Barra empilhada da divisão do plano (RF-01): uma cor por caixinha; com o olho fechado, uma barra neutra.
 export const SHARE_COLORS = ['bg-chart-in', 'bg-chart-violet', 'bg-chart-rose'];
 export function ShareBar({ shares }: { shares: { id: number; share: number }[] }) {
   if (isHidden()) return <HiddenChart height={16}/>;

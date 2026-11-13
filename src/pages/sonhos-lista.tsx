@@ -7,7 +7,7 @@ import { useRememberMonth } from '@/lib/last-month';
 
 const NBSP = ' ';
 
-// specs/sonhos.md RF-10: "Guardado em sonhos" do mês, com cada aporte e retirada; tocar abre o sonho.
+// specs/sonhos.md RF-10: "Guardado em caixinhas" do mês, com cada aporte e retirada; tocar abre o sonho.
 export default function SonhosLista({ month }: { month: MonthKey }) {
   useRememberMonth(month);
   const [, navigate] = useLocation();
@@ -19,7 +19,7 @@ export default function SonhosLista({ month }: { month: MonthKey }) {
       <BackButton onClick={() => navigate(areaPath('income', month))}/>
       <section className="enter mt-3" style={{ animationDelay: '.06s' }}>
         <div className="flex items-center gap-2 text-eyebrow"><Moon size={14}/><p className="font-mono-data text-xs uppercase tracking-[.08em]">Aportes e retiradas · {capitalize(monthLabel(month))}</p></div>
-        <h1 data-testid="text-list-title" className="mt-1 font-display text-[28px] leading-tight text-ink">Guardado em sonhos</h1>
+        <h1 data-testid="text-list-title" className="mt-1 font-display text-[28px] leading-tight text-ink">Guardado em caixinhas</h1>
         <p data-testid="text-list-total" className="mt-2 font-mono-data text-[28px] leading-tight text-ink">{total < 0 ? `+${NBSP}${money(-total)}` : money(total)}</p>
       </section>
 
@@ -34,7 +34,7 @@ export default function SonhosLista({ month }: { month: MonthKey }) {
             </>;
             return <li key={item.id}>{item.dreamArchived
               ? <div data-testid={`row-dream-entry-${item.id}`} className="flex min-h-16 items-center justify-between gap-3 px-4 py-3">{body}</div>
-              : <button type="button" data-testid={`row-dream-entry-${item.id}`} aria-label={`${item.dreamName}: abrir o sonho`} onClick={() => navigate(`/sonhos/${item.dreamId}`)} className="flex min-h-16 w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-hover">{body}</button>}</li>;
+              : <button type="button" data-testid={`row-dream-entry-${item.id}`} aria-label={`${item.dreamName}: abrir a caixinha`} onClick={() => navigate(`/caixinhas/${item.dreamId}`)} className="flex min-h-16 w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-hover">{body}</button>}</li>;
           })}
         </ul>}
     </div>

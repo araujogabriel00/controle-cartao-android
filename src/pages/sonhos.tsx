@@ -19,7 +19,7 @@ function DreamRow({ item, animate, onOpen }: { item: DreamItem; animate: boolean
         <span className="block text-[14px] text-ink-soft">{money(item.saved)} de {money(item.goal)}</span>
         {active
           ? <span className="block text-[14px] text-ink-soft">{pct(item.effectiveShare)} da economia · {etaLabel(item.etaMonth)}</span>
-          : <span className="block text-[14px] font-semibold text-brand">{item.status === 'closed' ? 'Encerrado' : 'Conquistado'}</span>}
+          : <span className="block text-[14px] font-semibold text-brand">{item.status === 'closed' ? 'Encerrada' : 'Conquistada'}</span>}
         {item.almostThere && <span className="mt-1 inline-block rounded-full bg-tint px-2.5 py-0.5 text-[13px] font-semibold text-brand">Quase lá</span>}
       </span>
       <ChevronRight aria-hidden size={20} className="shrink-0 text-ink-soft"/>
@@ -27,7 +27,7 @@ function DreamRow({ item, animate, onOpen }: { item: DreamItem; animate: boolean
   </li>;
 }
 
-// specs/sonhos.md RF-01, RF-02, D15, RN-17: o plano, o que foi guardado no mês e a lista de sonhos.
+// specs/sonhos.md RF-01, RF-02, D15, RN-17: o plano, o que foi guardado no mês e a lista de caixinhas.
 export default function Sonhos() {
   const [, navigate] = useLocation();
   const dreams = useGetDreams({ query: { queryKey: getGetDreamsQueryKey(), refetchOnWindowFocus: true } });
@@ -45,20 +45,20 @@ export default function Sonhos() {
       <BackButton onClick={() => leaveDreamScreen(navigate, '/')}/>
       <section className="enter mt-3" style={{ animationDelay: '.06s' }}>
         <div className="flex items-center gap-2 text-eyebrow"><Moon size={14}/><p className="font-mono-data text-xs uppercase tracking-[.08em]">Caixinhas para objetivos</p></div>
-        <h1 className="mt-1 font-display text-[28px] leading-tight text-ink">Meus sonhos</h1>
+        <h1 className="mt-1 font-display text-[28px] leading-tight text-ink">Minhas caixinhas</h1>
       </section>
 
       {dreams.isError || plan.isError ? <div data-testid="text-dreams-error" className="mt-6 rounded-2xl border border-line bg-surface px-5 py-9 text-center">
         <div className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-chip text-brand"><CircleHelp size={18}/></div>
-        <h2 className="mt-3 font-display text-[20px] text-ink">Não consegui abrir os sonhos.</h2>
+        <h2 className="mt-3 font-display text-[20px] text-ink">Não consegui abrir as caixinhas.</h2>
         <button type="button" onClick={retry} className="mt-3 min-h-12 px-3 text-[15px] font-semibold text-brand underline decoration-brand/40 underline-offset-4">Tentar de novo</button>
       </div>
         : !dreams.data || !data ? <div aria-busy="true" className="mt-6 space-y-3"><div className="h-[150px] animate-pulse rounded-2xl bg-line"/><div className="h-[88px] animate-pulse rounded-2xl bg-line"/></div>
         : items.length === 0 ? <section data-testid="section-dreams-empty" aria-label="Primeiros passos" className="enter mt-6">
-          <p className="text-[15px] text-ink-soft">Cada sonho é uma caixinha com meta, ritmo e previsão de chegada.</p>
-          <button type="button" data-testid="button-new-dream" onClick={() => navigate('/sonhos/novo')} className="mt-4 flex h-14 items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand transition hover:bg-brand-hover"><Plus size={22} strokeWidth={2.2}/>Criar meu primeiro sonho</button>
+          <p className="text-[15px] text-ink-soft">Cada caixinha tem meta, ritmo e previsão de chegada.</p>
+          <button type="button" data-testid="button-new-dream" onClick={() => navigate('/caixinhas/nova')} className="mt-4 flex h-14 items-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand transition hover:bg-brand-hover"><Plus size={22} strokeWidth={2.2}/>Criar minha primeira caixinha</button>
           <ol className="mt-6 space-y-2">
-            {['Dê um nome ao sonho e diga quanto ele custa.', 'Escolha quanto da renda quer guardar por mês.', 'Guarde quando puder e veja a caixinha encher.'].map((text, index) => <li key={text} className="flex min-h-16 items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3">
+            {['Dê um nome à caixinha e diga quanto ela custa.', 'Escolha quanto da renda quer guardar por mês.', 'Guarde quando puder e veja a caixinha encher.'].map((text, index) => <li key={text} className="flex min-h-16 items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3">
               <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-tint font-display text-[18px] text-brand">{index + 1}</span><span className="text-[15px] text-ink">{text}</span>
             </li>)}
           </ol>
@@ -83,19 +83,19 @@ export default function Sonhos() {
               // Retiradas maiores que os aportes (ex.: "Usar o dinheiro"): "guardou -R$ X" confunde, então a frase vira "retirou".
               ? <>Neste mês você retirou <span className="font-mono-data font-semibold">{money(-data.savedThisMonth)}</span> das caixinhas</>
               : <>Neste mês você guardou <span className="font-mono-data font-semibold">{money(data.savedThisMonth)}</span> de <span className="font-mono-data">{money(data.monthlyAmount)}</span></>}</p>
-            <button type="button" data-testid="button-adjust-plan" onClick={() => navigate('/sonhos/plano')} className="-mx-2 mt-1 flex h-12 items-center gap-1 rounded-full px-3 text-[15px] font-semibold text-brand transition hover:bg-hover">{data.hasPlan ? 'Ajustar plano' : 'Definir plano'}<ChevronRight size={16}/></button>
+            <button type="button" data-testid="button-adjust-plan" onClick={() => navigate('/caixinhas/plano')} className="-mx-2 mt-1 flex h-12 items-center gap-1 rounded-full px-3 text-[15px] font-semibold text-brand transition hover:bg-hover">{data.hasPlan ? 'Ajustar plano' : 'Definir plano'}<ChevronRight size={16}/></button>
           </section>}
 
           {open.length > 0 && <ul data-testid="list-dreams" className="enter mt-4 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface" style={{ animationDelay: '.12s' }}>
-            {open.map((item) => <DreamRow key={item.id} item={item} animate={animate} onOpen={() => navigate(`/sonhos/${item.id}`)}/>)}
+            {open.map((item) => <DreamRow key={item.id} item={item} animate={animate} onOpen={() => navigate(`/caixinhas/${item.id}`)}/>)}
           </ul>}
 
-          <button type="button" data-testid="button-new-dream" onClick={() => navigate('/sonhos/novo')} className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand transition hover:bg-brand-hover"><Plus size={22} strokeWidth={2.2}/>Novo sonho</button>
+          <button type="button" data-testid="button-new-dream" onClick={() => navigate('/caixinhas/nova')} className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-brand px-6 text-base font-semibold text-on-brand transition hover:bg-brand-hover"><Plus size={22} strokeWidth={2.2}/>Nova caixinha</button>
 
-          {done.length > 0 && <section aria-label="Conquistados" className="enter mt-8" style={{ animationDelay: '.16s' }}>
-            <h2 className="font-display text-[20px] text-ink">Conquistados</h2>
+          {done.length > 0 && <section aria-label="Conquistadas" className="enter mt-8" style={{ animationDelay: '.16s' }}>
+            <h2 className="font-display text-[20px] text-ink">Conquistadas</h2>
             <ul data-testid="list-dreams-done" className="mt-2 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
-              {done.map((item) => <DreamRow key={item.id} item={item} animate={false} onOpen={() => navigate(item.status === 'reached' ? `/sonhos/${item.id}/conquista` : `/sonhos/${item.id}`)}/>)}
+              {done.map((item) => <DreamRow key={item.id} item={item} animate={false} onOpen={() => navigate(item.status === 'reached' ? `/caixinhas/${item.id}/conquista` : `/caixinhas/${item.id}`)}/>)}
             </ul>
           </section>}
         </>}
